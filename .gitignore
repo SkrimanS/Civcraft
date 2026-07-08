@@ -1,3 +1,12 @@
 .metadata/
 .recommenders/
 target/
+**/target/
+
+# Local legacy jars are needed for source compilation, but should not be committed.
+civcraft/lib/*.jar
+!civcraft/lib/README.md
+
+# Local test server/runtime files.
+server-test/
+*.log
