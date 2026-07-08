@@ -23,6 +23,15 @@ if (-not (Test-Path $ServerJar)) {
     throw "Missing server jar: $ServerJar. Put a Spigot/Paper 1.12.2 jar there first."
 }
 
+$JavaCommand = Get-Command "java.exe" -ErrorAction Stop
+$JavaArgs = @(
+    "-Xms${MemoryMb}M",
+    "-Xmx${MemoryMb}M",
+    "-jar",
+    "server.jar",
+    "nogui"
+)
+
 Set-Location $ServerPath
 
 $LogDir = Join-Path $ServerPath "logs"
@@ -36,9 +45,13 @@ $TranscriptPath = Join-Path $LogDir "console-$Stamp.txt"
 Start-Transcript -Path $TranscriptPath -Force | Out-Null
 try {
     Write-Host "Starting CivCraft 1.12.2 test server..."
+    Write-Host "Java: $($JavaCommand.Source)"
     Write-Host "Memory: ${MemoryMb} MB"
     Write-Host "Log transcript: $TranscriptPath"
-    java -Xms${MemoryMb}M -Xmx${MemoryMb}M -jar server.jar nogui
+    & $JavaCommand.Source @JavaArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Server process exited with code $LASTEXITCODE"
+    }
 } finally {
     Stop-Transcript | Out-Null
     Write-Host "Console transcript saved to: $TranscriptPath"
