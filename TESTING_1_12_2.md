@@ -5,7 +5,7 @@ This branch currently has two build stages:
 1. Legacy package build: packages already compiled Eclipse classes from `civcraft/bin`.
 2. Source compile profile: tries to compile `civcraft/src` against Spigot/Paper 1.12.2 and legacy plugin jars.
 
-## Fast runtime test
+## One-command smoke test
 
 From repository root on Windows PowerShell:
 
@@ -13,12 +13,16 @@ From repository root on Windows PowerShell:
 git switch port/spigot-1.12.2
 git pull
 
-.\tools\build-civcraft-jar.ps1
-.\tools\start-test-db.ps1
-.\tools\prepare-test-server.ps1 -ServerJar C:\path\to\spigot-or-paper-1.12.2.jar
-.\tools\run-test-server.ps1
-.\tools\analyze-test-log.ps1
+.\tools\test-civcraft-1122.ps1 -ServerJar C:\path\to\spigot-or-paper-1.12.2.jar
 ```
+
+This script runs:
+
+1. `build-civcraft-jar.ps1`
+2. `start-test-db.ps1`
+3. `prepare-test-server.ps1`
+4. `check-test-environment.ps1`
+5. `run-test-server.ps1`
 
 The console transcript is saved to:
 
@@ -26,7 +30,24 @@ The console transcript is saved to:
 server-test\logs\console-*.txt
 ```
 
-Send that log back for the next fix pass.
+After the server stops or crashes, run:
+
+```powershell
+.\tools\analyze-test-log.ps1
+```
+
+Send that log or summary back for the next fix pass.
+
+## Manual runtime test
+
+```powershell
+.\tools\build-civcraft-jar.ps1
+.\tools\start-test-db.ps1
+.\tools\prepare-test-server.ps1 -ServerJar C:\path\to\spigot-or-paper-1.12.2.jar
+.\tools\check-test-environment.ps1
+.\tools\run-test-server.ps1
+.\tools\analyze-test-log.ps1
+```
 
 ## Built jar inspection
 
