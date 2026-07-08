@@ -1,0 +1,40 @@
+name: Build CivCraft legacy package
+
+on:
+  push:
+    branches:
+      - port/spigot-1.12.2
+  workflow_dispatch:
+
+jobs:
+  build-legacy-package:
+    name: Build legacy class package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+
+      - name: Build test jar from legacy classes
+        run: mvn -pl civcraft clean package
+
+      - name: Verify plugin.yml exists in jar
+        run: |
+          JAR_PATH=$(ls civcraft/target/civcraft-*.jar | head -n 1)
+          echo "Built: ${JAR_PATH}"
+          jar tf "${JAR_PATH}" | grep '^plugin.yml$'
+          jar tf "${JAR_PATH}" | grep '^com/avrgaming/civcraft/main/CivCraft.class$'
+
+      - name: Upload CivCraft test jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: civcraft-1.12.2-legacy-test-jar
+          path: civcraft/target/civcraft-*.jar
+          if-no-files-found: error
