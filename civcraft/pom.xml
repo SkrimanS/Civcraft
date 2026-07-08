@@ -23,21 +23,25 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <spigot.version>1.12.2-R0.1-SNAPSHOT</spigot.version>
         <legacy.lib.dir>${project.basedir}/lib</legacy.lib.dir>
+
+        <!-- Default mode: package existing Eclipse bin/ classes, do not compile src/*.java. -->
+        <civcraft.source.dir>src-disabled-for-legacy-bin-package</civcraft.source.dir>
+        <civcraft.compiler.skip>true</civcraft.compiler.skip>
+        <civcraft.compiler.skipMain>true</civcraft.compiler.skipMain>
     </properties>
 
     <!--
         Stage 1 packaging mode.
 
         The imported legacy project already contains Eclipse-compiled classes in bin/.
-        This Maven file packages those classes together with non-Java plugin resources
-        from src/. It gives us a repeatable test jar without needing every old local
-        Eclipse dependency immediately.
+        The default Maven build packages those classes together with non-Java plugin
+        resources from src/. It gives us a repeatable test jar without needing every
+        old local Eclipse dependency immediately.
 
-        This is not the final source-port build. The next stage is to compile src/*.java
-        directly against Spigot/Paper 1.12.2 and replace/repair legacy dependencies.
+        Stage 2 source compilation is enabled by the source-compile profile below.
     -->
     <build>
-        <sourceDirectory>src-disabled-for-legacy-bin-package</sourceDirectory>
+        <sourceDirectory>${civcraft.source.dir}</sourceDirectory>
         <resources>
             <resource>
                 <directory>bin</directory>
@@ -59,8 +63,13 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <skip>true</skip>
-                    <skipMain>true</skipMain>
+                    <skip>${civcraft.compiler.skip}</skip>
+                    <skipMain>${civcraft.compiler.skipMain}</skipMain>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <showWarnings>true</showWarnings>
+                    <showDeprecation>true</showDeprecation>
                 </configuration>
             </plugin>
             <plugin>
@@ -91,6 +100,12 @@
         -->
         <profile>
             <id>source-compile</id>
+
+            <properties>
+                <civcraft.source.dir>src</civcraft.source.dir>
+                <civcraft.compiler.skip>false</civcraft.compiler.skip>
+                <civcraft.compiler.skipMain>false</civcraft.compiler.skipMain>
+            </properties>
 
             <repositories>
                 <repository>
@@ -220,35 +235,6 @@
                     <systemPath>${legacy.lib.dir}/craftbukkit-1.12.2.jar</systemPath>
                 </dependency>
             </dependencies>
-
-            <build>
-                <sourceDirectory>src</sourceDirectory>
-                <resources>
-                    <resource>
-                        <directory>src</directory>
-                        <excludes>
-                            <exclude>**/*.java</exclude>
-                            <exclude>**/*.class</exclude>
-                        </excludes>
-                    </resource>
-                </resources>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.11.0</version>
-                        <configuration>
-                            <skip>false</skip>
-                            <skipMain>false</skipMain>
-                            <source>${maven.compiler.source}</source>
-                            <target>${maven.compiler.target}</target>
-                            <encoding>${project.build.sourceEncoding}</encoding>
-                            <showWarnings>true</showWarnings>
-                            <showDeprecation>true</showDeprecation>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 </project>
