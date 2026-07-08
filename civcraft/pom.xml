@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.avrgaming</groupId>
+        <artifactId>civcraft-port-parent</artifactId>
+        <version>1.8.0-Beta6-1.12.2-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>civcraft</artifactId>
+    <packaging>jar</packaging>
+
+    <name>CivCraft</name>
+    <description>MineTexas CivilizationCraft test package for Spigot/Paper 1.12.2.</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <!--
+        Stage 1 packaging mode.
+
+        The imported legacy project already contains Eclipse-compiled classes in bin/.
+        This Maven file packages those classes together with non-Java plugin resources
+        from src/. It gives us a repeatable test jar without needing every old local
+        Eclipse dependency immediately.
+
+        This is not the final source-port build. The next stage is to compile src/*.java
+        directly against Spigot/Paper 1.12.2 and replace/repair legacy dependencies.
+    -->
+    <build>
+        <sourceDirectory>src-disabled-for-legacy-bin-package</sourceDirectory>
+        <resources>
+            <resource>
+                <directory>bin</directory>
+                <includes>
+                    <include>**/*.class</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src</directory>
+                <excludes>
+                    <exclude>**/*.java</exclude>
+                    <exclude>**/*.class</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <skip>true</skip>
+                    <skipMain>true</skipMain>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Built-By>CivCraft-1.12.2-Port</Built-By>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
