@@ -1,0 +1,21 @@
+services:
+  civcraft-db:
+    image: mariadb:10.6
+    container_name: civcraft-1122-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root_password_change_me
+      MARIADB_USER: civcraft
+      MARIADB_PASSWORD: civcraft
+      MARIADB_DATABASE: game
+    ports:
+      - "3306:3306"
+    volumes:
+      - civcraft-db-data:/var/lib/mysql
+      - ./tools/sql/init-civcraft-test-db.sql:/docker-entrypoint-initdb.d/01-init-civcraft-test-db.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  civcraft-db-data:
