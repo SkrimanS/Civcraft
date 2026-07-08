@@ -27,7 +27,10 @@ if (-not (Test-Path $CivCraftPluginPath)) {
     New-Item -ItemType Directory -Path $CivCraftPluginPath | Out-Null
 }
 
-Set-Content -Path (Join-Path $ServerPath "eula.txt") -Value "eula=true" -Encoding UTF8
+$EulaPath = Join-Path $ServerPath "eula.txt"
+$NoBomUtf8 = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($EulaPath, "eula=true`r`n", $NoBomUtf8)
+Write-Host "Wrote accepted EULA to server-test\eula.txt"
 
 if (Test-Path $ConfigTemplatePath) {
     Copy-Item -Path $ConfigTemplatePath -Destination (Join-Path $CivCraftPluginPath "config.yml") -Force
@@ -61,10 +64,10 @@ server-test/
   eula.txt
   plugins/
     CivCraft.jar
-    CustomMobs.jar
-    Vault.jar
-    WorldBorder.jar
-    WorldEdit.jar
+    CustomMobs.jar      optional at first
+    Vault.jar           optional at first
+    WorldBorder.jar     optional at first
+    WorldEdit.jar       optional at first
     HeroChat.jar        optional at first
     TitleAPI.jar        optional at first
     TagAPI.jar          optional at first
@@ -73,7 +76,7 @@ server-test/
       config.yml
 
 Important:
-- CivCraft plugin.yml currently has depend: [CustomMobs], so CustomMobs must exist or Bukkit will refuse to enable CivCraft.
+- CivCraft plugin.yml currently uses softdepend for legacy plugins so the server can expose real runtime errors first.
 - Start the local MariaDB test database before gameplay tests: ..\tools\start-test-db.ps1
 - The generated CivCraft config uses local MariaDB databases: game and global, user civcraft, password civcraft.
 - First run may still fail while generating data or loading dependencies; collect the full console log.
