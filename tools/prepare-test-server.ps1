@@ -13,6 +13,7 @@ $ServerPath = Join-Path $Root $ServerDir
 $PluginsPath = Join-Path $ServerPath "plugins"
 $CivCraftPluginPath = Join-Path $PluginsPath "CivCraft"
 $CivTargetPath = Join-Path $Root "civcraft\target"
+$ConfigTemplatePath = Join-Path $Root "tools\templates\civcraft-test-config.yml"
 
 Set-Location $Root
 
@@ -27,6 +28,11 @@ if (-not (Test-Path $CivCraftPluginPath)) {
 }
 
 Set-Content -Path (Join-Path $ServerPath "eula.txt") -Value "eula=true" -Encoding UTF8
+
+if (Test-Path $ConfigTemplatePath) {
+    Copy-Item -Path $ConfigTemplatePath -Destination (Join-Path $CivCraftPluginPath "config.yml") -Force
+    Write-Host "Wrote local CivCraft test config to plugins\CivCraft\config.yml"
+}
 
 $BuiltJar = Get-ChildItem -Path $CivTargetPath -Filter "civcraft-*.jar" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if ($null -ne $BuiltJar) {
@@ -63,11 +69,14 @@ server-test/
     TitleAPI.jar        optional at first
     TagAPI.jar          optional at first
     NoCheatPlus.jar     optional at first
+    CivCraft/
+      config.yml
 
 Important:
 - CivCraft plugin.yml currently has depend: [CustomMobs], so CustomMobs must exist or Bukkit will refuse to enable CivCraft.
-- MySQL/MariaDB config is still required for real gameplay tests.
-- First run may fail while generating config; collect the full console log.
+- Start the local MariaDB test database before gameplay tests: ..\tools\start-test-db.ps1
+- The generated CivCraft config uses local MariaDB databases: game and global, user civcraft, password civcraft.
+- First run may still fail while generating data or loading dependencies; collect the full console log.
 
 Start command:
 
@@ -78,4 +87,4 @@ Set-Content -Path (Join-Path $ServerPath "README.md") -Value $Readme -Encoding U
 
 Write-Host ""
 Write-Host "Prepared test server folder: $ServerPath"
-Write-Host "Next: add server.jar and dependency plugins, then run tools\run-test-server.ps1"
+Write-Host "Next: add server.jar and dependency plugins, start DB, then run tools\run-test-server.ps1"
