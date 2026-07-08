@@ -27,19 +27,25 @@ Imported full MineTexas CivilizationCraft source from `ataranlen/civcraft` into 
 
 ## Current state
 
-Stage 1 and Stage 2 scaffolding are started.
+Stage 1, Stage 2 scaffolding, local runtime harness, and local database harness are started.
 
-Added a Maven parent project, CivCraft module setup, GitHub Actions build, and local test tooling:
+Added a Maven parent project, CivCraft module setup, GitHub Actions build, local test tooling, and MariaDB test tooling:
 
 - `pom.xml`
 - `civcraft/pom.xml`
 - `.github/workflows/build-legacy-package.yml`
+- `docker-compose.civcraft-test.yml`
+- `tools/sql/init-civcraft-test-db.sql`
 - `tools/build-civcraft-jar.ps1`
 - `tools/check-legacy-libs.ps1`
 - `tools/build-civcraft-source.ps1`
+- `tools/start-test-db.ps1`
+- `tools/stop-test-db.ps1`
 - `tools/prepare-test-server.ps1`
 - `tools/run-test-server.ps1`
+- `tools/templates/civcraft-test-config.yml`
 - `civcraft/lib/README.md`
+- `TESTING_1_12_2.md`
 
 ## Stage 1: legacy class packaging
 
@@ -134,6 +140,35 @@ The runner saves a console transcript under:
 server-test\logs\console-*.txt
 ```
 
+## Stage 4: local MariaDB test harness
+
+Start local database:
+
+```powershell
+.\tools\start-test-db.ps1
+```
+
+Stop local database:
+
+```powershell
+.\tools\stop-test-db.ps1
+```
+
+The compose file creates two databases:
+
+```text
+game
+global
+```
+
+with user/password:
+
+```text
+civcraft / civcraft
+```
+
+The local test config template disables external server listing and points CivCraft to this local database.
+
 ## Important note
 
 Stage 1 may produce a jar, but it does not prove that all `civcraft/src/**/*.java` files compile cleanly against Spigot/Paper 1.12.2.
@@ -143,7 +178,8 @@ Stage 2 is expected to reveal real compile errors. Those errors are the next dat
 ## Next stages
 
 1. Confirm GitHub Actions can build the legacy test jar.
-2. Start a clean Spigot/Paper 1.12.2 test server with required dependencies.
-3. Capture startup/runtime errors.
-4. Try `source-compile` and capture Maven compile errors.
-5. Repair 1.12.2 API/dependency/runtime problems one by one.
+2. Start local MariaDB with Docker.
+3. Start a clean Spigot/Paper 1.12.2 test server with required dependencies.
+4. Capture startup/runtime errors.
+5. Try `source-compile` and capture Maven compile errors.
+6. Repair 1.12.2 API/dependency/runtime problems one by one.
