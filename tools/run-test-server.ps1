@@ -3,7 +3,10 @@ param(
     [string]$ServerDir = "server-test",
 
     [Parameter(Mandatory = $false)]
-    [int]$MemoryMb = 2048
+    [int]$MemoryMb = 2048,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipEnvironmentCheck
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,6 +14,10 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $ServerPath = Join-Path $Root $ServerDir
 $ServerJar = Join-Path $ServerPath "server.jar"
+
+if (-not $SkipEnvironmentCheck) {
+    & (Join-Path $Root "tools\check-test-environment.ps1") -ServerDir $ServerDir
+}
 
 if (-not (Test-Path $ServerJar)) {
     throw "Missing server jar: $ServerJar. Put a Spigot/Paper 1.12.2 jar there first."
@@ -29,9 +36,11 @@ $TranscriptPath = Join-Path $LogDir "console-$Stamp.txt"
 Start-Transcript -Path $TranscriptPath -Force | Out-Null
 try {
     Write-Host "Starting CivCraft 1.12.2 test server..."
+    Write-Host "Memory: ${MemoryMb} MB"
     Write-Host "Log transcript: $TranscriptPath"
     java -Xms${MemoryMb}M -Xmx${MemoryMb}M -jar server.jar nogui
 } finally {
     Stop-Transcript | Out-Null
     Write-Host "Console transcript saved to: $TranscriptPath"
+    Write-Host "Analyze it with: .\tools\analyze-test-log.ps1 -LogPath `"$TranscriptPath`""
 }
