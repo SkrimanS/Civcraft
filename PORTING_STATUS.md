@@ -27,18 +27,21 @@ Imported full MineTexas CivilizationCraft source from `ataranlen/civcraft` into 
 
 ## Current state
 
-Stage 1, Stage 2 scaffolding, local runtime harness, and local database harness are started.
+Stage 1, Stage 2 scaffolding, local runtime harness, local database harness, and runtime diagnostics are started.
 
-Added a Maven parent project, CivCraft module setup, GitHub Actions build, local test tooling, and MariaDB test tooling:
+Added a Maven parent project, CivCraft module setup, GitHub Actions build, local test tooling, MariaDB test tooling, jar inspection, and log analysis:
 
 - `pom.xml`
 - `civcraft/pom.xml`
+- `civcraft/src/plugin.yml`
 - `.github/workflows/build-legacy-package.yml`
 - `docker-compose.civcraft-test.yml`
 - `tools/sql/init-civcraft-test-db.sql`
 - `tools/build-civcraft-jar.ps1`
 - `tools/check-legacy-libs.ps1`
 - `tools/build-civcraft-source.ps1`
+- `tools/inspect-built-jar.ps1`
+- `tools/analyze-test-log.ps1`
 - `tools/start-test-db.ps1`
 - `tools/stop-test-db.ps1`
 - `tools/prepare-test-server.ps1`
@@ -69,6 +72,12 @@ Expected output jar:
 
 ```text
 civcraft\target\civcraft-1.8.0-Beta6-1.12.2-SNAPSHOT.jar
+```
+
+The build script now also runs jar inspection:
+
+```powershell
+.\tools\inspect-built-jar.ps1
 ```
 
 GitHub Actions also builds this legacy package on every push to `port/spigot-1.12.2` and uploads the jar as an artifact named:
@@ -140,6 +149,12 @@ The runner saves a console transcript under:
 server-test\logs\console-*.txt
 ```
 
+Analyze the newest transcript with:
+
+```powershell
+.\tools\analyze-test-log.ps1
+```
+
 ## Stage 4: local MariaDB test harness
 
 Start local database:
@@ -169,6 +184,16 @@ civcraft / civcraft
 
 The local test config template disables external server listing and points CivCraft to this local database.
 
+## Plugin dependency change for testing
+
+`plugin.yml` was relaxed from hard `depend: [CustomMobs]` to soft dependencies:
+
+```yaml
+softdepend: [TitleAPI, CustomMobs, Vault, WorldBorder, WorldEdit, HeroChat, TagAPI, NoCheatPlus]
+```
+
+This is only for the 1.12.2 test branch so Bukkit can try loading CivCraft and expose real missing-class/runtime errors instead of stopping immediately because one legacy plugin is absent.
+
 ## Important note
 
 Stage 1 may produce a jar, but it does not prove that all `civcraft/src/**/*.java` files compile cleanly against Spigot/Paper 1.12.2.
@@ -179,7 +204,7 @@ Stage 2 is expected to reveal real compile errors. Those errors are the next dat
 
 1. Confirm GitHub Actions can build the legacy test jar.
 2. Start local MariaDB with Docker.
-3. Start a clean Spigot/Paper 1.12.2 test server with required dependencies.
-4. Capture startup/runtime errors.
+3. Start a clean Spigot/Paper 1.12.2 test server.
+4. Analyze startup/runtime errors with `tools/analyze-test-log.ps1`.
 5. Try `source-compile` and capture Maven compile errors.
 6. Repair 1.12.2 API/dependency/runtime problems one by one.
