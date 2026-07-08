@@ -1,0 +1,37 @@
+# ======================================================================
+# CivCraft local 1.12.2 test configuration.
+# ======================================================================
+
+use_server_listing_service: 'false'
+server_address: "127.0.0.1"
+server_name: 'CivCraft 1.12.2 Local Test'
+server_timezone: 'UTC'
+server_description: 'Local test server for the CivCraft 1.12.2 port.'
+server_url: 'http://localhost/'
+server_url_description: 'Local Test'
+debug_heartbeat: 'false'
+
+localization_file: "default_lang.yml"
+
+mysql:
+   hostname: localhost
+   port: '3306'
+   database: game
+   username: civcraft
+   password: 'civcraft'
+   table_prefix: ''
+   min_conns: '2'
+   max_conns: '5'
+   parts: '3'
+
+global_database:
+    database: global
+    hostname: localhost
+    port: '3306'
+    username: civcraft
+    password: 'civcraft'
+    min_conns: '2'
+    max_conns: '5'
+    parts: '3'
+
+server_phase: 'beta8'
