@@ -17,6 +17,7 @@ git pull
 .\tools\start-test-db.ps1
 .\tools\prepare-test-server.ps1 -ServerJar C:\path\to\spigot-or-paper-1.12.2.jar
 .\tools\run-test-server.ps1
+.\tools\analyze-test-log.ps1
 ```
 
 The console transcript is saved to:
@@ -27,15 +28,30 @@ server-test\logs\console-*.txt
 
 Send that log back for the next fix pass.
 
-## Required plugin jars for the test server
+## Built jar inspection
 
-CivCraft currently has this hard dependency in `civcraft/src/plugin.yml`:
+The build script automatically runs:
 
-```yaml
-depend: [CustomMobs]
+```powershell
+.\tools\inspect-built-jar.ps1
 ```
 
-So at minimum `server-test/plugins/CustomMobs.jar` must exist or Bukkit will refuse to enable CivCraft.
+It checks that the jar contains:
+
+```text
+plugin.yml
+com/avrgaming/civcraft/main/CivCraft.class
+```
+
+## Plugin dependency policy for testing
+
+For the 1.12.2 port branch, `plugin.yml` has been relaxed from a hard dependency on `CustomMobs` to soft dependencies:
+
+```yaml
+softdepend: [TitleAPI, CustomMobs, Vault, WorldBorder, WorldEdit, HeroChat, TagAPI, NoCheatPlus]
+```
+
+This lets the server attempt to enable CivCraft even if some old optional plugins are missing. Runtime errors may still reveal that a plugin or API jar is truly required for a specific feature.
 
 Recommended test plugin layout:
 
@@ -52,7 +68,7 @@ server-test/plugins/
   NoCheatPlus.jar
 ```
 
-Some may later become optional, but for the first unmodified runtime test it is better to mirror the old server as closely as possible.
+For the first boot test, it is okay to start with fewer dependency plugins and use the console log to see what actually breaks.
 
 ## Local database
 
@@ -78,6 +94,27 @@ port: 3306
 ```
 
 The test config template copied into `server-test/plugins/CivCraft/config.yml` disables external server listing and points CivCraft at this local DB.
+
+## Log analysis
+
+After a failed or successful server start, run:
+
+```powershell
+.\tools\analyze-test-log.ps1
+```
+
+It extracts likely-important lines such as:
+
+```text
+Exception
+NoClassDefFoundError
+ClassNotFoundException
+NoSuchMethodError
+SQLException
+Could not load
+Could not pass event
+CivCraft
+```
 
 ## Source compilation test
 
