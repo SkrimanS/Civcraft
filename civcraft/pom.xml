@@ -21,6 +21,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <spigot.version>1.12.2-R0.1-SNAPSHOT</spigot.version>
+        <legacy.lib.dir>${project.basedir}/lib</legacy.lib.dir>
     </properties>
 
     <!--
@@ -75,4 +77,178 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Stage 2 source compilation mode.
+
+            Activate with:
+                mvn -pl civcraft -Psource-compile clean package
+
+            This profile intentionally depends on local legacy jars in civcraft/lib.
+            The old project was built from an Eclipse .classpath with hardcoded jars.
+            Run tools/check-legacy-libs.ps1 before this profile to see what is missing.
+        -->
+        <profile>
+            <id>source-compile</id>
+
+            <repositories>
+                <repository>
+                    <id>spigot-repo</id>
+                    <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+                </repository>
+                <repository>
+                    <id>enginehub</id>
+                    <url>https://maven.enginehub.org/repo/</url>
+                </repository>
+            </repositories>
+
+            <dependencies>
+                <dependency>
+                    <groupId>org.spigotmc</groupId>
+                    <artifactId>spigot-api</artifactId>
+                    <version>${spigot.version}</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>com.sk89q.worldedit</groupId>
+                    <artifactId>worldedit-bukkit</artifactId>
+                    <version>6.1.9</version>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>com.jolbox</groupId>
+                    <artifactId>bonecp</artifactId>
+                    <version>0.8.0.RELEASE</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>15.0</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                    <version>1.7.5</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                    <version>1.7.5</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
+                    <version>20140107</version>
+                </dependency>
+                <dependency>
+                    <groupId>mysql</groupId>
+                    <artifactId>mysql-connector-java</artifactId>
+                    <version>5.1.49</version>
+                    <scope>runtime</scope>
+                </dependency>
+
+                <!-- Local legacy jars copied from the old Eclipse classpath. -->
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>dhutils</artifactId>
+                    <version>1.0-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/dhutils.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>HeroChat</artifactId>
+                    <version>1.0-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/HeroChat.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>Vault</artifactId>
+                    <version>1.5.6-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/Vault.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>VanishNoPacket</artifactId>
+                    <version>3.20-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/VanishNoPacket.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>WorldBorder</artifactId>
+                    <version>1.8.5-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/WorldBorder.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>NoCheatPlus</artifactId>
+                    <version>2016-05-21-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/NoCheatPlus.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>TitleAPI</artifactId>
+                    <version>1.7.4-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/TitleAPI.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>TagAPI</artifactId>
+                    <version>1.1.9-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/TagAPI.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>CustomMobs</artifactId>
+                    <version>4.0-INDEV-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/CustomMobs-4.0-INDEV.jar</systemPath>
+                </dependency>
+                <dependency>
+                    <groupId>local.legacy</groupId>
+                    <artifactId>CraftBukkit</artifactId>
+                    <version>1.12.2-local</version>
+                    <scope>system</scope>
+                    <systemPath>${legacy.lib.dir}/craftbukkit-1.12.2.jar</systemPath>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <sourceDirectory>src</sourceDirectory>
+                <resources>
+                    <resource>
+                        <directory>src</directory>
+                        <excludes>
+                            <exclude>**/*.java</exclude>
+                            <exclude>**/*.class</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.11.0</version>
+                        <configuration>
+                            <skip>false</skip>
+                            <skipMain>false</skipMain>
+                            <source>${maven.compiler.source}</source>
+                            <target>${maven.compiler.target}</target>
+                            <encoding>${project.build.sourceEncoding}</encoding>
+                            <showWarnings>true</showWarnings>
+                            <showDeprecation>true</showDeprecation>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
