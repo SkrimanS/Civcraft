@@ -54,6 +54,7 @@ public final class StructureDefinitionService {
                     happiness(raw, id),
                     (int) number(raw.get("max_hitpoints"), 1.0),
                     string(raw.get("require_tech")),
+                    Math.max(0, (int) number(raw.get("limit"), 0.0)),
                     Boolean.parseBoolean(String.valueOf(raw.containsKey("strategic") ? raw.get("strategic") : false))
             );
             definitions.put(id.toLowerCase(Locale.ROOT), definition);

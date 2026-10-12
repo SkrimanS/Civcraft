@@ -106,6 +106,7 @@ public final class LegacyStructureService {
         TownRecord town = requireMayorTown(player);
         StructureDefinition definition = definition(structureId);
         validateRequiredTechnologies(town, definition);
+        validateStructureLimit(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location requested = player.getLocation().clone();
@@ -261,6 +262,7 @@ public final class LegacyStructureService {
 
     private QueuedLegacyBuild buildDefinedStructure(Player player, TownRecord town, StructureDefinition definition, String direction, Location location, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
         validateRequiredTechnologies(town, definition);
+        validateStructureLimit(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
@@ -272,6 +274,7 @@ public final class LegacyStructureService {
 
     private QueuedLegacyBuild buildDefinedStructureAtOrigin(Player player, TownRecord town, StructureDefinition definition, String direction, Location origin, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
         validateRequiredTechnologies(town, definition);
+        validateStructureLimit(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         if (resolved.legacy() != null) {
@@ -789,6 +792,19 @@ public final class LegacyStructureService {
         return type.isSolid() && !type.isAir() && type != Material.WATER && type != Material.LAVA;
     }
 
+    private void validateStructureLimit(TownRecord town, StructureDefinition definition) throws SQLException {
+        // In legacy CivCraft configuration, limit: 0 means unlimited.
+        // Count unfinished and completed structures; cancelled/demolished free a slot.
+        if (town == null || definition.maxPerTown() <= 0) {
+            return;
+        }
+        int alreadyBuilt = storage.countTownStructureBuildings(town.id(), definition.id());
+        if (alreadyBuilt >= definition.maxPerTown()) {
+            throw new IllegalArgumentException("Достигнут лимит построек " + definition.displayName()
+                    + " в этом городе: " + definition.maxPerTown());
+        }
+    }
+
     private void validateRequiredTechnologies(TownRecord town, StructureDefinition definition) throws SQLException {
         if (town == null || definition.requiredTechnology() == null || definition.requiredTechnology().isBlank()) {
             return;
@@ -809,7 +825,7 @@ public final class LegacyStructureService {
         // by original CivCraft. Model it explicitly for the foundation-item path.
         if (structureId.equalsIgnoreCase(settings.campStructureId())) {
             return new StructureDefinition(structureId, "camp", "Camp", 0.0, 0.0, 0.0,
-                    0.0, 0.0, 0.0, 0, settings.campHitpoints(), "", false);
+                    0.0, 0.0, 0.0, 0, settings.campHitpoints(), "", 0, false);
         }
         return definitions.find(structureId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown structure id: " + structureId));

@@ -787,6 +787,20 @@ public final class StorageBootstrap implements AutoCloseable {
         return false;
     }
 
+    public int countTownStructureBuildings(long townId, String structureId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT COUNT(*) FROM structure_builds
+                WHERE town_id = ? AND structure_id = ? COLLATE NOCASE
+                AND status NOT IN ('CANCELLED', 'DEMOLISHED')
+                """)) {
+            statement.setLong(1, townId);
+            statement.setString(2, structureId);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     public boolean hasActiveStructureBuild(long townId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM structure_builds

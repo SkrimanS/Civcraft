@@ -13,6 +13,7 @@ public record StructureDefinition(
         int happiness,
         int maxHitpoints,
         String requiredTechnology,
+        int maxPerTown,
         boolean strategic
 ) {
 }
