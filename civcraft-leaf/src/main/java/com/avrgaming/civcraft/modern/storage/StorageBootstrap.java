@@ -981,8 +981,8 @@ public final class StorageBootstrap implements AutoCloseable {
     public long recordStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt) throws SQLException {
         long now = System.currentTimeMillis();
         try (PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO structure_builds(builder_uuid, town_id, type, template, direction, world, x, y, z, template_path, queued_blocks, structure_id, display_name, cost, max_hitpoints, total_hammers, hammers_per_hour, production_hammers_per_hour, beakers_per_hour, money_per_hour, happiness, started_at, finish_at, status, created_at)
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', ?)
+                INSERT INTO structure_builds(builder_uuid, town_id, type, template, direction, world, x, y, z, template_path, queued_blocks, structure_id, display_name, cost, max_hitpoints, total_hammers, hammers_per_hour, production_hammers_per_hour, beakers_per_hour, money_per_hour, happiness, started_at, finish_at, status, journal_started, created_at)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 1, ?)
                 """, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, builder.toString());
             if (townId == null) {
