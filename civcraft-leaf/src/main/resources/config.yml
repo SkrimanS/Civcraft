@@ -26,6 +26,15 @@ economy:
     # Partial coins persist in SQLite; production pauses while the server is offline.
     enabled: true
 
+# Territory permissions: mayors control claims; town members may build and use containers.
+claim-protection:
+  # Prevent non-members from opening containers, doors, buttons and other block interfaces.
+  prevent-foreign-interactions: true
+  # Explosions outside a town cannot destroy claimed blocks.
+  prevent-explosion-damage: true
+  # Stop external fluids, fire, pistons and hostile entity block changes.
+  prevent-environment-damage: true
+
 storage:
   type: sqlite
   sqlite:
