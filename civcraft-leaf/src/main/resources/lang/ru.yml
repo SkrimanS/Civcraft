@@ -1,0 +1,131 @@
+commands:
+  common:
+    now: 'сразу'
+  error:
+    player-only: 'Эта команда доступна только игроку.'
+    database: 'Ошибка базы данных: {error}'
+    template: 'Ошибка legacy-шаблона: {error}'
+    positive-int: 'Сумма должна быть положительным целым числом.'
+    y: 'Y должен быть целым числом в пределах высоты мира.'
+    rotation: 'Поворот должен быть только 0, 90, 180 или 270.'
+  admin:
+    op-only: 'Эта команда доступна только OP-игроку.'
+    reload: 'Конфигурация перезагружена.'
+    integrations-header: '&eИнтеграции CivCraft:'
+    npc-reload: 'Camp NPC menus перезагружены.'
+    build-started: 'Legacy .def постройка #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}'
+  civ:
+    created: 'Цивилизация {name} создана. Правительство: {government}'
+    balance: 'Баланс цивилизации: {coins}.'
+    info: '&6Цивилизация: &e{name} &7government={government}, coins={coins}'
+    none: 'Вы не состоите в цивилизации. Используйте /civ create <название>.'
+  town:
+    created: 'Город {name} основан. Мэр: {mayor}, молотки: {hammers}/час, колбы: {beakers}/час, счастье: {happiness} ({state}).'
+    balance: 'Баланс города: {coins}.'
+    claimed: 'Чанк {chunk_x},{chunk_z} заклаймлен городом #{town_id}.'
+    unclaimed: 'Текущий чанк отклаймлен.'
+    claims: '&6Клаймы города: &e{count}/{max}'
+    info: '&6Город: &e{name} &7level={level}, coins={coins}, hammers={hammers}/hour, beakers={beakers}/hour, money={money}/hour, happiness={happiness} ({state}, x{multiplier})'
+    none: 'У вас нет города. Используйте /town create <название>.'
+  build:
+    cancelled: 'Стройка #{id} отменена. В казну города возвращено {refund} монет.'
+    demolished: 'Постройка #{id} разрушена. В казну города возвращено {refund} монет.'
+    no-structure: 'В этом чанке нет постройки.'
+    no-active: 'В вашем городе нет активной стройки.'
+    list: '&6Постройки: &e{list}'
+    legacy-moved: 'Legacy .def сборка перенесена в /civadmin build <file>.'
+    preview: 'Фантомное превью постройки показано только вам. Напишите yes, чтобы начать строительство, или no, чтобы отменить.'
+    usage: 'Использование: /build <постройка> [y] [0|90|180|270]'
+    info:
+      line1: '&6Постройка: &e{name} &7#{id}'
+      line2: '&7Город: {town}, status={status}, cost={cost}, chunk={chunk_x},{chunk_z}'
+      line3: '&7Origin: {world} {x} {y} {z}, hammers={hammers}, production={production}/hour'
+    time:
+      line1: '&6Стройка: &e{name} &7#{id}'
+      line2: '&7Готово: {percent}% | осталось: {remaining}'
+  research:
+    list: '&6Технологии: &e{list}'
+    started: 'Исследование {name} начато. Нужно beakers: {beakers}'
+    progress: '&6Исследование: &e{tech} &7{progress}/{required} ({percent}%)'
+    none: 'Активного исследования нет. Используйте /research list и /research start <id>.'
+  help:
+    player:
+      - '&6CivCraft'
+      - '&e/camp &7- команды лагеря'
+      - '&e/build &7- постройки'
+      - '&e/research &7- технологии'
+      - '&e/civ &7- цивилизация'
+      - '&e/town &7- город'
+    build:
+      - '&e/b <id> [y] [0|90|180|270] &7- превью постройки'
+      - '&e/b cancel &7- отменить активную стройку города и вернуть 90% стоимости'
+      - '&e/b demolish &7- разрушить постройку в текущем чанке и вернуть 50% стоимости в казну'
+      - '&e/b info &7- инфа о постройке в текущем чанке'
+      - '&e/b time &7- прогресс активной стройки города'
+    admin:
+      - '&6CivCraft admin'
+      - '&e/civadmin reload &7- перезагрузить конфиги'
+      - '&e/civadmin integrations &7- статус интеграций'
+      - '&e/civadmin npc reload &7- перезагрузить NPC/GUI лагерей'
+      - '&e/civadmin build <file> [y] [0|90|180|270] &7- legacy .def сборка'
+
+foundation:
+  pending-preview: '&eСначала напишите yes или no для превью.'
+  pending-input: '&eСначала завершите текущее основание. Введите данные в чат.'
+  enter-camp-name: '&eВведите название лагеря. От 5 до 16 символов.'
+  enter-civ-name: '&eВведите название цивилизации. От 5 до 16 символов.'
+  enter-town-name: '&eВведите название города. От 5 до 16 символов.'
+  error: '&cОшибка: {error}'
+  create-error: '&cОшибка создания основания: {error}'
+  preview-confirm-again: '&eВведите yes, чтобы подтвердить основание, или no, чтобы отменить.'
+  cancelled: '&eОснование отменено. Предмет возвращен.'
+  invalid-camp-name: '&cНазвание лагеря должно быть от 5 до 16 символов и без спецсимволов. Введите снова.'
+  invalid-town-name: '&cНазвание города должно быть от 5 до 16 символов и без спецсимволов. Введите снова.'
+  invalid-civ-name: '&cНазвание цивилизации должно быть от 5 до 16 символов и без спецсимволов. Введите снова.'
+  invalid-civ-tag: '&cТег цивилизации должен быть от 3 до 5 символов и без спецсимволов. Введите снова.'
+  invalid-capital-name: '&cНазвание столицы должно быть от 5 до 16 символов и без спецсимволов. Введите снова.'
+  enter-civ-tag: '&eВведите тег цивилизации. От 3 до 5 символов.'
+  enter-capital-name: '&eВведите название столицы. От 5 до 16 символов.'
+  camp-preview: '&eПревью лагеря показано только вам. Напишите yes, чтобы основать лагерь, или no, чтобы отменить.'
+  town-preview: '&eПревью ратуши показано только вам. Напишите yes, чтобы основать город, или no, чтобы отменить.'
+  capital-preview: '&eПревью капитолия показано только вам. Напишите yes, чтобы основать цивилизацию, или no, чтобы отменить.'
+  camp-created: '&aЛагерь {name} основан.'
+  town-created: '&aГород {name} основан. Ратуша построена.'
+  civ-created: '&aЦивилизация {name} [{tag}] основана. Столица: {capital}. Капитолий построен.'
+
+build:
+  preview-confirm-again: '&eВведите yes, чтобы начать строительство, или no, чтобы отменить превью.'
+  started: '&aСтроительство начато. Постройка #{id}, чанковые блоки: {blocks}, молотки: {hammers}, город: {production}/час, время: {time}.'
+  error: '&cОшибка: {error}'
+  database-error: '&cОшибка базы данных: {error}'
+  schematic-error: '&cОшибка схематики: {error}'
+  time-now: 'сразу'
+  preview-cancelled: '&eПревью постройки отменено.'
+  preview-shown: '&eПревью постройки показано только вам. Напишите yes, чтобы начать строительство, или no, чтобы отменить.'
+  fawe-preview-shown: '&eFAWE-превью постройки показано только вам. Напишите yes, чтобы начать строительство, или no, чтобы отменить.'
+  preview-size: '&7Размер: {size_x}x{size_y}x{size_z}, origin: {x} {y} {z}'
+
+protected-block:
+  break: '&cЭтот блок является структурным блоком CivCraft-постройки.'
+
+camp-npc:
+  quest-not-found: '&cКвест не найден.'
+  quest-wrong-level: '&cЭтот квест недоступен на текущем уровне лагеря.'
+  quest-auto-only: '&eЭтот квест выполняется автоматически, не сдачей предметов.'
+  quest-completed: '&aКвест выполнен.'
+  quest-already-completed: '&eКвест уже выполнен.'
+  quest-no-items: '&cУ тебя нет нужных предметов для сдачи.'
+  quest-submitted: '&aСдано {amount}. Прогресс: {progress}/{target}'
+  quest-progress: '&aПрогресс: {progress}/{target}'
+  quest-save-error: '&cОшибка сохранения прогресса.'
+  quest-selection-disabled: '&eВыбор квестов отключён. Все квесты текущего уровня лагеря доступны сразу.'
+  quest-reroll-disabled: '&eОбновление квестов отключено. Квесты зависят только от уровня лагеря.'
+  reload: '&aCamp NPC menus перезагружены.'
+  reload-no-permission: '&cНедостаточно прав.'
+
+custom-items:
+  unknown-id: '&cНеизвестный CivCraft item id: {id}'
+
+restrictions:
+  craft-blocked: '&cЭтот крафт запрещён.'
+  redstone-blocked: '&cРедстоун разрешён только в чанках построек фермы.'

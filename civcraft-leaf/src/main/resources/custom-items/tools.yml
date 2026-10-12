@@ -1,0 +1,14 @@
+# CivCraft custom tool items. Tools do not lose vanilla durability.
+items:
+  copper_pickaxe:
+    material: IRON_PICKAXE
+    # mmoitems-type: TOOL
+    # mmoitems-id: COPPER_PICKAXE
+    name: '&6Copper Pickaxe'
+    lore:
+      - '&7CivCraft tool'
+      - '&7Durability: &e{durability}%'
+    flags:
+      - HIDE_ATTRIBUTES
+      - HIDE_UNBREAKABLE
+    death-damage-percent: 15

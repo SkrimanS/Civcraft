@@ -1,0 +1,23 @@
+title: '&6Про лагерь'
+size: 27
+items:
+  text:
+    material: CAMPFIRE
+    slot: 13
+    name: '&6{camp_name}'
+    lore:
+      - '&7Тут можно написать описание лагеря.'
+      - '&7Файл: &emenus/camp.yml'
+      - '&7ID лагеря: &e{camp_id}'
+  back:
+    material: ARROW
+    slot: 18
+    name: '&eНазад'
+    actions:
+      - 'OPEN_MENU:main'
+  close:
+    material: BARRIER
+    slot: 26
+    name: '&cЗакрыть'
+    actions:
+      - 'CLOSE'
