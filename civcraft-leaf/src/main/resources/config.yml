@@ -20,6 +20,12 @@ global:
     require-main-thread-inventory-mutations: true
     reject-negative-currency-transfers: true
 
+economy:
+  production:
+    # Completed buildings with money_per_hour credit the city treasury once per minute.
+    # Partial coins persist in SQLite; production pauses while the server is offline.
+    enabled: true
+
 storage:
   type: sqlite
   sqlite:

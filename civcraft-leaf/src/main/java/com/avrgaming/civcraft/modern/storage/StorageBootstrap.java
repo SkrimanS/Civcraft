@@ -176,6 +176,7 @@ public final class StorageBootstrap implements AutoCloseable {
                         hammers_per_hour REAL NOT NULL DEFAULT 100.0,
                         beakers_per_hour REAL NOT NULL DEFAULT 0,
                         money_per_hour REAL NOT NULL DEFAULT 0,
+                        income_remainder REAL NOT NULL DEFAULT 0,
                         base_happiness INTEGER NOT NULL DEFAULT 0,
                         created_at INTEGER NOT NULL,
                         FOREIGN KEY(civ_id) REFERENCES civilizations(id) ON DELETE CASCADE,
@@ -302,6 +303,7 @@ public final class StorageBootstrap implements AutoCloseable {
         addColumnIfMissing("towns", "hammers_per_hour", "REAL NOT NULL DEFAULT 100.0");
         addColumnIfMissing("towns", "beakers_per_hour", "REAL NOT NULL DEFAULT 0");
         addColumnIfMissing("towns", "money_per_hour", "REAL NOT NULL DEFAULT 0");
+        addColumnIfMissing("towns", "income_remainder", "REAL NOT NULL DEFAULT 0");
         addColumnIfMissing("towns", "base_happiness", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing("structure_builds", "town_id", "INTEGER");
         addColumnIfMissing("structure_builds", "total_hammers", "REAL NOT NULL DEFAULT 0");
@@ -1213,6 +1215,63 @@ public final class StorageBootstrap implements AutoCloseable {
             total += townProduction(town.id(), town.baseHammersPerHour(), town.baseBeakersPerHour(), town.baseMoneyPerHour(), town.baseHappiness()).beakersPerHour();
         }
         return total;
+    }
+
+    /**
+     * Pay a minute's worth of completed building production to every town bank.
+     * Fractional coins are saved in SQLite, including across normal restarts.
+     * The transaction ensures a single tick never credits only part of the towns.
+     * There is no offline catch-up; the service only accrues while the server runs.
+     */
+    public long distributeTownIncomeMinute() throws SQLException {
+        record IncomeBase(long id, double hammers, double beakers, double money, int happiness,
+                          double remainder) {
+        }
+        List<IncomeBase> towns = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT id, hammers_per_hour, beakers_per_hour, money_per_hour,
+                       base_happiness, income_remainder FROM towns
+                """);
+             ResultSet rs = statement.executeQuery()) {
+            while (rs.next()) {
+                towns.add(new IncomeBase(
+                        rs.getLong("id"), rs.getDouble("hammers_per_hour"),
+                        rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"),
+                        rs.getInt("base_happiness"), rs.getDouble("income_remainder")));
+            }
+        }
+
+        long total = 0L;
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement update = connection.prepareStatement("""
+                    UPDATE towns SET coins = coins + ?, income_remainder = ? WHERE id = ?
+                    """)) {
+                for (IncomeBase town : towns) {
+                    TownProduction production = townProduction(
+                            town.id(), town.hammers(), town.beakers(), town.money(), town.happiness());
+                    double earned = Math.max(0.0, production.moneyPerHour()) / 60.0
+                            + Math.max(0.0, town.remainder());
+                    if (!Double.isFinite(earned) || earned >= 1_000_000_000_000.0) {
+                        throw new SQLException("Invalid income for town #" + town.id());
+                    }
+                    long wholeCoins = (long) Math.floor(earned + 1.0e-9);
+                    double fraction = Math.max(0.0, earned - wholeCoins);
+                    update.setLong(1, wholeCoins);
+                    update.setDouble(2, fraction);
+                    update.setLong(3, town.id());
+                    update.executeUpdate();
+                    total = Math.addExact(total, wholeCoins);
+                }
+            }
+            connection.commit();
+            return total;
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
+        }
     }
 
     public double civMoneyPerHour(long civId) throws SQLException {

@@ -92,6 +92,16 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.research = new ResearchService(this, storage, game, settings, economy);
         this.townClaims = new TownClaimService(storage, game, settings, economy);
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {
+                return;
+            }
+            try {
+                storage.distributeTownIncomeMinute();
+            } catch (java.sql.SQLException | ArithmeticException exception) {
+                getLogger().warning("CivCraft town income tick failed: " + exception.getMessage());
+            }
+        }, 20L * 60L, 20L * 60L);
         getServer().getPluginManager().registerEvents(new ResidentJoinListener(this, game, tabPrefixes), this);
         getServer().getPluginManager().registerEvents(new TownClaimProtectionListener(this, townClaims), this);
         getServer().getPluginManager().registerEvents(new ProtectedBlockListener(this, storage, lang), this);
