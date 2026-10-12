@@ -86,6 +86,7 @@ commands:
       - '&6CivCraft admin'
       - '&e/civadmin reload &7- перезагрузить конфиги'
       - '&e/civadmin integrations &7- статус интеграций'
+      - '&e/civadmin recovery status &7- диагностика зависших построек'
       - '&e/civadmin npc reload &7- перезагрузить NPC/GUI лагерей'
       - '&e/civadmin foundation give <ник> <camp|civilization|town> &7- выдать основание'
       - '&e/civadmin funds give <ник> <сумма> &7- выдать монеты'

@@ -349,6 +349,25 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("civcraft.admin")) {
             throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только администратору."));
         }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("recovery")) {
+            if (args.length >= 3 && !args[2].equalsIgnoreCase("status")) {
+                throw new IllegalArgumentException("Использование: /civadmin recovery status");
+            }
+            List<StorageBootstrap.InterruptedBuild> interrupted = legacyStructures.recoveryStatus();
+            send(sender, "&6CivCraft: незавершённых или восстанавливаемых зданий: &e"
+                    + interrupted.size());
+            for (int i = 0; i < Math.min(15, interrupted.size()); i++) {
+                StorageBootstrap.InterruptedBuild build = interrupted.get(i);
+                send(sender, "&e#" + build.id() + " &7" + build.status() + "  "
+                        + build.world() + " " + build.x() + "," + build.y() + "," + build.z()
+                        + "  snapshot=" + (build.snapshotReady() ? "yes" : "no")
+                        + "  journal=" + (build.journalStarted() ? "yes" : "legacy"));
+            }
+            if (interrupted.size() > 15) {
+                send(sender, "&7Показаны первые 15 записей. Остальные доступны в журнале сервера и SQLite.");
+            }
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("reload")) {
             plugin.reloadModernConfig();
             economy.reload(plugin.settings());
@@ -497,6 +516,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         for (String line : lang.list("commands.help.admin", List.of(
                 "&e/civadmin reload&7 - перезагрузить конфиги",
                 "&e/civadmin integrations&7 - статус интеграций",
+                "&e/civadmin recovery status&7 - незавершённые стройки и восстановление",
                 "&e/civadmin npc reload&7 - перезагрузить NPC/GUI лагерей",
                 "&e/civadmin foundation give <игрок> <camp|civilization|town> [1-64]&7 - выдать основание",
                 "&e/civadmin funds give <игрок> <сумма>&7 - выдать монеты для настройки экономики",
@@ -642,7 +662,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 return List.of();
             }
             if (args.length == 1) {
-                return List.of("reload", "integrations", "npc", "build", "foundation", "funds");
+                return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds");
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("recovery")) {
+                return List.of("status");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("npc")) {
                 return List.of("reload");

@@ -218,6 +218,11 @@ public final class LegacyStructureService {
      * Previously journaled original terrain is restored at a bounded tick rate
      * before the same build id is requeued.
      */
+    /** Read-only diagnostic. Does not launch builds or change any persisted state. */
+    public List<StorageBootstrap.InterruptedBuild> recoveryStatus() throws SQLException {
+        return storage.interruptedStructureBuilds();
+    }
+
     public void recoverInterruptedBuilds() {
         final List<StorageBootstrap.InterruptedBuild> interrupted;
         try {
