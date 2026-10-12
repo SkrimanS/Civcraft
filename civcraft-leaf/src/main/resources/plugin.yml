@@ -26,12 +26,12 @@ commands:
     permission: civcraft.use
   civ:
     description: Civilization mechanics owned by CivCraft.
-    usage: /<command> [create|info|deposit|withdraw]
+    usage: /<command> [help|create|info|members|invite <player>|join|leave|kick <player>|setleader <player>|deposit|withdraw]
     permission: civcraft.use
   town:
     aliases: [t]
     description: Town mechanics owned by CivCraft.
-    usage: /<command> [create|info|claim|unclaim|claims|deposit|withdraw]
+    usage: /<command> [help|create|info|members|invite <player>|join|leave|kick <player>|setmayor <player>|claim|unclaim|claims|deposit|withdraw]
     permission: civcraft.use
   build:
     aliases: [b]
@@ -41,7 +41,7 @@ commands:
   research:
     aliases: [tech]
     description: Starts and shows civilization technology research.
-    usage: /<command> [list|start <id>|status]
+    usage: /<command> [list|start <id>|status|rate]
     permission: civcraft.use
   civadmin:
     description: CivCraft admin tools.

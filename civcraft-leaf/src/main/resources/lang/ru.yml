@@ -62,11 +62,33 @@ commands:
       - '&e/b demolish &7- разрушить постройку в текущем чанке и вернуть 50% стоимости в казну'
       - '&e/b info &7- инфа о постройке в текущем чанке'
       - '&e/b time &7- прогресс активной стройки города'
+    civ:
+      - '&6Цивилизация'
+      - '&e/civ info &7- сведения о цивилизации'
+      - '&e/civ members &7- список жителей'
+      - '&e/civ invite <ник> &7- пригласить игрока (лидер)'
+      - '&e/civ join &7- принять приглашение (24 часа)'
+      - '&e/civ leave &7- покинуть цивилизацию'
+      - '&e/civ kick <ник> &7- исключить жителя (лидер)'
+      - '&e/civ setleader <ник> &7- назначить лидера'
+      - '&e/civ deposit <сумма> / withdraw <сумма> &7- казна'
+    town:
+      - '&6Город'
+      - '&e/town info &7- сведения о городе'
+      - '&e/town members &7- список жителей'
+      - '&e/town invite <ник> &7- пригласить игрока (мэр)'
+      - '&e/town join &7- принять приглашение (24 часа)'
+      - '&e/town leave &7- выйти из города, оставшись в цивилизации'
+      - '&e/town kick <ник> &7- исключить жителя (мэр)'
+      - '&e/town setmayor <ник> &7- назначить мэра'
+      - '&e/town claim / unclaim / claims &7- территория'
     admin:
       - '&6CivCraft admin'
       - '&e/civadmin reload &7- перезагрузить конфиги'
       - '&e/civadmin integrations &7- статус интеграций'
       - '&e/civadmin npc reload &7- перезагрузить NPC/GUI лагерей'
+      - '&e/civadmin foundation give <ник> <camp|civilization|town> &7- выдать основание'
+      - '&e/civadmin funds give <ник> <сумма> &7- выдать монеты'
       - '&e/civadmin build <file> [y] [0|90|180|270] &7- legacy .def сборка'
 
 foundation:

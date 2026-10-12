@@ -138,6 +138,16 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
+            for (String line : lang.list("commands.help.civ", List.of(
+                    "&6Цивилизация: /civ info, members, invite <ник>, join, leave",
+                    "&e/civ kick <ник> &7- исключить жителя (лидер)",
+                    "&e/civ setleader <ник> &7- передать руководство",
+                    "&e/civ deposit <сумма> / withdraw <сумма> &7- казна"))) {
+                send(player, line);
+            }
+            return;
+        }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
             Player target = Bukkit.getPlayerExact(args[2]);
             if (target == null || !target.isOnline()) {
@@ -196,6 +206,16 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
+            for (String line : lang.list("commands.help.town", List.of(
+                    "&6Город: /town info, members, invite <ник>, join, leave",
+                    "&e/town kick <ник> &7- исключить жителя (мэр)",
+                    "&e/town setmayor <ник> &7- назначить нового мэра",
+                    "&e/town claim / unclaim / claims &7- управление территорией"))) {
+                send(player, line);
+            }
+            return;
+        }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
             Player target = Bukkit.getPlayerExact(args[2]);
             if (target == null || !target.isOnline()) {
@@ -612,10 +632,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
+            return List.of("help", "create", "info", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("help", "create", "info", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {
