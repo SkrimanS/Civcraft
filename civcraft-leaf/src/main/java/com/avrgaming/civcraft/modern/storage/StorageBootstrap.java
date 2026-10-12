@@ -1439,7 +1439,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 SELECT id, status, world, x, y, z, template_path, finish_at,
                        journal_started, snapshot_ready
                 FROM structure_builds
-                WHERE status IN ('QUEUED', 'BUILDING', 'ROLLBACK_PENDING')
+                WHERE status IN ('QUEUED', 'BUILDING', 'ROLLBACK_PENDING', 'DEMOLISH_PENDING')
                 ORDER BY id ASC
                 """);
              ResultSet rs = query.executeQuery()) {
@@ -1471,6 +1471,72 @@ public final class StorageBootstrap implements AutoCloseable {
             }
         }
         return backups;
+    }
+
+    /** Atomically reserve a finished building for demolition and pay one refund. */
+    public void requestStructureDemolition(long buildId, long townId, long refund) throws SQLException {
+        if (refund < 0L) {
+            throw new SQLException("Demolition refund must be non-negative");
+        }
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement update = connection.prepareStatement("""
+                    UPDATE structure_builds SET status = 'DEMOLISH_PENDING'
+                    WHERE id = ? AND town_id = ? AND status = 'COMPLETE'
+                    """)) {
+                update.setLong(1, buildId);
+                update.setLong(2, townId);
+                if (update.executeUpdate() != 1) {
+                    throw new IllegalArgumentException("Здание уже сносится либо не завершено.");
+                }
+            }
+            if (refund > 0L) {
+                try (PreparedStatement update = connection.prepareStatement(
+                        "UPDATE towns SET coins = coins + ? WHERE id = ?")) {
+                    update.setLong(1, refund);
+                    update.setLong(2, townId);
+                    if (update.executeUpdate() != 1) {
+                        throw new SQLException("Town missing during demolition #" + buildId);
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    /** Delete structure ownership only AFTER world rollback completes. */
+    public void finishStructureDemolition(long buildId) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement update = connection.prepareStatement("""
+                    UPDATE structure_builds SET status = 'DEMOLISHED', completed_at = ?
+                    WHERE id = ? AND status = 'DEMOLISH_PENDING'
+                    """)) {
+                update.setLong(1, System.currentTimeMillis());
+                update.setLong(2, buildId);
+                if (update.executeUpdate() != 1) {
+                    throw new SQLException("Demolition not pending for #" + buildId);
+                }
+            }
+            for (String table : List.of("protected_blocks", "structure_chunks", "structure_block_backups")) {
+                try (PreparedStatement delete = connection.prepareStatement(
+                        "DELETE FROM " + table + " WHERE build_id = ?")) {
+                    delete.setLong(1, buildId);
+                    delete.executeUpdate();
+                }
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
+        }
     }
 
     public void demolishStructureBuild(long buildId) throws SQLException {
