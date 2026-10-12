@@ -377,8 +377,18 @@ public final class LegacyStructureService {
                         return;
                     }
                     try {
-                        backupWorld.getBlockAt(backup.x(), backup.y(), backup.z())
-                                .setBlockData(Bukkit.createBlockData(backup.blockData()), false);
+                        org.bukkit.block.Block current = backupWorld.getBlockAt(
+                                backup.x(), backup.y(), backup.z());
+                        if (current.getState() instanceof org.bukkit.block.Container container
+                                && !container.getSnapshotInventory().isEmpty()) {
+                            plugin.getLogger().severe("Paused restoration of structure #" + buildId
+                                    + " to protect stored items at " + backup.x()
+                                    + "," + backup.y() + "," + backup.z()
+                                    + ". Empty this container before retrying recovery.");
+                            cancel();
+                            return;
+                        }
+                        current.setBlockData(Bukkit.createBlockData(backup.blockData()), false);
                     } catch (IllegalArgumentException exception) {
                         plugin.getLogger().severe("Aborting terrain recovery #" + buildId
                                 + ": invalid saved block data at " + backup.x() + ","
