@@ -237,6 +237,7 @@ public final class StorageBootstrap implements AutoCloseable {
                         finish_at INTEGER,
                         status TEXT NOT NULL,
                         snapshot_ready INTEGER NOT NULL DEFAULT 0,
+                        journal_started INTEGER NOT NULL DEFAULT 0,
                         created_at INTEGER NOT NULL,
                         completed_at INTEGER,
                         FOREIGN KEY(builder_uuid) REFERENCES residents(uuid) ON DELETE CASCADE,
@@ -327,6 +328,7 @@ public final class StorageBootstrap implements AutoCloseable {
         addColumnIfMissing("structure_builds", "started_at", "INTEGER");
         addColumnIfMissing("structure_builds", "finish_at", "INTEGER");
         addColumnIfMissing("structure_builds", "snapshot_ready", "INTEGER NOT NULL DEFAULT 0");
+        addColumnIfMissing("structure_builds", "journal_started", "INTEGER NOT NULL DEFAULT 0");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS structure_chunks (
@@ -1327,6 +1329,11 @@ public final class StorageBootstrap implements AutoCloseable {
                     }
                 }
             }
+            try (PreparedStatement mark = connection.prepareStatement(
+                    "UPDATE structure_builds SET journal_started = 1 WHERE id = ?")) {
+                mark.setLong(1, buildId);
+                mark.executeUpdate();
+            }
             connection.commit();
         } catch (SQLException | RuntimeException exception) {
             connection.rollback();
@@ -1334,6 +1341,33 @@ public final class StorageBootstrap implements AutoCloseable {
         } finally {
             connection.setAutoCommit(true);
         }
+    }
+
+    public record InterruptedBuild(long id, String world, int x, int y, int z,
+                                   String templatePath, long finishAt, boolean journalStarted,
+                                   boolean snapshotReady) {
+    }
+
+    public List<InterruptedBuild> interruptedStructureBuilds() throws SQLException {
+        List<InterruptedBuild> interrupted = new ArrayList<>();
+        try (PreparedStatement query = connection.prepareStatement("""
+                SELECT id, world, x, y, z, template_path, finish_at,
+                       journal_started, snapshot_ready
+                FROM structure_builds
+                WHERE status IN ('QUEUED', 'BUILDING')
+                ORDER BY id ASC
+                """);
+             ResultSet rs = query.executeQuery()) {
+            while (rs.next()) {
+                interrupted.add(new InterruptedBuild(
+                        rs.getLong("id"), rs.getString("world"),
+                        rs.getInt("x"), rs.getInt("y"), rs.getInt("z"),
+                        rs.getString("template_path"), rs.getLong("finish_at"),
+                        rs.getInt("journal_started") != 0,
+                        rs.getInt("snapshot_ready") != 0));
+            }
+        }
+        return interrupted;
     }
 
     public List<BlockBackup> loadStructureBlockBackups(long buildId) throws SQLException {
