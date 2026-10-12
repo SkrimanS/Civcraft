@@ -141,6 +141,9 @@ war:
   upkeep-per-aggressive-war: 3000
 
 structures:
+  # Freeze construction chunks during placement, cancellation and demolition.
+  # Prevents player/container/piston/fluid changes against saved original terrain.
+  lock-active-worksites: true
   # Prevent building over chests/spawners/signs until full NBT backups exist.
   protect-existing-tile-entities: true
   # Preloading the complete legacy pack (~594MB) causes unnecessary RAM spikes.

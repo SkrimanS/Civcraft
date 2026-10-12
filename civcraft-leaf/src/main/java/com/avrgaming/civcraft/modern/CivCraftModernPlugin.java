@@ -1,6 +1,7 @@
 package com.avrgaming.civcraft.modern;
 
 import com.avrgaming.civcraft.modern.api.CivCraftCampApi;
+import com.avrgaming.civcraft.modern.build.ConstructionAreaProtectionListener;
 import com.avrgaming.civcraft.modern.build.LegacyStructureService;
 import com.avrgaming.civcraft.modern.build.ProtectedBlockListener;
 import com.avrgaming.civcraft.modern.build.StructurePreviewChatListener;
@@ -107,6 +108,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         }, 20L * 60L, 20L * 60L);
         getServer().getPluginManager().registerEvents(new ResidentJoinListener(this, game, tabPrefixes), this);
         getServer().getPluginManager().registerEvents(new TownClaimProtectionListener(this, townClaims), this);
+        getServer().getPluginManager().registerEvents(new ConstructionAreaProtectionListener(this, storage), this);
         getServer().getPluginManager().registerEvents(new ProtectedBlockListener(this, storage, lang), this);
         this.foundationItems = new FoundationItemListener(this, game, legacyStructures, tabPrefixes, settings, lang);
         getServer().getPluginManager().registerEvents(foundationItems, this);

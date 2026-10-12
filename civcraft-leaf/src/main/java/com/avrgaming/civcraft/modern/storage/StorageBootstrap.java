@@ -1017,6 +1017,24 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
+    /** Keep buildings in progress or recovery locked until their terrain is stable. */
+    public boolean isActiveStructureChunk(String world, int cx, int cz) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT 1 FROM structure_chunks sc
+                JOIN structure_builds sb ON sb.id=sc.build_id
+                WHERE sc.world=? AND sc.chunk_x=? AND sc.chunk_z=?
+                AND sb.status IN ('QUEUED','BUILDING','ROLLBACK_PENDING','DEMOLISH_PENDING')
+                LIMIT 1
+                """)) {
+            statement.setString(1, world);
+            statement.setInt(2, cx);
+            statement.setInt(3, cz);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public boolean hasStructureChunkOverlap(Collection<StructureChunkCoord> chunks) throws SQLException {
         if (chunks == null || chunks.isEmpty()) {
             return false;
