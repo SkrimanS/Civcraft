@@ -268,6 +268,31 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             success(sender, msg("commands.admin.reload", "Конфигурация перезагружена."));
             return;
         }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("funds")) {
+            if (args.length != 5 || !args[2].equalsIgnoreCase("give")) {
+                send(sender, "&eИспользование: /civadmin funds give <ник> <сумма>");
+                return;
+            }
+            Player recipient = Bukkit.getPlayerExact(args[3]);
+            if (recipient == null || !recipient.isOnline()) {
+                throw new IllegalArgumentException("Игрок должен быть на сервере: " + args[3]);
+            }
+            long amount;
+            try {
+                amount = Long.parseLong(args[4]);
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException("Сумма должна быть целым числом.");
+            }
+            if (amount < 1L || amount > 10_000_000L) {
+                throw new IllegalArgumentException("Разрешена сумма от 1 до 10 000 000.");
+            }
+            // Only civcraft.admin can reach this branch. Support both local
+            // SQLite balances and an installed Vault economy provider.
+            economy.deposit(recipient, amount, "administrator grant");
+            success(sender, "Начислено игроку " + recipient.getName() + ": "
+                    + amount + " монет. Новый баланс: " + Math.round(economy.balance(recipient)));
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("foundation")) {
             if (args.length < 5 || !args[2].equalsIgnoreCase("give")) {
                 send(sender, "&eИспользование: /civadmin foundation give <ник> <camp|civilization|town> [количество]");
@@ -371,6 +396,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 "&e/civadmin integrations&7 - статус интеграций",
                 "&e/civadmin npc reload&7 - перезагрузить NPC/GUI лагерей",
                 "&e/civadmin foundation give <игрок> <camp|civilization|town> [1-64]&7 - выдать основание",
+                "&e/civadmin funds give <игрок> <сумма>&7 - выдать монеты для настройки экономики",
                 "&e/civadmin build <file> [y] [0|90|180|270]&7 - legacy .def сборка"))) {
             send(sender, line);
         }
@@ -513,12 +539,15 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 return List.of();
             }
             if (args.length == 1) {
-                return List.of("reload", "integrations", "npc", "build", "foundation");
+                return List.of("reload", "integrations", "npc", "build", "foundation", "funds");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("npc")) {
                 return List.of("reload");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("foundation")) {
+                return List.of("give");
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("funds")) {
                 return List.of("give");
             }
             if (args.length == 4 && args[0].equalsIgnoreCase("foundation") && args[1].equalsIgnoreCase("give")) {
