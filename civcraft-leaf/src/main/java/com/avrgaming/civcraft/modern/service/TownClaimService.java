@@ -32,6 +32,7 @@ public final class TownClaimService {
     public TownClaimRecord claim(Player player) throws SQLException {
         ResidentProfile resident = game.resident(player);
         TownRecord town = requireTown(resident);
+        requireMayor(player, town);
         Chunk chunk = player.getLocation().getChunk();
         validateClaimLocation(town, player.getLocation(), chunk);
         // Reject an already-claimed chunk before touching the player's money.
@@ -55,7 +56,13 @@ public final class TownClaimService {
     public void unclaim(Player player) throws SQLException {
         ResidentProfile resident = game.resident(player);
         TownRecord town = requireTown(resident);
+        requireMayor(player, town);
         Chunk chunk = player.getLocation().getChunk();
+        TownClaimRecord existing = storage.findTownClaim(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())
+                .orElseThrow(() -> new IllegalArgumentException("Этот чанк не приватизирован."));
+        if (existing.townId() != town.id()) {
+            throw new IllegalArgumentException("Этот чанк принадлежит другому городу.");
+        }
         storage.unclaimTownChunk(town.id(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ());
     }
 
@@ -76,6 +83,12 @@ public final class TownClaimService {
         }
         ResidentProfile resident = game.resident(player);
         return resident.civId() != null && resident.civId() == claim.civId();
+    }
+
+    private void requireMayor(Player player, TownRecord town) {
+        if (!town.mayorUuid().equals(player.getUniqueId()) && !player.hasPermission("civcraft.admin")) {
+            throw new IllegalArgumentException("Управлять приватами города может только мэр.");
+        }
     }
 
     private TownRecord requireTown(ResidentProfile resident) throws SQLException {
