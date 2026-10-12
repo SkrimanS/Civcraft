@@ -122,3 +122,24 @@ Code only; tests and builds remain postponed until the first playable snapshot.
 
 Still outstanding: missing large Capitol assets and other original templates, reliable recovery of in-progress structure builds across server restarts, deeper governance/culture/diplomacy/war.
 These Stage 4 source changes have not yet been compiled or tested by request.
+
+
+## Stage 5 — crash-resilient construction and recovery (code only)
+
+Building state is journaled before any block in the reserved footprint is cleared,
+changed into preview bedrock, or replaced with the structure material. Original
+BlockData is written to SQLite in bounded batches and retained throughout building,
+rollback and demolition until the terrain recovery has finished.
+
+- Unfinished builds are discovered on startup and requeued without a second charge.
+- Cancelling an active build atomically records ROLLBACK_PENDING and pays the permitted refund exactly once; original blocks are restored before the chunk locks are released.
+- Completed structures can be demolished via DEMOLISH_PENDING with a once-only refund and restart-resumable restoration.
+- Building over existing tile entities is rejected until NBT/inventory-safe original state backup is implemented. Recovery avoids overwriting occupied container states.
+- Structures in QUEUED, BUILDING, ROLLBACK_PENDING and DEMOLISH_PENDING states lock their reserved chunks against player edits, inventories, hoppers, buckets, fluid movement, fire, pistons, falling-block changes and explosion damage. Configuration: structures.lock-active-worksites (default true).
+- The read-only command /civadmin recovery status shows up to 15 pending structure records, their coordinates, durable journal and snapshot readiness, including from the server console.
+- No automatic test runs. GitHub workflow is still manual-only, and the stage-5 source is uncompiled/unverified until first playable test version.
+
+Current limitation: BlockData snapshots cannot faithfully restore inventories or all
+tile-entity NBT; preexisting tile entities are therefore prohibited inside building
+footprints. Larger original construction assets (particularly the Capitol) still
+need integration into a complete first-playable distribution.
