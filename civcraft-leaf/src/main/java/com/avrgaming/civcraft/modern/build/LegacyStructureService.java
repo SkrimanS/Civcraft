@@ -227,6 +227,15 @@ public final class LegacyStructureService {
             return;
         }
         for (StorageBootstrap.InterruptedBuild build : interrupted) {
+            if (build.status().equalsIgnoreCase("DEMOLISH_PENDING")) {
+                try {
+                    restorePendingDemolition(build.id());
+                } catch (SQLException exception) {
+                    plugin.getLogger().severe("Unable to restore demolished structure #" + build.id()
+                            + ": " + exception.getMessage());
+                }
+                continue;
+            }
             if (build.status().equalsIgnoreCase("ROLLBACK_PENDING")) {
                 try {
                     restorePendingRollback(build.id(), build.snapshotReady());
@@ -327,6 +336,24 @@ public final class LegacyStructureService {
                 plugin.getLogger().info("Finished restoring cancelled structure #" + buildId);
             } catch (SQLException exception) {
                 plugin.getLogger().severe("Unable to finish cancelled structure #" + buildId
+                        + ": " + exception.getMessage());
+            }
+        });
+    }
+
+    private void restorePendingDemolition(long buildId) throws SQLException {
+        List<BlockBackup> original = storage.loadStructureBlockBackups(buildId);
+        if (original.isEmpty()) {
+            plugin.getLogger().severe("Cannot finish demolition #" + buildId
+                    + " without original block backups. Ownership is preserved.");
+            return;
+        }
+        restoreTerrainInBatches(buildId, original, () -> {
+            try {
+                storage.finishStructureDemolition(buildId);
+                plugin.getLogger().info("Finished demolishing structure #" + buildId);
+            } catch (SQLException exception) {
+                plugin.getLogger().severe("Failed to mark demolition complete for #" + buildId
                         + ": " + exception.getMessage());
             }
         });
@@ -651,11 +678,21 @@ public final class LegacyStructureService {
             throw new IllegalArgumentException("Первое здание города нельзя разрушить.");
         }
         long refund = Math.max(0L, Math.round(Math.floor(build.cost() * 0.50)));
-        restoreBlockBackups(storage.loadStructureBlockBackups(build.id()));
-        storage.demolishStructureBuild(build.id());
-        if (refund > 0L) {
-            storage.depositTown(town.id(), refund);
+        // Never remove a building with missing backups: BlockData-only
+        // demolition would otherwise irreversibly destroy the old terrain.
+        List<BlockBackup> originals = storage.loadStructureBlockBackups(build.id());
+        if (originals.isEmpty()) {
+            throw new IllegalArgumentException("У здания отсутствует резервная копия блоков.");
         }
+        storage.requestStructureDemolition(build.id(), town.id(), refund);
+        restoreTerrainInBatches(build.id(), originals, () -> {
+            try {
+                storage.finishStructureDemolition(build.id());
+            } catch (SQLException exception) {
+                plugin.getLogger().severe("Demolition #" + build.id()
+                        + " needs recovery: " + exception.getMessage());
+            }
+        });
         return new DemolishBuildResult(build, refund);
     }
 
