@@ -1,0 +1,47 @@
+name: CivCraft Paper 1.21.11
+
+on:
+  push:
+    branches:
+      - port/paper-1.21.11
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Compile and package CivCraft
+        run: mvn --batch-mode --no-transfer-progress -pl civcraft-leaf -am clean package
+      - name: Verify plugin packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find civcraft-leaf/target -maxdepth 1 -name 'civcraft-leaf-*.jar' ! -name 'original-*' | head -1)"
+          test -n "$JAR"
+          unzip -Z1 "$JAR" | grep -Fxq plugin.yml
+          unzip -Z1 "$JAR" | grep -Fxq config.yml
+          unzip -Z1 "$JAR" | grep -Fxq civcraft/data/techs.yml
+          unzip -Z1 "$JAR" | grep -Fxq civcraft/data/structures.yml
+          echo "Plugin packaged: $JAR"
+      - name: Upload build for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: civcraft-1.21.11-snapshot
+          path: |
+            civcraft-leaf/target/civcraft-leaf-*.jar
+            !civcraft-leaf/target/original-*.jar
+          if-no-files-found: error
