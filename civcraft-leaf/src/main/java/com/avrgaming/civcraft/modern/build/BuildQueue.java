@@ -1,5 +1,6 @@
 package com.avrgaming.civcraft.modern.build;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -27,11 +28,28 @@ public final class BuildQueue {
 
     private final JavaPlugin plugin;
     private final Map<Long, CancellableBuild> activeBuilds = new ConcurrentHashMap<>();
+    private final Set<Long> canceledBeforeStart = ConcurrentHashMap.newKeySet();
+    private final SnapshotWriter snapshotWriter;
+
+    /**
+     * Write the original block state to durable storage before any world change.
+     * A completed snapshot allows a partially-built structure to be rolled back
+     * after an unexpected shutdown without destroying unrelated terrain.
+     */
+    @FunctionalInterface
+    public interface SnapshotWriter {
+        void persist(long buildId, List<BlockBackup> originals, boolean complete) throws SQLException;
+    }
     private int maxBlocksPerTick;
 
     public BuildQueue(JavaPlugin plugin, int maxBlocksPerTick) {
+        this(plugin, maxBlocksPerTick, null);
+    }
+
+    public BuildQueue(JavaPlugin plugin, int maxBlocksPerTick, SnapshotWriter snapshotWriter) {
         this.plugin = plugin;
         this.maxBlocksPerTick = Math.max(1, maxBlocksPerTick);
+        this.snapshotWriter = snapshotWriter;
     }
 
     public void updateBudget(int maxBlocksPerTick) {
@@ -41,6 +59,9 @@ public final class BuildQueue {
     public boolean cancelBuild(long buildId) {
         CancellableBuild build = activeBuilds.get(buildId);
         if (build == null) {
+            // A build can still be preparing its chunk layout asynchronously.
+            // Ensure it cannot start after its database record was cancelled.
+            canceledBeforeStart.add(buildId);
             return false;
         }
         build.requestCancel();
@@ -93,6 +114,54 @@ public final class BuildQueue {
         return queuedBlocks;
     }
 
+    private static final int SNAPSHOT_BLOCKS_PER_TICK = 1024;
+
+    /**
+     * Snapshot the full chunk footprint, including air and preview corners.
+     * No clearing, bedrock previews, or block placement may start until the
+     * entire durable snapshot is committed.
+     */
+    private boolean captureOriginalArea(long buildId, PreparedBuild prepared, int[] cursor) {
+        if (buildId <= 0L || snapshotWriter == null) {
+            return true;
+        }
+        int blocksPerChunk = prepared.sizeY * 16 * 16;
+        long total = (long) prepared.chunks.size() * blocksPerChunk;
+        int remaining = (int) Math.min(SNAPSHOT_BLOCKS_PER_TICK, total - cursor[0]);
+        if (remaining <= 0) {
+            return true;
+        }
+        World world = plugin.getServer().getWorld(prepared.world);
+        if (world == null) {
+            plugin.getLogger().severe("Cannot snapshot build #" + buildId + ": world missing");
+            canceledBeforeStart.add(buildId);
+            return false;
+        }
+        List<BlockBackup> snapshot = new ArrayList<>(remaining);
+        for (int n = 0; n < remaining; n++) {
+            int index = cursor[0] + n;
+            StructureChunkCoord chunk = prepared.chunks.get(index / blocksPerChunk);
+            int withinChunk = index % blocksPerChunk;
+            int y = prepared.originY + withinChunk / 256;
+            int xy = withinChunk % 256;
+            int x = chunk.chunkX() * 16 + (xy / 16);
+            int z = chunk.chunkZ() * 16 + (xy % 16);
+            snapshot.add(new BlockBackup(prepared.world, x, y, z,
+                    world.getBlockAt(x, y, z).getBlockData().getAsString()));
+        }
+        boolean completed = cursor[0] + remaining >= total;
+        try {
+            snapshotWriter.persist(buildId, snapshot, completed);
+            cursor[0] += remaining;
+            return completed;
+        } catch (SQLException exception) {
+            plugin.getLogger().severe("Snapshot write failed for structure #" + buildId
+                    + " before world modification: " + exception.getMessage());
+            canceledBeforeStart.add(buildId);
+            return false;
+        }
+    }
+
     @FunctionalInterface
     public interface BuildCompleteHandler {
         void accept(List<BlockPlacement> placements, List<BlockBackup> backups);
@@ -115,6 +184,7 @@ public final class BuildQueue {
         private final Map<String, PreviewBlock> activePreviewByKey = new LinkedHashMap<>();
         private final Set<String> placedKeys = new HashSet<>();
         private int chunkLoadCursor;
+        private final int[] snapshotCursor = {0};
         private int clearCursor;
         private int previewPlaceCursor;
         private int previewRemoveCursor;
@@ -134,6 +204,9 @@ public final class BuildQueue {
         }
 
         private void start() {
+            if (buildId > 0L && canceledBeforeStart.remove(buildId)) {
+                return;
+            }
             if (buildId > 0L) {
                 activeBuilds.put(buildId, this);
             }
@@ -152,6 +225,9 @@ public final class BuildQueue {
                     int tickBudget = buildDurationMillis <= 0L ? Integer.MAX_VALUE / 4 : Math.max(1, maxBlocksPerTick);
                     tickBudget = loadChunksFast(tickBudget);
                     if (chunkLoadCursor < prepared.chunks.size()) {
+                        return;
+                    }
+                    if (!captureOriginalArea(buildId, prepared, snapshotCursor)) {
                         return;
                     }
                     tickBudget = clearExtraBlocksFast(tickBudget);
@@ -376,6 +452,7 @@ public final class BuildQueue {
         private final List<ClearBlock> placedStructureBlocks = new ArrayList<>();
         private final Map<String, PreviewBlock> activePreviewByKey = new LinkedHashMap<>();
         private int chunkLoadCursor;
+        private final int[] snapshotCursor = {0};
         private int clearCursor;
         private int previewPlaceCursor;
         private int previewRemoveCursor;
@@ -404,6 +481,9 @@ public final class BuildQueue {
         private final long buildDurationMillis;
 
         private void start() {
+            if (buildId > 0L && canceledBeforeStart.remove(buildId)) {
+                return;
+            }
             if (buildId > 0L) {
                 activeBuilds.put(buildId, this);
             }
@@ -422,6 +502,9 @@ public final class BuildQueue {
                     int tickBudget = buildDurationMillis <= 0L ? Integer.MAX_VALUE / 4 : Math.max(1, maxBlocksPerTick);
                     tickBudget = loadChunksFast(tickBudget);
                     if (chunkLoadCursor < prepared.chunks.size()) {
+                        return;
+                    }
+                    if (!captureOriginalArea(buildId, prepared, snapshotCursor)) {
                         return;
                     }
                     tickBudget = clearExtraBlocksFast(tickBudget);
@@ -643,16 +726,18 @@ public final class BuildQueue {
         private final int originZ;
         private final List<LegacyBlock> orderedBlocks;
         private final List<StructureChunkCoord> chunks;
+        private final int sizeY;
         private final List<ClearBlock> clearBlocks;
         private final List<PreviewBlock> previewBlocks;
 
-        private PreparedBuild(String world, int originX, int originY, int originZ, List<LegacyBlock> orderedBlocks, List<StructureChunkCoord> chunks, List<ClearBlock> clearBlocks, List<PreviewBlock> previewBlocks) {
+        private PreparedBuild(String world, int originX, int originY, int originZ, List<LegacyBlock> orderedBlocks, List<StructureChunkCoord> chunks, int sizeY, List<ClearBlock> clearBlocks, List<PreviewBlock> previewBlocks) {
             this.world = world;
             this.originX = originX;
             this.originY = originY;
             this.originZ = originZ;
             this.orderedBlocks = orderedBlocks;
             this.chunks = chunks;
+            this.sizeY = sizeY;
             this.clearBlocks = clearBlocks;
             this.previewBlocks = previewBlocks;
         }
@@ -663,7 +748,7 @@ public final class BuildQueue {
             Set<String> structureKeys = structureKeys(world, originX, originY, originZ, template, includeAir);
             List<ClearBlock> clearBlocks = clearChunks ? clearBlocksFor(world, originX, originY, originZ, template.sizeY(), chunks, structureKeys) : List.of();
             List<PreviewBlock> previewBlocks = showPreview ? previewBlocksForChunks(world, originY, template.sizeY(), chunks) : List.of();
-            return new PreparedBuild(world, originX, originY, originZ, ordered, chunks, clearBlocks, previewBlocks);
+            return new PreparedBuild(world, originX, originY, originZ, ordered, chunks, template.sizeY(), clearBlocks, previewBlocks);
         }
 
         private static PreparedBuild prepareSchematic(String world, int originX, int originY, int originZ, WorldEditSchematicTemplate template, boolean includeAir, boolean showPreview, boolean clearChunks) {
@@ -671,7 +756,7 @@ public final class BuildQueue {
             Set<String> structureKeys = template.structureKeys(world, originX, originY, originZ, includeAir);
             List<ClearBlock> clearBlocks = clearChunks ? clearBlocksFor(world, originX, originY, originZ, template.sizeY(), chunks, structureKeys) : List.of();
             List<PreviewBlock> previewBlocks = showPreview ? previewBlocksForChunks(world, originY, template.sizeY(), chunks) : List.of();
-            return new PreparedBuild(world, originX, originY, originZ, List.of(), chunks, clearBlocks, previewBlocks);
+            return new PreparedBuild(world, originX, originY, originZ, List.of(), chunks, template.sizeY(), clearBlocks, previewBlocks);
         }
 
         private static List<LegacyBlock> orderedBlocksByChunk(int originX, int originZ, LegacyDefTemplate template, boolean includeAir) {
