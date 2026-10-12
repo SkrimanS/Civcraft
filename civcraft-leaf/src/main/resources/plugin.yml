@@ -45,7 +45,7 @@ commands:
     permission: civcraft.use
   civadmin:
     description: CivCraft admin tools.
-    usage: /<command> [reload|integrations|npc reload|build <legacyFile> [y] [0|90|180|270]]
+    usage: /<command> [reload|integrations|npc reload|foundation give <player> <camp|civilization|town> [amount]|build <legacyFile> [y] [0|90|180|270]]
     permission: civcraft.admin
 permissions:
   civcraft.use:

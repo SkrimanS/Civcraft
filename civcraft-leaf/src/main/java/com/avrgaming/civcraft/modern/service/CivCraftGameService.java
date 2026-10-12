@@ -199,6 +199,9 @@ public final class CivCraftGameService {
             return;
         }
         storage.deleteCamp(camp.id(), player.getUniqueId());
+        // The foundation flow rolls back its new record if structure placement
+        // fails. The original charge must be returned exactly once here.
+        economy.deposit(player, settings.campCost(), "camp foundation rollback");
     }
 
     public void rollbackCreatedTown(Player player, TownRecord town) throws SQLException {
@@ -206,6 +209,9 @@ public final class CivCraftGameService {
             return;
         }
         storage.deleteTown(town.id(), player.getUniqueId());
+        // The foundation flow rolls back its new record if structure placement
+        // fails. The original charge must be returned exactly once here.
+        economy.deposit(player, settings.townCost(), "town foundation rollback");
     }
 
     public void rollbackCreatedCivilization(Player player, CivRecord civ) throws SQLException {
@@ -213,6 +219,9 @@ public final class CivCraftGameService {
             return;
         }
         storage.deleteCivilization(civ.id(), player.getUniqueId());
+        // The foundation flow rolls back its new record if structure placement
+        // fails. The original charge must be returned exactly once here.
+        economy.deposit(player, settings.civCost(), "civilization foundation rollback");
     }
 
 }

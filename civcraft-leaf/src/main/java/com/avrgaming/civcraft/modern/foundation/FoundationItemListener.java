@@ -91,21 +91,24 @@ public final class FoundationItemListener implements Listener {
         }
         Location placeLocation = clicked.getRelative(event.getBlockFace() == null ? BlockFace.UP : event.getBlockFace()).getLocation();
 
-        if (matches(item, settings.campFoundationMmoItemId(), settings.campFoundationMmoItemType())) {
+        if (FoundationItemFactory.matches(plugin, item, FoundationItemFactory.Kind.CAMP)
+                || matches(item, settings.campFoundationMmoItemId(), settings.campFoundationMmoItemType())) {
             event.setCancelled(true);
             ItemStack consumed = consumeOneMainHand(player);
             pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.CAMP, placeLocation, consumed));
             player.sendMessage(component("foundation.enter-camp-name", "&eВведите название лагеря. От 5 до 16 символов."));
             return;
         }
-        if (matches(item, settings.civFlagMmoItemId(), settings.civFlagMmoItemType())) {
+        if (FoundationItemFactory.matches(plugin, item, FoundationItemFactory.Kind.CIVILIZATION)
+                || matches(item, settings.civFlagMmoItemId(), settings.civFlagMmoItemType())) {
             event.setCancelled(true);
             ItemStack consumed = consumeOneMainHand(player);
             pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.CIVILIZATION, placeLocation, consumed));
             player.sendMessage(component("foundation.enter-civ-name", "&eВведите название цивилизации. От 5 до 16 символов."));
             return;
         }
-        if (matches(item, settings.settlerMmoItemId(), settings.settlerMmoItemType())) {
+        if (FoundationItemFactory.matches(plugin, item, FoundationItemFactory.Kind.TOWN)
+                || matches(item, settings.settlerMmoItemId(), settings.settlerMmoItemType())) {
             event.setCancelled(true);
             ItemStack consumed = consumeOneMainHand(player);
             pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.TOWN, placeLocation, consumed));
@@ -132,6 +135,21 @@ public final class FoundationItemListener implements Listener {
             structures.cancelPreview(event.getPlayer(), true);
             restoreConsumedItem(event.getPlayer(), data);
         }
+    }
+
+    /**
+     * Called before the plugin is disabled: return unconfirmed items while
+     * their owners are still connected, rather than silently deleting them.
+     */
+    public void shutdown() {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            PendingFoundation data = pending.remove(player.getUniqueId());
+            if (data != null && !data.success) {
+                structures.cancelPreview(player, true);
+                restoreConsumedItem(player, data);
+            }
+        }
+        pending.clear();
     }
 
     private void handleInput(Player player, String input) {

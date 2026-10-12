@@ -11,6 +11,7 @@ import com.avrgaming.civcraft.modern.domain.ResidentProfile;
 import com.avrgaming.civcraft.modern.domain.TownClaimRecord;
 import com.avrgaming.civcraft.modern.domain.TownRecord;
 import com.avrgaming.civcraft.modern.economy.CivCraftEconomyService;
+import com.avrgaming.civcraft.modern.foundation.FoundationItemFactory;
 import com.avrgaming.civcraft.modern.research.ResearchService;
 import com.avrgaming.civcraft.modern.research.TechDefinition;
 import com.avrgaming.civcraft.modern.service.CivCraftGameService;
@@ -22,11 +23,14 @@ import java.util.List;
 import java.util.Locale;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import java.util.HashMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -264,6 +268,37 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             success(sender, msg("commands.admin.reload", "Конфигурация перезагружена."));
             return;
         }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("foundation")) {
+            if (args.length < 5 || !args[2].equalsIgnoreCase("give")) {
+                send(sender, "&eИспользование: /civadmin foundation give <ник> <camp|civilization|town> [количество]");
+                return;
+            }
+            Player recipient = Bukkit.getPlayerExact(args[3]);
+            if (recipient == null || !recipient.isOnline()) {
+                throw new IllegalArgumentException("Игрок должен быть на сервере: " + args[3]);
+            }
+            FoundationItemFactory.Kind kind = FoundationItemFactory.Kind.parse(args[4]);
+            int quantity = 1;
+            if (args.length >= 6) {
+                try {
+                    quantity = Integer.parseInt(args[5]);
+                } catch (NumberFormatException exception) {
+                    throw new IllegalArgumentException("Количество должно быть целым числом от 1 до 64.");
+                }
+            }
+            ItemStack foundation = FoundationItemFactory.create(plugin, kind, quantity);
+            HashMap<Integer, ItemStack> overflow = recipient.getInventory().addItem(foundation);
+            if (!overflow.isEmpty()) {
+                // Do not drop privileged foundation items on the ground when
+                // inventory is full; tell the admin so they can retry.
+                int undelivered = overflow.values().stream().mapToInt(ItemStack::getAmount).sum();
+                success(sender, "Выдано игроку " + recipient.getName() + ": "
+                        + (quantity - undelivered) + " из " + quantity + ". Мест в инвентаре не хватило.");
+            } else {
+                success(sender, "Выдано игроку " + recipient.getName() + ": " + kind.id() + " x" + quantity);
+            }
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("integrations")) {
             send(sender, msg("commands.admin.integrations-header", "&eИнтеграции CivCraft:"));
             plugin.integrations().statusLines().forEach(line -> sender.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(line)));
@@ -335,6 +370,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 "&e/civadmin reload&7 - перезагрузить конфиги",
                 "&e/civadmin integrations&7 - статус интеграций",
                 "&e/civadmin npc reload&7 - перезагрузить NPC/GUI лагерей",
+                "&e/civadmin foundation give <игрок> <camp|civilization|town> [1-64]&7 - выдать основание",
                 "&e/civadmin build <file> [y] [0|90|180|270]&7 - legacy .def сборка"))) {
             send(sender, line);
         }
@@ -473,14 +509,20 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return List.of("create", "info", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
-            if (!(sender instanceof Player player) || !player.isOp()) {
+            if (!sender.hasPermission("civcraft.admin")) {
                 return List.of();
             }
             if (args.length == 1) {
-                return List.of("reload", "integrations", "npc", "build");
+                return List.of("reload", "integrations", "npc", "build", "foundation");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("npc")) {
                 return List.of("reload");
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("foundation")) {
+                return List.of("give");
+            }
+            if (args.length == 4 && args[0].equalsIgnoreCase("foundation") && args[1].equalsIgnoreCase("give")) {
+                return List.of("camp", "civilization", "town");
             }
         }
         return List.of();

@@ -122,6 +122,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (foundationItems != null) {
+            foundationItems.shutdown();
+        }
         if (legacyStructures != null) {
             legacyStructures.cancelAllPreviews();
         }
