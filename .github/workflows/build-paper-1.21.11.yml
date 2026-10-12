@@ -45,3 +45,35 @@ jobs:
             civcraft-leaf/target/civcraft-leaf-*.jar
             !civcraft-leaf/target/original-*.jar
           if-no-files-found: error
+
+  smoke:
+    name: Paper 1.21.11 server smoke test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download compiled CivCraft jar
+        uses: actions/download-artifact@v4
+        with:
+          name: civcraft-1.21.11-snapshot
+          path: smoke-artifact
+      - name: Launch Paper and verify startup, commands, SQLite and restart
+        shell: bash
+        run: bash .github/scripts/smoke-paper-1.21.11.sh
+      - name: Collect container logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p smoke-output
+          docker logs civcraft-smoke > smoke-output/server.log 2>&1 || true
+          if [ -d smoke-data/logs ]; then
+            cp -r smoke-data/logs smoke-output/ || true
+          fi
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: civcraft-1.21.11-runtime-logs
+          path: smoke-output/
+          if-no-files-found: ignore
