@@ -104,6 +104,36 @@ public final class SettlementMembershipService {
         storage.removeSettlementMember(target.uuid(), "TOWN", town.id());
     }
 
+    public void transferCivilizationLeadership(Player leader, String targetName) throws SQLException {
+        CivRecord civ = requireCiv(leader);
+        if (!civ.leaderUuid().equals(leader.getUniqueId())) {
+            throw new IllegalArgumentException("Назначить лидера может только текущий лидер.");
+        }
+        ResidentProfile target = findTarget(targetName);
+        if (target.uuid().equals(leader.getUniqueId())) {
+            throw new IllegalArgumentException("Вы уже лидер этой цивилизации.");
+        }
+        if (target.civId() == null || target.civId() != civ.id()) {
+            throw new IllegalArgumentException("Новый лидер должен быть участником этой цивилизации.");
+        }
+        storage.transferCivilizationLeadership(civ.id(), leader.getUniqueId(), target.uuid());
+    }
+
+    public void transferTownMayorship(Player mayor, String targetName) throws SQLException {
+        TownRecord town = requireTown(mayor);
+        if (!town.mayorUuid().equals(mayor.getUniqueId())) {
+            throw new IllegalArgumentException("Назначить мэра может только текущий мэр.");
+        }
+        ResidentProfile target = findTarget(targetName);
+        if (target.uuid().equals(mayor.getUniqueId())) {
+            throw new IllegalArgumentException("Вы уже мэр этого города.");
+        }
+        if (target.townId() == null || target.townId() != town.id()) {
+            throw new IllegalArgumentException("Новый мэр должен быть жителем этого города.");
+        }
+        storage.transferTownMayorship(town.id(), mayor.getUniqueId(), target.uuid());
+    }
+
     public List<String> civilizationMembers(Player player) throws SQLException {
         return storage.settlementMemberNames("CIV", requireCiv(player).id());
     }

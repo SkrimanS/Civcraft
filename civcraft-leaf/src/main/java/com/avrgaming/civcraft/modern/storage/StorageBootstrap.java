@@ -574,6 +574,40 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
+    public void transferCivilizationLeadership(long civId, UUID currentLeader, UUID newLeader) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                UPDATE civilizations SET leader_uuid = ?
+                WHERE id = ? AND leader_uuid = ?
+                AND EXISTS(SELECT 1 FROM residents WHERE uuid = ? AND civ_id = ?)
+                """)) {
+            statement.setString(1, newLeader.toString());
+            statement.setLong(2, civId);
+            statement.setString(3, currentLeader.toString());
+            statement.setString(4, newLeader.toString());
+            statement.setLong(5, civId);
+            if (statement.executeUpdate() != 1) {
+                throw new IllegalArgumentException("Передача невозможна: новый лидер не состоит в цивилизации.");
+            }
+        }
+    }
+
+    public void transferTownMayorship(long townId, UUID currentMayor, UUID newMayor) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                UPDATE towns SET mayor_uuid = ?
+                WHERE id = ? AND mayor_uuid = ?
+                AND EXISTS(SELECT 1 FROM residents WHERE uuid = ? AND town_id = ?)
+                """)) {
+            statement.setString(1, newMayor.toString());
+            statement.setLong(2, townId);
+            statement.setString(3, currentMayor.toString());
+            statement.setString(4, newMayor.toString());
+            statement.setLong(5, townId);
+            if (statement.executeUpdate() != 1) {
+                throw new IllegalArgumentException("Передача невозможна: новый мэр не состоит в городе.");
+            }
+        }
+    }
+
     public List<String> settlementMemberNames(String kind, long id) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
             throw new IllegalArgumentException("Invalid settlement type");
