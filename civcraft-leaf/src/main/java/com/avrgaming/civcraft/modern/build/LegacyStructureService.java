@@ -211,6 +211,127 @@ public final class LegacyStructureService {
         }
     }
 
+    /**
+     * Called after worlds have been loaded. Reconstruct interrupted builds
+     * without withdrawing currency or making a second structure database row.
+     * Previously journaled original terrain is restored at a bounded tick rate
+     * before the same build id is requeued.
+     */
+    public void recoverInterruptedBuilds() {
+        final List<StorageBootstrap.InterruptedBuild> interrupted;
+        try {
+            interrupted = storage.interruptedStructureBuilds();
+        } catch (SQLException exception) {
+            plugin.getLogger().severe("Unable to inspect interrupted CivCraft structures: " + exception.getMessage());
+            return;
+        }
+        for (StorageBootstrap.InterruptedBuild build : interrupted) {
+            if (!build.journalStarted()) {
+                plugin.getLogger().warning("Structure #" + build.id()
+                        + " predates durable terrain snapshots; automatic recovery is unsafe. "
+                        + "Keep its database record until a manual migration can inspect the site.");
+                continue;
+            }
+            try {
+                resumeInterruptedBuild(build);
+            } catch (SQLException | IOException | IllegalArgumentException exception) {
+                plugin.getLogger().warning("Structure #" + build.id()
+                        + " remains queued for later recovery: " + exception.getMessage());
+            }
+        }
+    }
+
+    private void resumeInterruptedBuild(StorageBootstrap.InterruptedBuild build) throws IOException, SQLException {
+        World world = plugin.getServer().getWorld(build.world());
+        if (world == null) {
+            throw new IOException("World not loaded: " + build.world());
+        }
+        Path storedPath = Path.of(build.templatePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(storedPath)) {
+            throw new IOException("Original structure template missing: " + storedPath);
+        }
+        Path actualPath = storedPath.toRealPath();
+        boolean permittedPath = actualPath.startsWith(templateRoot().toRealPath())
+                || (Files.isDirectory(schematicRoot()) && actualPath.startsWith(schematicRoot().toRealPath()));
+        if (!permittedPath) {
+            throw new IOException("Refusing to load a structure outside configured template roots: " + actualPath);
+        }
+
+        Location origin = new Location(world, build.x(), build.y(), build.z());
+        final Runnable requeue;
+        if (actualPath.getFileName().toString().endsWith(".def")) {
+            LegacyDefTemplate template = loadTemplate(actualPath);
+            requeue = () -> {
+                long duration = Math.max(20_000L, build.finishAt() - System.currentTimeMillis());
+                buildQueue.pasteChunked(build.id(), origin, template, settings.legacyIncludeAir(),
+                        duration, true, true,
+                        (placements, backups) -> persistProtectedBlocksAsync(build.id(), placements, backups));
+            };
+        } else if (actualPath.getFileName().toString().endsWith(".schem")
+                || actualPath.getFileName().toString().endsWith(".schematic")) {
+            if (!plugin.getServer().getPluginManager().isPluginEnabled("WorldEdit")
+                    && !plugin.getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit")) {
+                throw new IOException("WorldEdit runtime is required to resume a .schem build.");
+            }
+            WorldEditSchematicTemplate template = loadSchematic(actualPath);
+            requeue = () -> {
+                long duration = Math.max(20_000L, build.finishAt() - System.currentTimeMillis());
+                buildQueue.pasteSchematic(build.id(), origin, template, settings.legacyIncludeAir(),
+                        duration, true, true,
+                        (placements, backups) -> persistProtectedBlocksAsync(build.id(), placements, backups));
+            };
+        } else {
+            throw new IOException("Unsupported stored template format: " + actualPath);
+        }
+
+        if (!build.snapshotReady()) {
+            // Snapshot was interrupted before any edits (guaranteed by the
+            // new BuildQueue snapshot-first phase). Let the new queue finish it.
+            plugin.getLogger().info("Resuming unstarted structure #" + build.id());
+            requeue.run();
+            return;
+        }
+        final List<BlockBackup> original = storage.loadStructureBlockBackups(build.id());
+        if (original.isEmpty()) {
+            throw new IOException("Completed snapshot has no blocks for structure #" + build.id());
+        }
+        plugin.getLogger().info("Restoring " + original.size() + " original blocks for structure #"
+                + build.id() + " before continuing its build.");
+        new BukkitRunnable() {
+            private int cursor;
+            @Override
+            public void run() {
+                int end = Math.min(original.size(), cursor + 1024);
+                while (cursor < end) {
+                    BlockBackup backup = original.get(cursor);
+                    World backupWorld = plugin.getServer().getWorld(backup.world());
+                    if (backupWorld == null) {
+                        plugin.getLogger().severe("Aborting recovery #" + build.id()
+                                + ": missing world " + backup.world());
+                        cancel();
+                        return;
+                    }
+                    try {
+                        backupWorld.getBlockAt(backup.x(), backup.y(), backup.z())
+                                .setBlockData(Bukkit.createBlockData(backup.blockData()), false);
+                    } catch (IllegalArgumentException exception) {
+                        plugin.getLogger().severe("Aborting recovery #" + build.id()
+                                + ": invalid saved block data at " + backup.x() + ","
+                                + backup.y() + "," + backup.z());
+                        cancel();
+                        return;
+                    }
+                    cursor++;
+                }
+                if (cursor >= original.size()) {
+                    cancel();
+                    plugin.getLogger().info("Original terrain restored; restarting structure #" + build.id());
+                    requeue.run();
+                }
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
     public void cancelAllPreviews() {
         for (UUID uuid : List.copyOf(pendingPreviews.keySet())) {
             Player player = plugin.getServer().getPlayer(uuid);
