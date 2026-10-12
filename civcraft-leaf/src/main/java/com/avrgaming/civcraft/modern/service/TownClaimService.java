@@ -34,6 +34,11 @@ public final class TownClaimService {
         TownRecord town = requireTown(resident);
         Chunk chunk = player.getLocation().getChunk();
         validateClaimLocation(town, player.getLocation(), chunk);
+        // Reject an already-claimed chunk before touching the player's money.
+        // The transactional storage check below still protects against races.
+        if (storage.findTownClaim(chunk.getWorld().getName(), chunk.getX(), chunk.getZ()).isPresent()) {
+            throw new IllegalArgumentException("Этот чанк уже приватизирован.");
+        }
         int count = storage.townClaimCount(town.id());
         if (count >= settings.maxTownClaims()) {
             throw new IllegalArgumentException("Город достиг лимита клаймов: " + settings.maxTownClaims());
