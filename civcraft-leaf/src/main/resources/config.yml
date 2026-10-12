@@ -27,6 +27,10 @@ economy:
     enabled: true
 
 # Territory permissions: mayors control claims; town members may build and use containers.
+settlements:
+  # Invitations are kept in SQLite and are accepted once. Allowed: 1–168 hours.
+  invitation-expiration-hours: 24
+
 claim-protection:
   # Prevent non-members from opening containers, doors, buttons and other block interfaces.
   prevent-foreign-interactions: true

@@ -93,7 +93,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
         this.research = new ResearchService(this, storage, game, settings, economy);
         this.townClaims = new TownClaimService(storage, game, settings, economy);
-        this.memberships = new SettlementMembershipService(game, storage);
+        this.memberships = new SettlementMembershipService(this, game, storage);
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {

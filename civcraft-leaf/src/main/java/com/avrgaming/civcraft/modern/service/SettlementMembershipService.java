@@ -7,6 +7,7 @@ import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
 import java.sql.SQLException;
 import java.util.List;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Simple playable membership rules:
@@ -18,13 +19,19 @@ import org.bukkit.entity.Player;
  *   first (leader/mayor transfer is reserved for a later stage).
  */
 public final class SettlementMembershipService {
-    private static final long INVITE_LIFETIME_MILLIS = 24L * 60 * 60 * 1000;
+    private final JavaPlugin plugin;
     private final CivCraftGameService game;
     private final StorageBootstrap storage;
 
-    public SettlementMembershipService(CivCraftGameService game, StorageBootstrap storage) {
+    public SettlementMembershipService(JavaPlugin plugin, CivCraftGameService game, StorageBootstrap storage) {
+        this.plugin = plugin;
         this.game = game;
         this.storage = storage;
+    }
+
+    private long invitationLifetimeMillis() {
+        int configuredHours = plugin.getConfig().getInt("settlements.invitation-expiration-hours", 24);
+        return Math.max(1, Math.min(168, configuredHours)) * 60L * 60L * 1000L;
     }
 
     public String inviteCivilization(Player leader, Player target) throws SQLException {
@@ -38,7 +45,7 @@ public final class SettlementMembershipService {
             throw new IllegalArgumentException("Игрок уже состоит в цивилизации.");
         }
         storage.issueSettlementInvite(target.getUniqueId(), "CIV", civ.id(),
-                leader.getUniqueId(), System.currentTimeMillis() + INVITE_LIFETIME_MILLIS);
+                leader.getUniqueId(), System.currentTimeMillis() + invitationLifetimeMillis());
         return civ.name();
     }
 
@@ -56,7 +63,7 @@ public final class SettlementMembershipService {
             throw new IllegalArgumentException("Игрок состоит в другой цивилизации.");
         }
         storage.issueSettlementInvite(target.getUniqueId(), "TOWN", town.id(),
-                mayor.getUniqueId(), System.currentTimeMillis() + INVITE_LIFETIME_MILLIS);
+                mayor.getUniqueId(), System.currentTimeMillis() + invitationLifetimeMillis());
         return town.name();
     }
 
