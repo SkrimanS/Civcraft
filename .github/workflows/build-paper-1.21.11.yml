@@ -1,12 +1,8 @@
 name: CivCraft Paper 1.21.11
 
+# Automatic checks are paused while building the first playable test release.
+# Re-enable push/PR triggers only after the user approves the testing milestone.
 on:
-  push:
-    branches:
-      - port/paper-1.21.11
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
