@@ -138,6 +138,36 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
+            Player target = Bukkit.getPlayerExact(args[2]);
+            if (target == null || !target.isOnline()) {
+                throw new IllegalArgumentException("Для приглашения игрок должен быть онлайн.");
+            }
+            String civName = memberships.inviteCivilization(player, target);
+            success(player, "Приглашение отправлено игроку " + target.getName() + " в цивилизацию " + civName);
+            send(target, "&aВас пригласили в цивилизацию " + civName
+                    + ". Напишите &e/civ join&a в течение 24 часов.");
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("join")) {
+            success(player, "Вы вступили в цивилизацию " + memberships.joinCivilization(player));
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("leave")) {
+            memberships.leaveCivilization(player);
+            success(player, "Вы покинули цивилизацию.");
+            return;
+        }
+        if (args.length >= 3 && args[1].equalsIgnoreCase("kick")) {
+            memberships.kickCivilization(player, args[2]);
+            success(player, "Игрок " + args[2] + " исключён из цивилизации.");
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("members")) {
+            send(player, "&6Жители цивилизации: &e"
+                    + String.join(", ", memberships.civilizationMembers(player)));
+            return;
+        }
         if (args.length >= 3 && args[1].equalsIgnoreCase("create")) {
             CivRecord civ = game.createCivilization(player, joinName(args, 2));
             success(player, msg("commands.civ.created", "Цивилизация {name} создана. Правительство: {government}", "name", civ.name(), "government", civ.government()));
@@ -161,6 +191,36 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
+            Player target = Bukkit.getPlayerExact(args[2]);
+            if (target == null || !target.isOnline()) {
+                throw new IllegalArgumentException("Для приглашения игрок должен быть онлайн.");
+            }
+            String townName = memberships.inviteTown(player, target);
+            success(player, "Приглашение отправлено игроку " + target.getName() + " в город " + townName);
+            send(target, "&aВас пригласили в город " + townName
+                    + ". Напишите &e/town join&a в течение 24 часов.");
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("join")) {
+            success(player, "Вы вступили в город " + memberships.joinTown(player));
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("leave")) {
+            memberships.leaveTown(player);
+            success(player, "Вы покинули город. Гражданство цивилизации сохранено.");
+            return;
+        }
+        if (args.length >= 3 && args[1].equalsIgnoreCase("kick")) {
+            memberships.kickTown(player, args[2]);
+            success(player, "Игрок " + args[2] + " исключён из города.");
+            return;
+        }
+        if (args.length == 2 && args[1].equalsIgnoreCase("members")) {
+            send(player, "&6Жители города: &e"
+                    + String.join(", ", memberships.townMembers(player)));
+            return;
+        }
         if (args.length >= 3 && args[1].equalsIgnoreCase("create")) {
             TownRecord town = game.createTown(player, joinName(args, 2));
             success(player, msg("commands.town.created", "Город {name} основан. Мэр: {mayor}, молотки: {hammers}/час, колбы: {beakers}/час, счастье: {happiness} ({state}).", "name", town.name(), "mayor", player.getName(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "happiness", town.happiness(), "state", town.happinessState()));
@@ -542,10 +602,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("create", "info", "deposit", "withdraw");
+            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("create", "info", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {
