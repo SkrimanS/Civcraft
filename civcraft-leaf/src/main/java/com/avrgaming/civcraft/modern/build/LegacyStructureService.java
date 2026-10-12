@@ -226,6 +226,15 @@ public final class LegacyStructureService {
             return;
         }
         for (StorageBootstrap.InterruptedBuild build : interrupted) {
+            if (build.status().equalsIgnoreCase("ROLLBACK_PENDING")) {
+                try {
+                    restorePendingRollback(build.id(), build.snapshotReady());
+                } catch (SQLException exception) {
+                    plugin.getLogger().severe("Unable to restore cancelled structure #" + build.id()
+                            + ": " + exception.getMessage());
+                }
+                continue;
+            }
             if (!build.journalStarted()) {
                 plugin.getLogger().warning("Structure #" + build.id()
                         + " predates durable terrain snapshots; automatic recovery is unsafe. "
@@ -295,8 +304,36 @@ public final class LegacyStructureService {
         if (original.isEmpty()) {
             throw new IOException("Completed snapshot has no blocks for structure #" + build.id());
         }
-        plugin.getLogger().info("Restoring " + original.size() + " original blocks for structure #"
-                + build.id() + " before continuing its build.");
+        restoreTerrainInBatches(build.id(), original, requeue);
+    }
+
+    private void restorePendingRollback(long buildId, boolean snapshotReady) throws SQLException {
+        if (!snapshotReady) {
+            // The snapshot-first queue cannot mutate the world before this
+            // flag is set. An interrupted early snapshot has nothing to undo.
+            storage.finishStructureRollback(buildId);
+            plugin.getLogger().info("Cancelled unstarted structure #" + buildId);
+            return;
+        }
+        List<BlockBackup> original = storage.loadStructureBlockBackups(buildId);
+        if (original.isEmpty()) {
+            plugin.getLogger().severe("Snapshot marker set but no original blocks for rollback #" + buildId);
+            return;
+        }
+        restoreTerrainInBatches(buildId, original, () -> {
+            try {
+                storage.finishStructureRollback(buildId);
+                plugin.getLogger().info("Finished restoring cancelled structure #" + buildId);
+            } catch (SQLException exception) {
+                plugin.getLogger().severe("Unable to finish cancelled structure #" + buildId
+                        + ": " + exception.getMessage());
+            }
+        });
+    }
+
+    private void restoreTerrainInBatches(long buildId, List<BlockBackup> original, Runnable onComplete) {
+        plugin.getLogger().info("Restoring " + original.size()
+                + " block states for CivCraft structure #" + buildId);
         new BukkitRunnable() {
             private int cursor;
             @Override
@@ -306,7 +343,7 @@ public final class LegacyStructureService {
                     BlockBackup backup = original.get(cursor);
                     World backupWorld = plugin.getServer().getWorld(backup.world());
                     if (backupWorld == null) {
-                        plugin.getLogger().severe("Aborting recovery #" + build.id()
+                        plugin.getLogger().severe("Aborting terrain recovery #" + buildId
                                 + ": missing world " + backup.world());
                         cancel();
                         return;
@@ -315,7 +352,7 @@ public final class LegacyStructureService {
                         backupWorld.getBlockAt(backup.x(), backup.y(), backup.z())
                                 .setBlockData(Bukkit.createBlockData(backup.blockData()), false);
                     } catch (IllegalArgumentException exception) {
-                        plugin.getLogger().severe("Aborting recovery #" + build.id()
+                        plugin.getLogger().severe("Aborting terrain recovery #" + buildId
                                 + ": invalid saved block data at " + backup.x() + ","
                                 + backup.y() + "," + backup.z());
                         cancel();
@@ -325,8 +362,7 @@ public final class LegacyStructureService {
                 }
                 if (cursor >= original.size()) {
                     cancel();
-                    plugin.getLogger().info("Original terrain restored; restarting structure #" + build.id());
-                    requeue.run();
+                    onComplete.run();
                 }
             }
         }.runTaskTimer(plugin, 1L, 1L);
@@ -573,12 +609,28 @@ public final class LegacyStructureService {
         StorageBootstrap.StructureBuildView build = storage.findActiveStructureBuildForTown(town.id())
                 .orElseThrow(() -> new IllegalArgumentException("В городе нет активной стройки."));
         long refund = Math.max(0L, Math.round(Math.floor(build.cost() * 0.90)));
-        buildQueue.cancelBuild(build.id());
-        restoreBlockBackups(storage.loadStructureBlockBackups(build.id()));
-        storage.cancelStructureBuild(build.id());
-        if (refund > 0L) {
-            storage.depositTown(town.id(), refund);
+        StorageBootstrap.InterruptedBuild interrupted = storage.interruptedStructureBuilds().stream()
+                .filter(candidate -> candidate.id() == build.id())
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Стройка уже завершена."));
+        if (!interrupted.journalStarted()) {
+            throw new IllegalArgumentException("Для старой стройки нет исходного снимка мира. "
+                    + "Автоматическая отмена небезопасна.");
         }
+        // Refunding and transitioning to a crash-recoverable rollback state
+        // happen in the SAME SQLite transaction (never pay twice).
+        storage.requestStructureRollback(build.id(), town.id(), refund);
+        buildQueue.cancelBuild(build.id());
+        // The queue's in-memory cleanup runs on the next tick; restore the
+        // durable original snapshot only after it has stopped modifying blocks.
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            try {
+                restorePendingRollback(build.id(), interrupted.snapshotReady());
+            } catch (SQLException exception) {
+                plugin.getLogger().severe("Unable to restore cancelled structure #" + build.id()
+                        + ": " + exception.getMessage());
+            }
+        }, 2L);
         return new CancelBuildResult(build, refund);
     }
 
