@@ -39,7 +39,7 @@ async function runPlayerTest () {
     bot.once('spawn', () => {
       ;(async () => {
         console.log('Player successfully joined Paper 1.21.11')
-        for (const cmd of ['/civ create CivSmoke', '/town create TownSmoke', '/town claim', '/research list']) {
+        for (const cmd of ['/civ create CivSmoke', '/town create TownSmoke', '/town claim', '/town claim', '/civ create CivAgain', '/research list']) {
           await delay(2200)
           console.log('Executing as player: ' + cmd)
           bot.chat(cmd)

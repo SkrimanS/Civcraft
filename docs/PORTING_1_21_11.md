@@ -34,3 +34,21 @@ The resulting JAR should be in `civcraft-leaf/target/`. Build success alone is n
 6. Reconstruct and test the CivCraft 2.0 game systems not yet complete in the source fork (wars, wonders, culture, diplomacy, victory).
 
 Do not use this development snapshot on a production server until those checks pass.
+
+## Verified CI milestones (12 October 2026)
+
+- GitHub Actions compiles and packages on Java 21 / Paper API 1.21.11.
+- Actual Paper 1.21.11 Docker server successfully enables the plugin twice.
+- The original data loads successfully: 44 structures and 73 technologies.
+- A Mineflayer 1.21.11 player connects, creates a civilization, founds a town, claims one chunk and lists research.
+- SQLite is checked after the player commands; duplicate claim and repeated civilization creation must not create duplicates or double-charge.
+- The same player/civilization/town/claim/balance data is checked after restarting the server.
+- Console admin integration status and reload commands are exercised through RCON.
+
+## Known major gaps
+
+- This is **not** a feature-complete CivCraft 2.0 rebuild; wars, diplomacy, culture, wonders and victory mechanics remain incomplete.
+- Original building templates in the upstream `civcraft_data/templates` tree include 1,274 `.def` files (~594 MB). They have not been bundled into this modern port; regular building requires migrated `.schem` assets and gameplay testing.
+- The default economy uses local SQLite without Vault/ExcellentEconomy installed; compatibility must be tested separately.
+- FancyNpcs, MMOItems, MythicMobs, WorldEdit/FAWE integrations and NPC/foundation gameplay are still unverified.
+- The CI server uses offline mode **only inside isolated GitHub Actions** and exposes the Minecraft port on loopback for its test client; do not copy its security settings to production.

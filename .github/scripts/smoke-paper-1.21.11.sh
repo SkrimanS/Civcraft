@@ -11,7 +11,7 @@ cp "$JAR" smoke-data/plugins/CivCraft.jar
 mkdir -p smoke-data/plugins/CivCraft
 cp civcraft-leaf/src/main/resources/config.yml smoke-data/plugins/CivCraft/config.yml
 sed -i 's/^  cost: 10000$/  cost: 0/' smoke-data/plugins/CivCraft/config.yml
-sed -i 's/^  claim-cost: 250$/  claim-cost: 0/' smoke-data/plugins/CivCraft/config.yml
+sed -i 's/^  claim-cost: 250$/  claim-cost: 5/' smoke-data/plugins/CivCraft/config.yml
 
 docker run -d --name civcraft-smoke \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=1.21.11 \
@@ -84,9 +84,10 @@ with sqlite3.connect('smoke-data/plugins/CivCraft/civcraft.db') as db:
     towns = db.execute("SELECT COUNT(*) FROM towns WHERE name = ?", ('TownSmoke',)).fetchone()[0]
     claims = db.execute("SELECT COUNT(*) FROM town_claims").fetchone()[0]
     residents = db.execute("SELECT COUNT(*) FROM residents WHERE name = ?", ('CivSmokeBot',)).fetchone()[0]
-    print(f'Player test: residents={residents} civilizations={civs} towns={towns} claims={claims}')
-    if (residents, civs, towns) != (1, 1, 1) or claims < 1:
-        raise SystemExit('Player commands did not persist resident, civilization, town and claim')
+    coins = db.execute("SELECT coins FROM residents WHERE name = ?", ('CivSmokeBot',)).fetchone()[0]
+    print(f'Player test: residents={residents} civilizations={civs} towns={towns} claims={claims} coins={coins}')
+    if (residents, civs, towns, claims, coins) != (1, 1, 1, 1, 245):
+        raise SystemExit('Expected one civilization, town, claim and exactly one 5-coin charge')
 PY
 
 echo "Stopping to verify persistent state across server restart..."
@@ -101,4 +102,14 @@ test "$(docker inspect --format '{{.State.Running}}' civcraft-smoke)" = false
 docker start civcraft-smoke >/dev/null
 wait_for_plugin
 test -s smoke-data/plugins/CivCraft/civcraft.db
+python3 - <<'PY'
+import sqlite3
+with sqlite3.connect('smoke-data/plugins/CivCraft/civcraft.db') as db:
+    coins = db.execute("SELECT coins FROM residents WHERE name = 'CivSmokeBot'").fetchone()[0]
+    civs = db.execute("SELECT COUNT(*) FROM civilizations WHERE name = 'CivSmoke'").fetchone()[0]
+    towns = db.execute("SELECT COUNT(*) FROM towns WHERE name = 'TownSmoke'").fetchone()[0]
+    claims = db.execute("SELECT COUNT(*) FROM town_claims").fetchone()[0]
+    assert (coins, civs, towns, claims) == (245, 1, 1, 1), (coins, civs, towns, claims)
+    print('Persistent game state survived restart: 1 civilization, 1 town, 1 claim, 245 coins')
+PY
 echo "Paper 1.21.11 smoke test passed, including restart."
