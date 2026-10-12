@@ -112,7 +112,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             }
         }
 
-        getLogger().info("CivCraft Leaf 1.21.11 port foundation enabled.");
+        getLogger().info("CivCraft Paper 1.21.11 port foundation enabled.");
     }
 
     @Override

@@ -72,6 +72,10 @@ public final class FancyNpcService {
     }
 
     private void registerFancyNpcEvent() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("FancyNpcs")) {
+            plugin.getLogger().info("FancyNpcs not installed; NPC click integration is optional.");
+            return;
+        }
         try {
             Class<?> eventClass = Class.forName("de.oliver.fancynpcs.api.events.NpcInteractEvent");
             @SuppressWarnings("unchecked")

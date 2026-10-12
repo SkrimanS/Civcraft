@@ -7,6 +7,12 @@ JAR="$(find smoke-artifact -type f -name 'civcraft-leaf-*.jar' ! -name 'original
 test -n "$JAR"
 cp "$JAR" smoke-data/plugins/CivCraft.jar
 
+# Test-only cheap town and claims; these values never reach production defaults.
+mkdir -p smoke-data/plugins/CivCraft
+cp civcraft-leaf/src/main/resources/config.yml smoke-data/plugins/CivCraft/config.yml
+sed -i 's/^  cost: 10000$/  cost: 0/' smoke-data/plugins/CivCraft/config.yml
+sed -i 's/^  claim-cost: 250$/  claim-cost: 0/' smoke-data/plugins/CivCraft/config.yml
+
 docker run -d --name civcraft-smoke \
   -e EULA=TRUE -e TYPE=PAPER -e VERSION=1.21.11 \
   -e MEMORY=2G -e ONLINE_MODE=FALSE -e ENFORCE_SECURE_PROFILE=FALSE \
@@ -14,6 +20,7 @@ docker run -d --name civcraft-smoke \
   -e RCON_PASSWORD=ci-only-civcraft-check \
   -e MAX_PLAYERS=2 -e SPAWN_PROTECTION=0 \
   -v "$PWD/smoke-data:/data" \
+  -p 127.0.0.1:25565:25565 \
   itzg/minecraft-server:java21 > smoke-output/container.id
 
 wait_for_plugin() {
@@ -64,6 +71,22 @@ with sqlite3.connect('smoke-data/plugins/CivCraft/civcraft.db') as db:
     if missing:
         raise SystemExit('Missing SQLite tables: ' + ', '.join(sorted(missing)))
     print('SQLite schema verified:', ', '.join(sorted(required)))
+PY
+
+echo "Running real player commands through the Minecraft protocol..."
+npm install --prefix "$RUNNER_TEMP/civcraft-smoke-node" --silent --no-audit --no-fund mineflayer@4
+NODE_PATH="$RUNNER_TEMP/civcraft-smoke-node/node_modules" node .github/scripts/smoke-player-1.21.11.cjs
+
+python3 - <<'PY'
+import sqlite3
+with sqlite3.connect('smoke-data/plugins/CivCraft/civcraft.db') as db:
+    civs = db.execute("SELECT COUNT(*) FROM civilizations WHERE name = ?", ('CivSmoke',)).fetchone()[0]
+    towns = db.execute("SELECT COUNT(*) FROM towns WHERE name = ?", ('TownSmoke',)).fetchone()[0]
+    claims = db.execute("SELECT COUNT(*) FROM town_claims").fetchone()[0]
+    residents = db.execute("SELECT COUNT(*) FROM residents WHERE name = ?", ('CivSmokeBot',)).fetchone()[0]
+    print(f'Player test: residents={residents} civilizations={civs} towns={towns} claims={claims}')
+    if (residents, civs, towns) != (1, 1, 1) or claims < 1:
+        raise SystemExit('Player commands did not persist resident, civilization, town and claim')
 PY
 
 echo "Stopping to verify persistent state across server restart..."
