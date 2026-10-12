@@ -105,6 +105,7 @@ public final class LegacyStructureService {
     public void previewStructure(Player player, String structureId, int y, String direction) throws IOException, SQLException {
         TownRecord town = requireMayorTown(player);
         StructureDefinition definition = definition(structureId);
+        validateRequiredTechnologies(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location requested = player.getLocation().clone();
@@ -254,10 +255,12 @@ public final class LegacyStructureService {
             throw new IllegalArgumentException("Только мэр города может ставить постройки.");
         }
         StructureDefinition definition = definition(structureId);
+        validateRequiredTechnologies(town, definition);
         return buildDefinedStructure(player, town, definition, direction, location, forcedHammerCost == null ? definition.hammerCost() : forcedHammerCost, true);
     }
 
     private QueuedLegacyBuild buildDefinedStructure(Player player, TownRecord town, StructureDefinition definition, String direction, Location location, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
+        validateRequiredTechnologies(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
@@ -268,6 +271,7 @@ public final class LegacyStructureService {
     }
 
     private QueuedLegacyBuild buildDefinedStructureAtOrigin(Player player, TownRecord town, StructureDefinition definition, String direction, Location origin, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
+        validateRequiredTechnologies(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         if (resolved.legacy() != null) {
@@ -775,6 +779,21 @@ public final class LegacyStructureService {
 
     private boolean isSolidFoundationBlock(Material type) {
         return type.isSolid() && !type.isAir() && type != Material.WATER && type != Material.LAVA;
+    }
+
+    private void validateRequiredTechnologies(TownRecord town, StructureDefinition definition) throws SQLException {
+        if (town == null || definition.requiredTechnology() == null || definition.requiredTechnology().isBlank()) {
+            return;
+        }
+        // Buildings configured with require_tech cannot bypass civilization research
+        // through direct placement, item foundations or the preview/confirm flow.
+        var unlocked = storage.researchedTechs(town.civId());
+        for (String required : definition.requiredTechnology().split("[,;\\s]+")) {
+            if (!required.isBlank() && unlocked.stream().noneMatch(id -> id.equalsIgnoreCase(required))) {
+                throw new IllegalArgumentException("Для постройки " + definition.displayName()
+                        + " требуется изучить технологию: " + required);
+            }
+        }
     }
 
     private StructureDefinition definition(String structureId) {
