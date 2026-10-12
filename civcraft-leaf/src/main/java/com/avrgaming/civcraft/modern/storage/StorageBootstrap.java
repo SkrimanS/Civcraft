@@ -435,6 +435,16 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
+    public Optional<ResidentProfile> findResidentByName(String name) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT * FROM residents WHERE name = ? COLLATE NOCASE LIMIT 1")) {
+            statement.setString(1, name);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? Optional.of(mapResident(rs)) : Optional.empty();
+            }
+        }
+    }
+
     public Optional<CampRecord> findCampByOwner(UUID uuid) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps WHERE owner_uuid = ?")) {
             statement.setString(1, uuid.toString());
