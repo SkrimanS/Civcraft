@@ -82,7 +82,7 @@ public final class TownClaimService {
             return true;
         }
         ResidentProfile resident = game.resident(player);
-        return resident.civId() != null && resident.civId() == claim.civId();
+        return resident.townId() != null && resident.townId() == claim.townId();
     }
 
     private void requireMayor(Player player, TownRecord town) {

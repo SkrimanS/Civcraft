@@ -15,6 +15,7 @@ import com.avrgaming.civcraft.modern.foundation.FoundationItemFactory;
 import com.avrgaming.civcraft.modern.research.ResearchService;
 import com.avrgaming.civcraft.modern.research.TechDefinition;
 import com.avrgaming.civcraft.modern.service.CivCraftGameService;
+import com.avrgaming.civcraft.modern.service.SettlementMembershipService;
 import com.avrgaming.civcraft.modern.service.TownClaimService;
 import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
 import java.io.IOException;
@@ -40,18 +41,20 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     private final LegacyStructureService legacyStructures;
     private final ResearchService research;
     private final TownClaimService townClaims;
+    private final SettlementMembershipService memberships;
     private final CivCraftEconomyService economy;
     private final CampService campService;
     private final CampNpcMenusService campNpcMenus;
     private final Lang lang;
     private final LegacyComponentSerializer legacy = LegacyComponentSerializer.legacySection();
 
-    public CivCraftCommand(CivCraftModernPlugin plugin, CivCraftGameService game, LegacyStructureService legacyStructures, ResearchService research, TownClaimService townClaims, CivCraftEconomyService economy, CampService campService, CampNpcMenusService campNpcMenus, Lang lang) {
+    public CivCraftCommand(CivCraftModernPlugin plugin, CivCraftGameService game, LegacyStructureService legacyStructures, ResearchService research, TownClaimService townClaims, SettlementMembershipService memberships, CivCraftEconomyService economy, CampService campService, CampNpcMenusService campNpcMenus, Lang lang) {
         this.plugin = plugin;
         this.game = game;
         this.legacyStructures = legacyStructures;
         this.research = research;
         this.townClaims = townClaims;
+        this.memberships = memberships;
         this.economy = economy;
         this.campService = campService;
         this.campNpcMenus = campNpcMenus;

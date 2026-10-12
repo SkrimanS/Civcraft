@@ -18,6 +18,7 @@ import com.avrgaming.civcraft.modern.research.ResearchService;
 import com.avrgaming.civcraft.modern.restriction.GameplayRestrictionService;
 import com.avrgaming.civcraft.modern.service.CivCraftGameService;
 import com.avrgaming.civcraft.modern.service.ResidentJoinListener;
+import com.avrgaming.civcraft.modern.service.SettlementMembershipService;
 import com.avrgaming.civcraft.modern.service.TabPrefixService;
 import com.avrgaming.civcraft.modern.service.TownClaimProtectionListener;
 import com.avrgaming.civcraft.modern.service.TownClaimService;
@@ -44,6 +45,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private LegacyStructureService legacyStructures;
     private ResearchService research;
     private TownClaimService townClaims;
+    private SettlementMembershipService memberships;
     private CivCraftPlaceholderExpansion placeholderExpansion;
     private FoundationItemListener foundationItems;
     private TabPrefixService tabPrefixes;
@@ -91,6 +93,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
         this.research = new ResearchService(this, storage, game, settings, economy);
         this.townClaims = new TownClaimService(storage, game, settings, economy);
+        this.memberships = new SettlementMembershipService(game, storage);
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {
@@ -118,7 +121,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             placeholderExpansion.register();
         }
 
-        CivCraftCommand executor = new CivCraftCommand(this, game, legacyStructures, research, townClaims, economy, campService, campNpcMenus, lang);
+        CivCraftCommand executor = new CivCraftCommand(this, game, legacyStructures, research, townClaims, memberships, economy, campService, campNpcMenus, lang);
         for (String commandName : List.of("camp", "civ", "town", "build", "civadmin", "research")) {
             var command = getCommand(commandName);
             if (command != null) {
