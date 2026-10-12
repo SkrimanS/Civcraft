@@ -23,7 +23,11 @@ import com.avrgaming.civcraft.modern.service.TownClaimProtectionListener;
 import com.avrgaming.civcraft.modern.service.TownClaimService;
 import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
 import com.avrgaming.civcraft.modern.world.NoVanillaStructuresChunkGenerator;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -65,6 +69,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         }
 
         reloadModernConfig();
+        saveBundledStructureTemplates();
         ensureBuildingsFolder();
         this.storage = new StorageBootstrap(this, settings);
         storage.initializeLocalStorage();
@@ -171,6 +176,33 @@ public final class CivCraftModernPlugin extends JavaPlugin {
 
     public Lang lang() {
         return lang;
+    }
+
+    private void saveBundledStructureTemplates() {
+        // Template manifest is part of the JAR. Bundled assets require no external
+        // downloads and are copied only once; customized server files are retained.
+        try (InputStream manifest = getResource("legacy-templates/manifest.txt")) {
+            if (manifest == null) {
+                getLogger().warning("CivCraft bundled structure manifest is missing.");
+                return;
+            }
+            try (BufferedReader lines = new BufferedReader(new InputStreamReader(manifest, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = lines.readLine()) != null) {
+                    String path = line.trim();
+                    if (path.isEmpty() || path.startsWith("#")) {
+                        continue;
+                    }
+                    if (!path.matches("[a-z0-9_/-]+\\.def") || path.contains("..")) {
+                        getLogger().warning("Ignoring unsafe bundled template path: " + path);
+                        continue;
+                    }
+                    saveResourceIfMissing("legacy-templates/" + path);
+                }
+            }
+        } catch (IOException exception) {
+            getLogger().severe("Unable to unpack bundled CivCraft structure templates: " + exception.getMessage());
+        }
     }
 
     private void ensureBuildingsFolder() {
