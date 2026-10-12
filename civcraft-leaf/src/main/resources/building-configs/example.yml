@@ -1,0 +1,7 @@
+# Building config placeholder folder.
+# Schematic files stay in the existing buildings folder.
+# Put per-building gameplay config files here later.
+example_building:
+  display-name: 'Example Building'
+  schematic: 'example.schem'
+  enabled: false

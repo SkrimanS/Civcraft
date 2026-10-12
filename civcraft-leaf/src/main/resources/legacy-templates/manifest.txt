@@ -1,0 +1,27 @@
+# Bundled structures from Ichi667/civcraft (MineTexas CivCraft).
+# Paths are relative to plugins/CivCraft/legacy-templates/.
+# The larger Capitol and remaining themed structures can be installed with tools/import-legacy-templates.py.
+themes/default/structures/camp/camp_north.def
+themes/default/structures/camp/camp_east.def
+themes/default/structures/camp/camp_south.def
+themes/default/structures/camp/camp_west.def
+themes/default/structures/town_hall/town_hall_north.def
+themes/default/structures/town_hall/town_hall_east.def
+themes/default/structures/town_hall/town_hall_south.def
+themes/default/structures/town_hall/town_hall_west.def
+themes/default/structures/bank/bank_north.def
+themes/default/structures/bank/bank_east.def
+themes/default/structures/bank/bank_south.def
+themes/default/structures/bank/bank_west.def
+themes/default/structures/cottage/cottage_north.def
+themes/default/structures/cottage/cottage_east.def
+themes/default/structures/cottage/cottage_south.def
+themes/default/structures/cottage/cottage_west.def
+themes/default/structures/mine/mine_north.def
+themes/default/structures/mine/mine_east.def
+themes/default/structures/mine/mine_south.def
+themes/default/structures/mine/mine_west.def
+themes/default/structures/library/library_north.def
+themes/default/structures/library/library_east.def
+themes/default/structures/library/library_south.def
+themes/default/structures/library/library_west.def

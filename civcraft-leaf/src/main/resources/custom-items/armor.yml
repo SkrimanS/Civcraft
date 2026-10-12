@@ -1,0 +1,15 @@
+# CivCraft custom armor items. Armor does not lose vanilla durability.
+# It loses death-damage-percent durability when the holder dies.
+items:
+  bronze_helmet:
+    material: IRON_HELMET
+    # mmoitems-type: ARMOR
+    # mmoitems-id: BRONZE_HELMET
+    name: '&6Bronze Helmet'
+    lore:
+      - '&7CivCraft armor'
+      - '&7Durability: &e{durability}%'
+    flags:
+      - HIDE_ATTRIBUTES
+      - HIDE_UNBREAKABLE
+    death-damage-percent: 15

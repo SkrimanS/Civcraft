@@ -1,0 +1,17 @@
+# Maven / IDE
+target/
+**/target/
+*.class
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# Local test servers / secrets
+server-test/
+run/
+*.log
+.env
+*.db
+*.db-journal

@@ -1,0 +1,31 @@
+title: '&eИнформация'
+size: 27
+items:
+  text1:
+    material: PAPER
+    slot: 11
+    name: '&eИнформация'
+    lore:
+      - '&7Тут можно писать любой текст.'
+      - '&7Лагерь: &e{camp_name}'
+      - '&7ID: &e{camp_id}'
+      - '&7Твоя роль: &e{role}'
+  text2:
+    material: MAP
+    slot: 13
+    name: '&aНастраиваемый предмет'
+    lore:
+      - '&7Можно менять материал, название,'
+      - '&7lore, custom-model-data и ItemsAdder.'
+  back:
+    material: ARROW
+    slot: 18
+    name: '&eНазад'
+    actions:
+      - 'OPEN_MENU:main'
+  close:
+    material: BARRIER
+    slot: 26
+    name: '&cЗакрыть'
+    actions:
+      - 'CLOSE'

@@ -1,0 +1,14 @@
+# CivCraft custom bow items. Bows do not lose vanilla durability.
+items:
+  hunter_bow:
+    material: BOW
+    # mmoitems-type: BOW
+    # mmoitems-id: HUNTER_BOW
+    name: '&aHunter Bow'
+    lore:
+      - '&7CivCraft bow'
+      - '&7Durability: &e{durability}%'
+    flags:
+      - HIDE_ATTRIBUTES
+      - HIDE_UNBREAKABLE
+    death-damage-percent: 15

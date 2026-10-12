@@ -1,0 +1,14 @@
+# CivCraft custom consumables.
+# uses/max-uses = how many times one item stack unit can be used before it disappears.
+items:
+  camp_ration:
+    material: BREAD
+    # itemsadder: namespace:item_id
+    # mmoitems-type: CONSUMABLE
+    # mmoitems-id: CAMP_RATION
+    name: '&eCamp Ration'
+    lore:
+      - '&7Uses: &e{uses}/{max_uses}'
+    uses: 3
+    flags:
+      - HIDE_ATTRIBUTES

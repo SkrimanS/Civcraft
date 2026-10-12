@@ -1,0 +1,32 @@
+recipes:
+  enabled: true
+  ban-anvils: true
+  ban-enchanting-table: true
+  ban-hopper: true
+  ban-all-armor: true
+  ban-all-swords: true
+  ban-bows: true
+  ban-redstone-results: true
+  banned-results: []
+
+experience:
+  disable-gain: true
+
+plants:
+  disable-growth: true
+  require-farmland: true
+  allow-upgraded-camp-farm: true
+  allowed-structure-ids:
+    - farm
+    - city_farm
+
+redstone:
+  disable-outside-allowed-structures: true
+  allowed-structure-ids:
+    - farm
+    - city_farm
+  # Empty list = plugin automatically treats all redstone components as redstone.
+  materials: []
+
+world-generation:
+  disable-vanilla-structures-note: 'Vanilla villages/temples/mineshafts/etc are controlled by world generation settings/datapacks before chunks are created. Existing generated structures cannot be safely removed by this runtime restriction module.'

@@ -1,0 +1,173 @@
+# CivCraft Paper 1.21.11 configuration foundation.
+# Every gameplay-affecting number should live in YAML, not hard-coded Java.
+
+server:
+  target-core: Paper
+  require-leaf-runtime: false
+  allow-paper-compatible-dev-runtime: true
+  scheduler-strategy: bukkit-main-thread
+
+global:
+  locale: ru_ru
+  debug: false
+  starting-coins: 250
+  tick-budgets:
+    max-structure-blocks-per-tick: 64
+    max-database-writes-per-tick: 256
+    max-dynmap-updates-per-run: 128
+  anti-dupe:
+    lock-timeout-millis: 2500
+    require-main-thread-inventory-mutations: true
+    reject-negative-currency-transfers: true
+
+economy:
+  production:
+    # Completed buildings with money_per_hour credit the city treasury once per minute.
+    # Partial coins persist in SQLite; production pauses while the server is offline.
+    enabled: true
+
+# Territory permissions: mayors control claims; town members may build and use containers.
+settlements:
+  # Invitations are kept in SQLite and are accepted once. Allowed: 1–168 hours.
+  invitation-expiration-hours: 24
+
+claim-protection:
+  # Prevent non-members from opening containers, doors, buttons and other block interfaces.
+  prevent-foreign-interactions: true
+  # Prevent hoppers from extracting/depositing items across town claim boundaries.
+  prevent-cross-border-hoppers: true
+  # Explosions outside a town cannot destroy claimed blocks.
+  prevent-explosion-damage: true
+  # Stop external fluids, fire, pistons and hostile entity block changes.
+  prevent-environment-damage: true
+
+storage:
+  type: sqlite
+  sqlite:
+    file: civcraft.db
+  mysql:
+    host: localhost
+    port: 3306
+    database: civcraft
+    username: civcraft
+    password: change-me
+    pool-size: 10
+
+integrations:
+  mythicmobs:
+    enabled: true
+    required-for-custom-mobs: true
+  mmoitems:
+    enabled: true
+    required-for-custom-items: true
+    civcraft-stat-prefix: CIVCRAFT_
+  dynmap:
+    enabled: true
+    layer-priority:
+      towns: 10
+      culture: 15
+      structures: 20
+  economy:
+    provider: ExcellentEconomy
+    currency: money
+    use-vault-bridge-if-direct-api-unavailable: true
+  placeholderapi:
+    enabled: true
+    identifier: civcraft
+  worldedit:
+    provider-preference: FAWE_THEN_WORLDEDIT
+    async-paste-max-blocks: 250000
+  packetevents:
+    enabled: false
+
+camp-npc:
+  sync-interval-seconds: 1
+  npc:
+    enabled: true
+    display-name: '<gold>{camp_name}</gold>'
+    # Можно указать ник/значение скина, которое понимает FancyNpcs.
+    skin: ''
+    # Для скинов через texture/signature, если используешь такой формат.
+    skin-texture: ''
+    skin-signature: ''
+    # Если true, NPC будет включать режим FancyNpcs turn/look at nearest player.
+    look-at-nearest-player: false
+
+foundation-items:
+  camp:
+    mmoitem-id: CAMP_FOUNDATION
+    mmoitem-type: ''
+    structure-id: s_camp
+  civilization:
+    mmoitem-id: CIV_FLAG
+    mmoitem-type: ''
+    capitol-structure-id: s_capitol
+    capitol-hammer-cost: 250
+  town:
+    mmoitem-id: SETTLER
+    mmoitem-type: ''
+    townhall-structure-id: s_townhall
+    townhall-hammer-cost: 500
+
+camp:
+  hitpoints: 5000
+  regen-rate-per-second: 2
+  firepoints-hours: 24
+  coal-per-firepoint: 4
+  cost: 2500
+  raid-length-hours: 2
+
+civ:
+  cost: 0
+  starting-government: Tribalism
+
+town:
+  cost: 10000
+  plot-cost: 1000
+  min-town-distance: 150.0
+  claim-cost: 250
+  hammers-per-hour: 100
+  max-claims: 64
+  max-town-claim-distance-chunks: 8
+  min-enemy-town-distance: 300.0
+  outpost-cost: 5000
+  upkeep-per-resident: 500
+
+war:
+  enabled: true
+  wartime-length-minutes: 120
+  respawn-time-seconds: 30
+  control-block-respawn-time-seconds: 30
+  upkeep-per-aggressive-war: 3000
+
+structures:
+  # Freeze construction chunks during placement, cancellation and demolition.
+  # Prevents player/container/piston/fluid changes against saved original terrain.
+  lock-active-worksites: true
+  # Prevent building over chests/spawners/signs until full NBT backups exist.
+  protect-existing-tile-entities: true
+  # Preloading the complete legacy pack (~594MB) causes unnecessary RAM spikes.
+  # Templates are loaded into the cache only when needed.
+  preload-templates: false
+  config: plugins/CivCraft/civcraft/data/structures.yml
+  min-solid-foundation-ratio: 0.50
+  min-y: 63
+  max-y: 150
+  fawe-schematics:
+    enabled: true
+    root: plugins/civcraft/buildings
+
+technologies:
+  config: plugins/CivCraft/civcraft/data/techs.yml
+  base-beakers-per-minute: 1.0
+  town-beakers-per-minute: 0.25
+
+legacy-templates:
+  enabled: true
+  root: plugins/CivCraft/legacy-templates
+  default-theme: default
+  include-air: false
+  default-direction: north
+
+placeholders:
+  empty-value: '-'

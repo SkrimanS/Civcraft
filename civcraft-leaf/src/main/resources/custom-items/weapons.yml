@@ -1,0 +1,20 @@
+# CivCraft custom weapon items.
+# id under items = internal CivCraft item id used in quest rewards.
+items:
+  bronze_sword:
+    material: IRON_SWORD
+    # Optional MMOItems binding:
+    # mmoitems-type: SWORD
+    # mmoitems-id: BRONZE_SWORD
+    # Optional ItemsAdder binding:
+    # itemsadder: namespace:item_id
+    name: '&6Bronze Sword'
+    lore:
+      - '&7CivCraft weapon'
+      - '&7Durability: &e{durability}%'
+    custom-model-data: 0
+    flags:
+      - HIDE_ATTRIBUTES
+      - HIDE_UNBREAKABLE
+    glow: false
+    death-damage-percent: 15
