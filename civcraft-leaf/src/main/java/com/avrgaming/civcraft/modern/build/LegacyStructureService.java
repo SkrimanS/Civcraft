@@ -658,6 +658,14 @@ public final class LegacyStructureService {
         if (!settings.faweSchematicsEnabled()) {
             return null;
         }
+        // WorldEdit is a provided dependency and is not embedded in the JAR.
+        // Without the runtime plugin, prefer original .def assets instead of
+        // loading schematic classes that cannot be resolved by the classloader.
+        boolean worldEditInstalled = plugin.getServer().getPluginManager().isPluginEnabled("WorldEdit")
+                || plugin.getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit");
+        if (!worldEditInstalled) {
+            return null;
+        }
         Path root = schematicRoot();
         List<String> bases = List.of(definition.template(), definition.id());
         List<String> extensions = List.of(".schem", ".schematic");
