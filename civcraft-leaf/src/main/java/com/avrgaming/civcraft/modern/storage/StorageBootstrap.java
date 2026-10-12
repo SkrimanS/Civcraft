@@ -236,6 +236,7 @@ public final class StorageBootstrap implements AutoCloseable {
                         started_at INTEGER,
                         finish_at INTEGER,
                         status TEXT NOT NULL,
+                        snapshot_ready INTEGER NOT NULL DEFAULT 0,
                         created_at INTEGER NOT NULL,
                         completed_at INTEGER,
                         FOREIGN KEY(builder_uuid) REFERENCES residents(uuid) ON DELETE CASCADE,
@@ -325,6 +326,7 @@ public final class StorageBootstrap implements AutoCloseable {
         addColumnIfMissing("structure_builds", "happiness", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing("structure_builds", "started_at", "INTEGER");
         addColumnIfMissing("structure_builds", "finish_at", "INTEGER");
+        addColumnIfMissing("structure_builds", "snapshot_ready", "INTEGER NOT NULL DEFAULT 0");
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS structure_chunks (
@@ -1279,6 +1281,58 @@ public final class StorageBootstrap implements AutoCloseable {
             } finally {
                 writeConnection.setAutoCommit(true);
             }
+        }
+    }
+
+    /**
+     * Write-ahead terrain journal. Flush and commit each batch *before* the
+     * corresponding build session mutates any block. INSERT OR IGNORE retains
+     * the original snapshot on a build that was resumed after a restart.
+     */
+    public void persistStructureSnapshot(long buildId, List<BlockBackup> originals, boolean complete) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement check = connection.prepareStatement("""
+                    SELECT status FROM structure_builds WHERE id = ?
+                    """)) {
+                check.setLong(1, buildId);
+                try (ResultSet rs = check.executeQuery()) {
+                    if (!rs.next() || !rs.getString(1).equalsIgnoreCase("BUILDING")) {
+                        throw new SQLException("Cannot snapshot cancelled or missing build #" + buildId);
+                    }
+                }
+            }
+            try (PreparedStatement insert = connection.prepareStatement("""
+                    INSERT OR IGNORE INTO structure_block_backups(build_id, world, x, y, z, block_data)
+                    VALUES(?, ?, ?, ?, ?, ?)
+                    """)) {
+                for (BlockBackup block : originals) {
+                    insert.setLong(1, buildId);
+                    insert.setString(2, block.world());
+                    insert.setInt(3, block.x());
+                    insert.setInt(4, block.y());
+                    insert.setInt(5, block.z());
+                    insert.setString(6, block.blockData());
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+            }
+            if (complete) {
+                try (PreparedStatement statement = connection.prepareStatement("""
+                        UPDATE structure_builds SET snapshot_ready = 1 WHERE id = ? AND status = 'BUILDING'
+                        """)) {
+                    statement.setLong(1, buildId);
+                    if (statement.executeUpdate() != 1) {
+                        throw new SQLException("Build was cancelled while snapshotting #" + buildId);
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 
