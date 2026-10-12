@@ -214,7 +214,7 @@ public final class BuildQueue {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    if (cancelRequested) {
+                    if (cancelRequested || (buildId > 0L && canceledBeforeStart.remove(buildId))) {
                         cleanupCanceledBuild();
                         if (buildId > 0L) {
                             activeBuilds.remove(buildId);
@@ -491,7 +491,7 @@ public final class BuildQueue {
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    if (cancelRequested) {
+                    if (cancelRequested || (buildId > 0L && canceledBeforeStart.remove(buildId))) {
                         cleanupCanceledBuild();
                         if (buildId > 0L) {
                             activeBuilds.remove(buildId);

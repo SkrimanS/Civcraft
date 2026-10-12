@@ -130,6 +130,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             }
         }
 
+        // Plugins using STARTUP loading run before worlds are available; defer
+        // restart recovery until normal server ticks begin.
+        getServer().getScheduler().runTaskLater(this, legacyStructures::recoverInterruptedBuilds, 40L);
         getLogger().info("CivCraft Paper 1.21.11 port foundation enabled.");
     }
 
