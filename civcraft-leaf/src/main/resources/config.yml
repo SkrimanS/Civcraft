@@ -34,6 +34,8 @@ settlements:
 claim-protection:
   # Prevent non-members from opening containers, doors, buttons and other block interfaces.
   prevent-foreign-interactions: true
+  # Prevent hoppers from extracting/depositing items across town claim boundaries.
+  prevent-cross-border-hoppers: true
   # Explosions outside a town cannot destroy claimed blocks.
   prevent-explosion-damage: true
   # Stop external fluids, fire, pistons and hostile entity block changes.

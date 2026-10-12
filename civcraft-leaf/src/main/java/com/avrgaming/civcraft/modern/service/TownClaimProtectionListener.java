@@ -22,6 +22,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -69,6 +70,32 @@ public final class TownClaimProtectionListener implements Listener {
         Location location = event.getInventory().getLocation();
         if (location != null) {
             protect(location, player, () -> event.setCancelled(true));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInventoryMove(InventoryMoveItemEvent event) {
+        if (!plugin.getConfig().getBoolean("claim-protection.prevent-cross-border-hoppers", true)) {
+            return;
+        }
+        Location source = event.getSource().getLocation();
+        Location destination = event.getDestination().getLocation();
+        if (source == null || destination == null) {
+            return;
+        }
+        try {
+            Optional<TownClaimRecord> from = claims.claimAt(source);
+            Optional<TownClaimRecord> to = claims.claimAt(destination);
+            if (from.isPresent() || to.isPresent()) {
+                if (from.isEmpty() || to.isEmpty() || from.get().townId() != to.get().townId()) {
+                    // Keep a city's automatic item transport inside its own
+                    // boundaries, even when an external hopper touches a chest.
+                    event.setCancelled(true);
+                }
+            }
+        } catch (SQLException exception) {
+            plugin.getLogger().warning("Unable to check hopper claim boundary: " + exception.getMessage());
+            event.setCancelled(true);
         }
     }
 
