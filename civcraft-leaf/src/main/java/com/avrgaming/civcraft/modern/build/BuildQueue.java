@@ -352,7 +352,12 @@ public final class BuildQueue {
 
         private void cleanupCanceledBuild() {
             restoreAllBedrockPreview();
-            restoreBackups();
+            // Journal-backed builds restore their original terrain in bounded
+            // batches from SQLite *after* this queue has stopped. Do not
+            // synchronously re-place hundreds of thousands of blocks here.
+            if (snapshotWriter == null || buildId <= 0L) {
+                restoreBackups();
+            }
             placedStructureBlocks.clear();
             placements.clear();
         }
@@ -618,7 +623,12 @@ public final class BuildQueue {
 
         private void cleanupCanceledBuild() {
             restoreAllBedrockPreview();
-            restoreBackups();
+            // Journal-backed builds restore their original terrain in bounded
+            // batches from SQLite *after* this queue has stopped. Do not
+            // synchronously re-place hundreds of thousands of blocks here.
+            if (snapshotWriter == null || buildId <= 0L) {
+                restoreBackups();
+            }
             placedStructureBlocks.clear();
             placements.clear();
         }
