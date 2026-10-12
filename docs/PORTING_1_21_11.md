@@ -103,3 +103,22 @@ Changes added after the earlier asset/structure work:
 - **After that milestone only**, reactivate CI, build the JAR, and perform server and gameplay tests on Paper 1.21.11.
 
 New stage-3 changes in this section have NOT been compiled or tested, per user instruction.
+
+
+## Stage 4 — multiplayer city and civilization membership (13 Oct 2026)
+
+Code only; tests and builds remain postponed until the first playable snapshot.
+
+- Persistent 24-hour single-use invitations in the SQLite settlement_invites table; expiry configurable 1–168 hours in settlements.invitation-expiration-hours.
+- A civilization leader can invite players to their civilization; a mayor can invite residents to a city (which also grants membership of that city's civilization).
+- Added /civ invite, join, leave, members, kick, setleader and /town invite, join, leave, members, kick, setmayor.
+- Invitations require online players. Kick and leadership transfer can target existing offline residents by their stored names.
+- Inviter's current office is verified again when the player accepts the invitation; accepts are transactional.
+- Players may belong to one civilization and one town. Existing camp affiliation blocks joining, foreign civilization membership blocks town joining.
+- Leaders and mayors cannot be kicked or leave until leadership is transferred to an existing member.
+- Claim block modification rights are now scoped to the owning town instead of the entire civilization.
+- Block interact, inventory open, buckets, pistons, external fluids, fire and explosion terrain damage are protected inside claims. Control these rules with claim-protection toggles.
+- New Russian help for /civ help and /town help, and tab completion for these commands.
+
+Still outstanding: missing large Capitol assets and other original templates, reliable recovery of in-progress structure builds across server restarts, deeper governance/culture/diplomacy/war.
+These Stage 4 source changes have not yet been compiled or tested by request.
