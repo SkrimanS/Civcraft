@@ -184,6 +184,17 @@ public final class StorageBootstrap implements AutoCloseable {
                     )
                     """);
             statement.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS settlement_invites (
+                        target_uuid TEXT NOT NULL,
+                        kind TEXT NOT NULL CHECK(kind IN ('CIV', 'TOWN')),
+                        settlement_id INTEGER NOT NULL,
+                        inviter_uuid TEXT NOT NULL,
+                        expires_at INTEGER NOT NULL,
+                        PRIMARY KEY(target_uuid, kind)
+                    )
+                    """);
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_settlement_invites_expiry ON settlement_invites(expires_at)");
+            statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS town_claims (
                         world TEXT NOT NULL,
                         chunk_x INTEGER NOT NULL,
@@ -430,6 +441,194 @@ public final class StorageBootstrap implements AutoCloseable {
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? Optional.of(mapCamp(rs)) : Optional.empty();
             }
+        }
+    }
+
+
+    /**
+     * Persistent, single-use invitation. One outstanding invitation per player
+     * and kind; newer invitations replace older ones. Caller checks roles.
+     */
+    public void issueSettlementInvite(UUID target, String kind, long settlementId, UUID inviter, long expiresAt) throws SQLException {
+        if (!kind.equals("CIV") && !kind.equals("TOWN")) {
+            throw new IllegalArgumentException("Invalid settlement invitation type");
+        }
+        try (PreparedStatement statement = connection.prepareStatement("""
+                INSERT INTO settlement_invites(target_uuid, kind, settlement_id, inviter_uuid, expires_at)
+                VALUES(?, ?, ?, ?, ?)
+                ON CONFLICT(target_uuid, kind) DO UPDATE SET
+                  settlement_id=excluded.settlement_id,
+                  inviter_uuid=excluded.inviter_uuid,
+                  expires_at=excluded.expires_at
+                """)) {
+            statement.setString(1, target.toString());
+            statement.setString(2, kind);
+            statement.setLong(3, settlementId);
+            statement.setString(4, inviter.toString());
+            statement.setLong(5, expiresAt);
+            statement.executeUpdate();
+        }
+    }
+
+    public String acceptSettlementInvite(UUID target, String kind) throws SQLException {
+        if (!kind.equals("CIV") && !kind.equals("TOWN")) {
+            throw new IllegalArgumentException("Invalid invitation type");
+        }
+        connection.setAutoCommit(false);
+        try {
+            long now = System.currentTimeMillis();
+            long settlementId;
+            String inviter;
+            try (PreparedStatement find = connection.prepareStatement("""
+                    SELECT settlement_id, inviter_uuid FROM settlement_invites
+                    WHERE target_uuid = ? AND kind = ? AND expires_at > ?
+                    """)) {
+                find.setString(1, target.toString());
+                find.setString(2, kind);
+                find.setLong(3, now);
+                try (ResultSet rs = find.executeQuery()) {
+                    if (!rs.next()) {
+                        throw new IllegalArgumentException("Приглашение отсутствует или истекло (24 часа).");
+                    }
+                    settlementId = rs.getLong("settlement_id");
+                    inviter = rs.getString("inviter_uuid");
+                }
+            }
+            String name;
+            long civId;
+            if (kind.equals("CIV")) {
+                try (PreparedStatement find = connection.prepareStatement(
+                        "SELECT name, leader_uuid FROM civilizations WHERE id = ?")) {
+                    find.setLong(1, settlementId);
+                    try (ResultSet rs = find.executeQuery()) {
+                        if (!rs.next() || !rs.getString("leader_uuid").equals(inviter)) {
+                            throw new IllegalArgumentException("Приглашение больше не действительно: лидер сменился.");
+                        }
+                        name = rs.getString("name");
+                    }
+                }
+                civId = settlementId;
+            } else {
+                try (PreparedStatement find = connection.prepareStatement(
+                        "SELECT name, civ_id, mayor_uuid FROM towns WHERE id = ?")) {
+                    find.setLong(1, settlementId);
+                    try (ResultSet rs = find.executeQuery()) {
+                        if (!rs.next() || !rs.getString("mayor_uuid").equals(inviter)) {
+                            throw new IllegalArgumentException("Приглашение больше не действительно: мэр сменился.");
+                        }
+                        name = rs.getString("name");
+                        civId = rs.getLong("civ_id");
+                    }
+                }
+            }
+            String sql = kind.equals("CIV")
+                    ? "UPDATE residents SET civ_id=?, updated_at=? WHERE uuid=? AND civ_id IS NULL AND camp_id IS NULL"
+                    : "UPDATE residents SET civ_id=?, town_id=?, updated_at=? WHERE uuid=? "
+                      + "AND town_id IS NULL AND camp_id IS NULL AND (civ_id IS NULL OR civ_id=?)";
+            try (PreparedStatement update = connection.prepareStatement(sql)) {
+                update.setLong(1, civId);
+                int idx = 2;
+                if (kind.equals("TOWN")) {
+                    update.setLong(idx++, settlementId);
+                }
+                update.setLong(idx++, now);
+                update.setString(idx++, target.toString());
+                if (kind.equals("TOWN")) {
+                    update.setLong(idx, civId);
+                }
+                if (update.executeUpdate() != 1) {
+                    throw new IllegalArgumentException("Сначала покиньте прежнее поселение или лагерь.");
+                }
+            }
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM settlement_invites WHERE target_uuid = ? AND kind = ?")) {
+                delete.setString(1, target.toString());
+                delete.setString(2, kind);
+                delete.executeUpdate();
+            }
+            // Accepting a town invitation makes a separate CIV invitation obsolete.
+            if (kind.equals("TOWN")) {
+                try (PreparedStatement delete = connection.prepareStatement(
+                        "DELETE FROM settlement_invites WHERE target_uuid = ? AND kind = 'CIV'")) {
+                    delete.setString(1, target.toString());
+                    delete.executeUpdate();
+                }
+            }
+            connection.commit();
+            return name;
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    public List<String> settlementMemberNames(String kind, long id) throws SQLException {
+        if (!kind.equals("CIV") && !kind.equals("TOWN")) {
+            throw new IllegalArgumentException("Invalid settlement type");
+        }
+        List<String> names = new ArrayList<>();
+        String sql = kind.equals("CIV")
+                ? "SELECT name FROM residents WHERE civ_id = ? ORDER BY name COLLATE NOCASE"
+                : "SELECT name FROM residents WHERE town_id = ? ORDER BY name COLLATE NOCASE";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, id);
+            try (ResultSet rs = statement.executeQuery()) {
+                while (rs.next()) {
+                    names.add(rs.getString(1));
+                }
+            }
+        }
+        return names;
+    }
+
+    /**
+     * This is a membership change, not settlement destruction. Founders and
+     * mayors are protected by an ownership predicate inside the UPDATE.
+     */
+    public void removeSettlementMember(UUID player, String kind, long settlementId) throws SQLException {
+        if (!kind.equals("CIV") && !kind.equals("TOWN")) {
+            throw new IllegalArgumentException("Invalid settlement type");
+        }
+        connection.setAutoCommit(false);
+        try {
+            String sql = kind.equals("TOWN")
+                    ? """
+                      UPDATE residents SET town_id=NULL, updated_at=? WHERE uuid=? AND town_id=?
+                      AND NOT EXISTS(SELECT 1 FROM towns WHERE id=? AND mayor_uuid=?)
+                      """
+                    : """
+                      UPDATE residents SET town_id=NULL, civ_id=NULL, updated_at=? WHERE uuid=? AND civ_id=?
+                      AND NOT EXISTS(SELECT 1 FROM civilizations WHERE id=? AND leader_uuid=?)
+                      AND NOT EXISTS(SELECT 1 FROM towns WHERE civ_id=? AND mayor_uuid=?)
+                      """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setLong(1, System.currentTimeMillis());
+                statement.setString(2, player.toString());
+                statement.setLong(3, settlementId);
+                statement.setLong(4, settlementId);
+                statement.setString(5, player.toString());
+                if (kind.equals("CIV")) {
+                    statement.setLong(6, settlementId);
+                    statement.setString(7, player.toString());
+                }
+                if (statement.executeUpdate() != 1) {
+                    throw new IllegalArgumentException(
+                            "Игрок не состоит в поселении, либо является лидером/мэром. Передача прав пока недоступна.");
+                }
+            }
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM settlement_invites WHERE target_uuid = ?")) {
+                statement.setString(1, player.toString());
+                statement.executeUpdate();
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 
