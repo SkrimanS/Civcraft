@@ -80,3 +80,26 @@ The source data is pinned to Ichi667 commit `1ee4a0f180aaa5dd230200f70e8ae6a32eb
 Start the tests only when normal /build placement, foundation item flow, structure templates, basic civilization/town progression, research, economy and persistence are developed enough for the first playable snapshot. Before that milestone do not label any of the new changes above as runtime-verified.
 
 The tests listed earlier document the requirements; they are intentionally on hold.
+
+
+## Stage 3 continuation — foundation and progression code (13 October 2026; UNTESTED)
+
+Changes added after the earlier asset/structure work:
+
+- \`FoundationItemFactory\` creates three native, server-signed (namespaced PDC) items for camp, civilization and town foundations. Existing MMOItems item matching is retained. The item name or material alone does not authorize founding.
+- Operator/permission-gated \`/civadmin foundation give <player> <camp|civilization|town> [1-64]\` provides items to online players without requiring MMOItems.
+- \`/civadmin funds give <player> <amount>\` allows authorized administrators to provision a developing world, with an upper limit of 10,000,000 per command and local/Vault economy support.
+- Failed foundation placement now refunds founding costs after a successfully created camp, town or civilization is rolled back. A normal plugin shutdown returns unconfirmed foundation items still pending in online inventories.
+- A civilization with at least one town receives baseline science from the existing \`technologies.base-beakers-per-minute\` and \`town-beakers-per-minute\` settings. Research no longer deadlocks at zero science before the first library. \`/research rate\` shows effective beakers/hour.
+- The building economy now pays completed structure production to town treasuries every minute. Per-town fractional carry persists in an \`income_remainder\` SQLite column. Payments are transactional and have no offline catch-up. Controlled by \`economy.production.enabled\`.
+- Only a mayor (or a CivCraft administrator) can claim or release town chunks. Releasing a foreign or unclaimed chunk is rejected before mutation.
+
+### Remaining features before the first playable milestone
+
+- Integrate the large default Capitol template into a comfortable install flow (currently downloaded separately through the importer).
+- Complete and review the settlement foundation flow and construction lifecycle, including safe cancellation and error recovery.
+- Complete multiplayer town/civilization member permissions, technology and resource economy progression, and protection against item dupes.
+- Complete first-playable game content and default configuration for a new world.
+- **After that milestone only**, reactivate CI, build the JAR, and perform server and gameplay tests on Paper 1.21.11.
+
+New stage-3 changes in this section have NOT been compiled or tested, per user instruction.
