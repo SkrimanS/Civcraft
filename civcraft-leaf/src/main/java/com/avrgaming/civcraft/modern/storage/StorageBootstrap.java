@@ -1068,7 +1068,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 SELECT sb.*, t.name AS town_name
                 FROM structure_builds sb
                 LEFT JOIN towns t ON t.id = sb.town_id
-                WHERE sb.town_id = ? AND sb.status NOT IN ('COMPLETE', 'CANCELLED', 'DEMOLISHED')
+                WHERE sb.town_id = ? AND sb.status IN ('QUEUED', 'BUILDING')
                 ORDER BY sb.created_at DESC
                 LIMIT 1
                 """)) {
@@ -1095,6 +1095,81 @@ public final class StorageBootstrap implements AutoCloseable {
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? Optional.of(mapStructureBuildView(rs, chunkX, chunkZ)) : Optional.empty();
             }
+        }
+    }
+
+    /**
+     * Atomic idempotency boundary: take one refund only when transitioning from
+     * QUEUED to ROLLBACK_PENDING. Keep claims locked and original snapshots
+     * intact until world blocks have been restored.
+     */
+    public void requestStructureRollback(long buildId, long townId, long refund) throws SQLException {
+        if (refund < 0L) {
+            throw new SQLException("Refund must be non-negative");
+        }
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    UPDATE structure_builds
+                    SET status = 'ROLLBACK_PENDING'
+                    WHERE id = ? AND town_id = ? AND status = 'QUEUED'
+                    """)) {
+                statement.setLong(1, buildId);
+                statement.setLong(2, townId);
+                if (statement.executeUpdate() != 1) {
+                    throw new IllegalArgumentException("Стройка уже отменена или завершена.");
+                }
+            }
+            if (refund > 0L) {
+                try (PreparedStatement update = connection.prepareStatement(
+                        "UPDATE towns SET coins = coins + ? WHERE id = ?")) {
+                    update.setLong(1, refund);
+                    update.setLong(2, townId);
+                    if (update.executeUpdate() != 1) {
+                        throw new SQLException("Town not found while refunding cancelled structure #" + buildId);
+                    }
+                }
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+
+    /** Mark a rollback complete only after terrain restoration has finished. */
+    public void finishStructureRollback(long buildId) throws SQLException {
+        connection.setAutoCommit(false);
+        try {
+            try (PreparedStatement update = connection.prepareStatement("""
+                    UPDATE structure_builds
+                    SET status = 'CANCELLED', completed_at = ?
+                    WHERE id = ? AND status = 'ROLLBACK_PENDING'
+                    """)) {
+                update.setLong(1, System.currentTimeMillis());
+                update.setLong(2, buildId);
+                if (update.executeUpdate() != 1) {
+                    throw new SQLException("Structure rollback is not pending: " + buildId);
+                }
+            }
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM protected_blocks WHERE build_id = ?")) {
+                delete.setLong(1, buildId);
+                delete.executeUpdate();
+            }
+            try (PreparedStatement delete = connection.prepareStatement(
+                    "DELETE FROM structure_chunks WHERE build_id = ?")) {
+                delete.setLong(1, buildId);
+                delete.executeUpdate();
+            }
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 
@@ -1343,7 +1418,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public record InterruptedBuild(long id, String world, int x, int y, int z,
+    public record InterruptedBuild(long id, String status, String world, int x, int y, int z,
                                    String templatePath, long finishAt, boolean journalStarted,
                                    boolean snapshotReady) {
     }
@@ -1351,16 +1426,16 @@ public final class StorageBootstrap implements AutoCloseable {
     public List<InterruptedBuild> interruptedStructureBuilds() throws SQLException {
         List<InterruptedBuild> interrupted = new ArrayList<>();
         try (PreparedStatement query = connection.prepareStatement("""
-                SELECT id, world, x, y, z, template_path, finish_at,
+                SELECT id, status, world, x, y, z, template_path, finish_at,
                        journal_started, snapshot_ready
                 FROM structure_builds
-                WHERE status IN ('QUEUED', 'BUILDING')
+                WHERE status IN ('QUEUED', 'BUILDING', 'ROLLBACK_PENDING')
                 ORDER BY id ASC
                 """);
              ResultSet rs = query.executeQuery()) {
             while (rs.next()) {
                 interrupted.add(new InterruptedBuild(
-                        rs.getLong("id"), rs.getString("world"),
+                        rs.getLong("id"), rs.getString("status"), rs.getString("world"),
                         rs.getInt("x"), rs.getInt("y"), rs.getInt("z"),
                         rs.getString("template_path"), rs.getLong("finish_at"),
                         rs.getInt("journal_started") != 0,
