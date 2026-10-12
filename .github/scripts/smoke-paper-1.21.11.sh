@@ -37,6 +37,20 @@ wait_for_plugin() {
 echo "Checking first boot..."
 wait_for_plugin
 docker exec civcraft-smoke rcon-cli "civadmin integrations" > smoke-output/integrations.txt
+if grep -qi "только игроку" smoke-output/integrations.txt; then
+  echo "Admin integrations command still rejects server console" >&2
+  exit 1
+fi
+if ! grep -q "CivCraft" smoke-output/integrations.txt; then
+  echo "Admin integrations command did not return integration details" >&2
+  cat smoke-output/integrations.txt
+  exit 1
+fi
+docker exec civcraft-smoke rcon-cli "civadmin reload" > smoke-output/reload.txt
+if grep -qi "только игроку" smoke-output/reload.txt; then
+  echo "Admin reload command still rejects server console" >&2
+  exit 1
+fi
 test -s smoke-data/plugins/CivCraft/config.yml
 test -s smoke-data/plugins/CivCraft/civcraft/data/techs.yml
 test -s smoke-data/plugins/CivCraft/civcraft/data/structures.yml

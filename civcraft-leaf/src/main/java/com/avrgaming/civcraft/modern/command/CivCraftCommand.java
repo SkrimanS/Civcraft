@@ -106,8 +106,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 case "civadmin" -> {
-                    Player player = requirePlayer(sender);
-                    handleCivAdmin(player, effectiveArgs);
+                    handleCivAdmin(sender, effectiveArgs);
                     return true;
                 }
                 default -> {
@@ -249,9 +248,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         helpBuild(player);
     }
 
-    private void handleCivAdmin(Player player, String[] args) throws IOException, SQLException {
-        if (!player.isOp()) {
-            throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только OP-игроку."));
+    private void handleCivAdmin(CommandSender sender, String[] args) throws IOException, SQLException {
+        if (!sender.hasPermission("civcraft.admin")) {
+            throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только администратору."));
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("reload")) {
             plugin.reloadModernConfig();
@@ -261,32 +260,31 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             research.updateSettings(plugin.settings());
             townClaims.updateSettings(plugin.settings());
             plugin.reloadIntegrations();
-            if (campNpcMenus != null) {
-                campNpcMenus.reloadEverything();
-            }
-            success(player, msg("commands.admin.reload", "Конфигурация перезагружена."));
+            // reloadModernConfig() already refreshed campNpcMenus.
+            success(sender, msg("commands.admin.reload", "Конфигурация перезагружена."));
             return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("integrations")) {
-            send(player, msg("commands.admin.integrations-header", "&eИнтеграции CivCraft:"));
-            plugin.integrations().statusLines().forEach(line -> player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(line)));
+            send(sender, msg("commands.admin.integrations-header", "&eИнтеграции CivCraft:"));
+            plugin.integrations().statusLines().forEach(line -> sender.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(line)));
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("npc") && args[2].equalsIgnoreCase("reload")) {
             if (campNpcMenus != null) {
                 campNpcMenus.reloadEverything();
             }
-            success(player, msg("commands.admin.npc-reload", "Camp NPC menus перезагружены."));
+            success(sender, msg("commands.admin.npc-reload", "Camp NPC menus перезагружены."));
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("build")) {
+            Player player = requirePlayer(sender);
             int y = args.length >= 4 ? parseBuildY(player, args[3]) : player.getLocation().getBlockY();
             String rotation = args.length >= 5 ? parseRotation(args[4]) : "0";
             QueuedLegacyBuild build = legacyStructures.buildAdminLegacy(player, args[2], y, rotation);
             success(player, msg("commands.admin.build-started", "Legacy .def постройка #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}", "id", build.id(), "blocks", build.queuedBlocks(), "size_x", build.sizeX(), "size_y", build.sizeY(), "size_z", build.sizeZ()));
             return;
         }
-        helpAdmin(player);
+        helpAdmin(sender);
     }
 
     private void handleResearch(Player player, String[] args) throws SQLException {
@@ -332,13 +330,13 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    private void helpAdmin(Player player) {
+    private void helpAdmin(CommandSender sender) {
         for (String line : lang.list("commands.help.admin", List.of(
                 "&e/civadmin reload&7 - перезагрузить конфиги",
                 "&e/civadmin integrations&7 - статус интеграций",
                 "&e/civadmin npc reload&7 - перезагрузить NPC/GUI лагерей",
                 "&e/civadmin build <file> [y] [0|90|180|270]&7 - legacy .def сборка"))) {
-            send(player, line);
+            send(sender, line);
         }
     }
 
