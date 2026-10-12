@@ -24,6 +24,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -450,6 +451,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin, template);
         validateChunkSolidSupport(origin, template, chunks);
+        rejectExistingTileEntities(origin, template.sizeY(), chunks);
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -526,6 +528,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin.getWorld().getName(), origin.getBlockX(), origin.getBlockZ(), template.sizeX(), template.sizeZ());
         validateChunkSolidSupport(origin, template.sizeY(), chunks);
+        rejectExistingTileEntities(origin, template.sizeY(), chunks);
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -654,6 +657,36 @@ public final class LegacyStructureService {
             storage.depositTown(town.id(), refund);
         }
         return new DemolishBuildResult(build, refund);
+    }
+
+    /**
+     * BlockData cannot preserve chest inventories, sign NBT or spawner data.
+     * Reject those areas BEFORE taking building money or clearing chunks.
+     * Later versions can allow them once an NBT-aware journal exists.
+     */
+    private void rejectExistingTileEntities(Location origin, int sizeY,
+                                            List<StructureChunkCoord> chunks) {
+        if (!plugin.getConfig().getBoolean("structures.protect-existing-tile-entities", true)) {
+            return;
+        }
+        World world = origin.getWorld();
+        if (world == null) {
+            throw new IllegalArgumentException("Мир для постройки не загружен.");
+        }
+        int minY = origin.getBlockY();
+        int maxY = minY + sizeY - 1;
+        for (StructureChunkCoord coord : chunks) {
+            for (BlockState state : world.getChunkAt(coord.chunkX(), coord.chunkZ()).getTileEntities()) {
+                int y = state.getY();
+                if (y >= minY && y <= maxY) {
+                    throw new IllegalArgumentException(
+                            "В области постройки находится блок с сохраняемыми данными: "
+                                    + state.getBlock().getType() + " (" + state.getX()
+                                    + ", " + y + ", " + state.getZ()
+                                    + "). Перенесите его до строительства.");
+                }
+            }
+        }
     }
 
     private void restoreBlockBackups(List<BlockBackup> backups) {
