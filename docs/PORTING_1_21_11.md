@@ -16,7 +16,7 @@ This is a source port, NOT a verified full recreation of CivCraft 2.0 mechanics.
 - Replaced the local binary FAWE JAR compile dependency with Maven-managed WorldEdit API.
 - Updated `plugin.yml` and packaged 28 original gameplay data/config files.
 - Extracts gameplay definition files into `plugins/CivCraft/civcraft/data` on first startup.
-- GitHub Actions packages the plugin and checks resources are present.
+- GitHub Actions packages the plugin and checks resources are present (currently manual-only until the first playable testing milestone).
 
 ## Local build
 ```bash
@@ -48,7 +48,35 @@ Do not use this development snapshot on a production server until those checks p
 ## Known major gaps
 
 - This is **not** a feature-complete CivCraft 2.0 rebuild; wars, diplomacy, culture, wonders and victory mechanics remain incomplete.
-- Original building templates in the upstream `civcraft_data/templates` tree include 1,274 `.def` files (~594 MB). They have not been bundled into this modern port; regular building requires migrated `.schem` assets and gameplay testing.
+- Original building templates include 1,274 `.def` files (~594 MB). A small pack of 24 original building files (camp, town hall, cottage, library, bank and mine, four rotations each) is now bundled and extracted automatically. Remaining templates, including the multi-megabyte Capitol, are imported with `tools/import-legacy-templates.py`.
+- Normal structures now use `.schem` when WorldEdit/FAWE is installed, and fall back to original directional `.def` via the existing tick-limited block queue. New parser guards validate dimensions and duplicate coordinates.
 - The default economy uses local SQLite without Vault/ExcellentEconomy installed; compatibility must be tested separately.
 - FancyNpcs, MMOItems, MythicMobs, WorldEdit/FAWE integrations and NPC/foundation gameplay are still unverified.
 - The CI server uses offline mode **only inside isolated GitHub Actions** and exposes the Minecraft port on loopback for its test client; do not copy its security settings to production.
+
+## Stage 3: first playable version (WORK IN PROGRESS — no tests)
+
+By user request (12 October 2026), automatic push and PR testing is PAUSED until a first coherent test version is available. The GitHub Actions workflow has only a `workflow_dispatch` manual trigger. Do not start intermediate CI or game checks.
+
+Code added since the last validated smoke test:
+- Manifest-driven first-run extraction of 24 original directional building templates for the default theme.
+- Pure Paper .def fallback for normal buildings, previews, camps and foundation items without WorldEdit.
+- Preserved priority of modern WorldEdit .schem assets where available.
+- Safety bounds for malformed .def coordinates, duplicate blocks and unrealistic sizes; lazy load instead of preloading hundreds of MB.
+- Added missing legacy numeric block conversions used by original buildings.
+- Building research prerequisites checked before preview and actual placement.
+- Per-town building limits from original `structures.yml` are enforced; zero means unlimited.
+- Verified-upstream importer (SHA checks) supports remaining Capitols, any theme or all 1,274 files.
+
+Install the external Capitol assets from the **repository root** while targeting your Minecraft server folder:
+```bash
+python tools/import-legacy-templates.py --scope capitals --destination /path/to/server/plugins/CivCraft/legacy-templates
+```
+
+The source data is pinned to Ichi667 commit `1ee4a0f180aaa5dd230200f70e8ae6a32eb9bc9c`. No network activity is performed by the plugin itself.
+
+### Planned testing milestone
+
+Start the tests only when normal /build placement, foundation item flow, structure templates, basic civilization/town progression, research, economy and persistence are developed enough for the first playable snapshot. Before that milestone do not label any of the new changes above as runtime-verified.
+
+The tests listed earlier document the requirements; they are intentionally on hold.
