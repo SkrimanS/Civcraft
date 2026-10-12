@@ -348,6 +348,16 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleResearch(Player player, String[] args) throws SQLException {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("rate")) {
+            ResidentProfile resident = game.resident(player);
+            if (resident.civId() == null) {
+                throw new IllegalArgumentException("Для исследований требуется цивилизация.");
+            }
+            double perHour = research.effectiveSciencePerHour(resident.civId());
+            send(player, "&6Производство науки цивилизации: &e" + formatNumber(perHour)
+                    + " колбочек/час &7(" + formatNumber(perHour / 60.0) + " в минуту)");
+            return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("list")) {
             List<String> techs = research.listTechs(25).stream()
                     .map(tech -> tech.id() + "(" + tech.name() + ", beakers=" + tech.beakerCost() + ", coins=" + tech.coinCost() + ")")
@@ -523,7 +533,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return List.of("list", "cancel", "demolish", "info", "time", "s_townhall", "s_capitol");
         }
         if (List.of("research", "tech").contains(primary) && args.length == 1) {
-            return List.of("list", "start", "status");
+            return List.of("list", "start", "status", "rate");
         }
         if (List.of("camp", "c").contains(primary) && args.length == 1) {
             return campService.completions(1);
