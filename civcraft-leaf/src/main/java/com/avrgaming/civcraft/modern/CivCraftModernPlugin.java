@@ -60,6 +60,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         saveResourceIfMissing("messages.yml");
+        for (String legacyConfig : List.of("arena.yml", "buffs.yml", "camp.yml", "civ.yml", "culture.yml", "enchantments.yml", "espionage.yml", "fishing.yml", "goods.yml", "governments.yml", "happiness.yml", "market.yml", "materials.yml", "nocheat.yml", "perks.yml", "randomevents.yml", "score.yml", "spawners.yml", "structures.yml", "techs.yml", "teleportsOff.txt", "teleportsOn.txt", "tips.txt", "town.yml", "units.yml", "war.txt", "war.yml", "wonders.yml")) {
+            saveResourceIfMissing("civcraft/data/" + legacyConfig);
+        }
 
         reloadModernConfig();
         ensureBuildingsFolder();

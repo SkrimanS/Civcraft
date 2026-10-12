@@ -3,7 +3,7 @@ main: com.avrgaming.civcraft.modern.CivCraftModernPlugin
 version: 2.0.0-1.21.11-SNAPSHOT
 api-version: '1.21.11'
 authors: [AvRGaming, MineTexas, CivCraft Port Team]
-description: Modern Leaf 1.21.11 playable CivCraft port.
+description: Modern CivCraft port targeting Paper and compatible Leaf 1.21.11 servers.
 load: STARTUP
 softdepend:
   - MythicMobs
