@@ -50,7 +50,7 @@ public final class LegacyStructureService {
         this.game = game;
         this.settings = settings;
         this.definitions = new StructureDefinitionService(plugin, settings);
-        this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick());
+        this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick(), storage::persistStructureSnapshot);
         warmupTemplateCacheAsync();
     }
 
