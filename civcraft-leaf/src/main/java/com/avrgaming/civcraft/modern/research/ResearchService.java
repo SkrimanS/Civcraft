@@ -79,7 +79,7 @@ public final class ResearchService {
                 throw new IllegalArgumentException("Не изучена обязательная технология: " + required);
             }
         }
-        double beakersPerHour = storage.civBeakersPerHour(civId);
+        double beakersPerHour = effectiveSciencePerHour(civId);
         if (beakersPerHour <= 0.0) {
             throw new IllegalArgumentException("У цивилизации нет производства колбочек.");
         }
@@ -93,6 +93,22 @@ public final class ResearchService {
         return definition;
     }
 
+    /**
+     * Every civilization with at least one town receives the configurable
+     * baseline science. This avoids a deadlock where the first library requires
+     * research but a newly founded town generates zero beakers.
+     */
+    public double effectiveSciencePerHour(long civId) throws SQLException {
+        int towns = storage.civTownCount(civId);
+        if (towns <= 0) {
+            return 0.0;
+        }
+        double generated = storage.civBeakersPerHour(civId);
+        double baselinePerMinute = Math.max(0.0, settings.baseBeakersPerMinute())
+                + towns * Math.max(0.0, settings.townBeakersPerMinute());
+        return Math.max(0.0, generated) + baselinePerMinute * 60.0;
+    }
+
     public void tick() {
         if (!storage.isReady()) {
             return;
@@ -104,7 +120,7 @@ public final class ResearchService {
                     plugin.getLogger().warning("Skipping unknown active CivCraft research: " + research.techId());
                     continue;
                 }
-                double beakersPerHour = storage.civBeakersPerHour(research.civId());
+                double beakersPerHour = effectiveSciencePerHour(research.civId());
                 if (beakersPerHour <= 0.0) {
                     continue;
                 }

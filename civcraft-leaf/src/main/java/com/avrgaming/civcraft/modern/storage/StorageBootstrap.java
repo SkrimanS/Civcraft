@@ -1196,6 +1196,16 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
 
+    public int civTownCount(long civId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT COUNT(*) FROM towns WHERE civ_id = ?")) {
+            statement.setLong(1, civId);
+            try (ResultSet rs = statement.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     public double civBeakersPerHour(long civId) throws SQLException {
         List<TownBaseProduction> towns = townBaseProductions(civId);
         double total = 0.0;
