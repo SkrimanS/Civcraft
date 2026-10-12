@@ -158,6 +158,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             success(player, "Вы покинули цивилизацию.");
             return;
         }
+        if (args.length >= 3 && args[1].equalsIgnoreCase("setleader")) {
+            memberships.transferCivilizationLeadership(player, args[2]);
+            success(player, "Новый лидер цивилизации: " + args[2]);
+            return;
+        }
         if (args.length >= 3 && args[1].equalsIgnoreCase("kick")) {
             memberships.kickCivilization(player, args[2]);
             success(player, "Игрок " + args[2] + " исключён из цивилизации.");
@@ -209,6 +214,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && args[1].equalsIgnoreCase("leave")) {
             memberships.leaveTown(player);
             success(player, "Вы покинули город. Гражданство цивилизации сохранено.");
+            return;
+        }
+        if (args.length >= 3 && args[1].equalsIgnoreCase("setmayor")) {
+            memberships.transferTownMayorship(player, args[2]);
+            success(player, "Новый мэр города: " + args[2]);
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("kick")) {
@@ -602,10 +612,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "deposit", "withdraw");
+            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("create", "info", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {
