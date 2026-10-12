@@ -1225,7 +1225,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     public void completeStructureBuild(long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status <> 'CANCELLED'")) {
+        try (PreparedStatement statement = connection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status IN ('QUEUED', 'BUILDING')")) {
             statement.setLong(1, System.currentTimeMillis());
             statement.setLong(2, id);
             statement.executeUpdate();
@@ -1260,8 +1260,16 @@ public final class StorageBootstrap implements AutoCloseable {
                             INSERT OR REPLACE INTO protected_blocks(world, x, y, z, build_id, material)
                             VALUES(?, ?, ?, ?, ?, ?)
                             """);
-                    PreparedStatement complete = writeConnection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status <> 'CANCELLED'")
+                    PreparedStatement complete = writeConnection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status IN ('QUEUED', 'BUILDING')")
             ) {
+                // Claim completion at transaction start. If a cancellation
+                // already won, never resurrect protected blocks or status.
+                complete.setLong(1, System.currentTimeMillis());
+                complete.setLong(2, buildId);
+                if (complete.executeUpdate() != 1) {
+                    writeConnection.rollback();
+                    return;
+                }
                 int batchSize = Math.max(1, settings.maxDatabaseWritesPerTick());
                 int pending = 0;
                 for (BlockPlacement placement : placements) {
@@ -1281,9 +1289,6 @@ public final class StorageBootstrap implements AutoCloseable {
                 if (pending > 0) {
                     insert.executeBatch();
                 }
-                complete.setLong(1, System.currentTimeMillis());
-                complete.setLong(2, buildId);
-                complete.executeUpdate();
                 writeConnection.commit();
             } catch (SQLException exception) {
                 writeConnection.rollback();
@@ -1308,8 +1313,16 @@ public final class StorageBootstrap implements AutoCloseable {
                             INSERT OR REPLACE INTO protected_blocks(world, x, y, z, build_id, material)
                             VALUES(?, ?, ?, ?, ?, ?)
                             """);
-                    PreparedStatement complete = writeConnection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status <> 'CANCELLED'")
+                    PreparedStatement complete = writeConnection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status IN ('QUEUED', 'BUILDING')")
             ) {
+                // Claim completion at transaction start. If a cancellation
+                // already won, never resurrect protected blocks or status.
+                complete.setLong(1, System.currentTimeMillis());
+                complete.setLong(2, buildId);
+                if (complete.executeUpdate() != 1) {
+                    writeConnection.rollback();
+                    return;
+                }
                 int batchSize = Math.max(1, settings.maxDatabaseWritesPerTick());
                 int pendingBackups = 0;
                 for (BlockBackup backup : backups) {
@@ -1348,9 +1361,6 @@ public final class StorageBootstrap implements AutoCloseable {
                 if (pending > 0) {
                     insert.executeBatch();
                 }
-                complete.setLong(1, System.currentTimeMillis());
-                complete.setLong(2, buildId);
-                complete.executeUpdate();
                 writeConnection.commit();
             } catch (SQLException exception) {
                 writeConnection.rollback();
