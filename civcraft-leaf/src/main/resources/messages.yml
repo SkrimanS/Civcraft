@@ -1,0 +1,111 @@
+camp:
+  common:
+    none: '-'
+    'true': '&aКуплено'
+    'false': '&cНе куплено'
+
+  error-format: '&7[&6CivCraft&7] {error}'
+
+  greeting:
+    title: '§6Лагерь §e{name}'
+    subtitle: ''
+
+  help:
+    header: '§6Команды лагеря:'
+    info: '§e/c info §7- информация о лагере'
+    invite: '§e/c invite <ник> §7- пригласить игрока'
+    kick: '§e/c kick <ник> §7- кикнуть игрока'
+    promote: '§e/c promote <ник> §7- повысить участника до старосты'
+    lower: '§e/c lower <ник> §7- понизить старосту до участника'
+    setleader: '§e/c setleader <ник> §7- передать лидерство'
+    disband: '§e/c disband §7- распустить лагерь'
+    leave: '§e/c leave §7- выйти из лагеря'
+    tp: '§e/c tp §7- телепортироваться в лагерь. Имеет перезарядку 30 минут'
+    upgrade: '§e/c upgrade farm / breaker §7- купить улучшение. Стоимость 2500 монет'
+
+  info:
+    header: '§6Лагерь: §e{name}'
+    leader: '§7Лидер: §e{leader}'
+    elders: '§7Старосты: §e{elders}'
+    members: '§7Участники: §e{members}'
+    level: '§7Уровень: §e{level}§7, опыт: §e{experience}/{next}'
+    bread: '§7Хлеб в час: §e{bread}§7, жителей: §e{members}'
+    control: '§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}'
+    leadership: '§7Очки лидерства: §e{points}/24'
+    upgrades: '§7Улучшения: farm={farm}, breaker={breaker}'
+
+  promote:
+    success: '&aИгрок повышен до старосты.'
+  lower:
+    success: '&eИгрок понижен до участника.'
+  setleader:
+    success: '&eГлава лагеря передан игроку {player}.'
+
+  invite:
+    received: '§eВас пригласили в лагерь {camp}'
+    accept-button: '&7[&aПринять&7]'
+    decline-button: '&7[&cОтклонить&7]'
+    sent: '&eПриглашение отправлено.'
+    accepted: '&aВы вступили в лагерь {camp}.'
+    declined: '&cПриглашение отклонено.'
+
+  kick:
+    target: '&cВас исключили из лагеря.'
+    success: '&cИгрок исключен из лагеря.'
+  leave:
+    success: '&cВы вышли из лагеря.'
+
+  disband:
+    confirm: '&eНапишите &6&lyes&e в чат, чтобы распустить лагерь. Напишите &6&lno&e, чтобы отменить.'
+    confirm-again: '&eНапишите &6&lyes&e для роспуска лагеря или &6&lno&e для отмены.'
+    cancelled: '&cРоспуск лагеря отменен.'
+    success: '&eЛагерь распущен.'
+
+  teleport:
+    success: '&eТелепортация в лагерь.'
+
+  upgrade:
+    success: '&eУлучшение {upgrade} куплено.'
+
+  production:
+    notify: '§6Лагерь §e{camp} §6получил §e{experience} §6опыта. Потрачено хлеба: §e{bread}§6. Главарь получил §e{money} §6монет.'
+
+  control:
+    locked: '&eКонтрольный блок лагеря будет доступен для атаки через {time}.'
+    hit: '&cКонтрольный блок лагеря: {hp}/{max_hp} HP.'
+    destroyed: '&cКонтрольный блок лагеря разрушен.'
+    hologram: '§cКонтрольный блок: {hp}/{max_hp} HP'
+
+  raid:
+    available: '&aдоступен'
+    left: 'через {time}'
+
+  destroyed:
+    title: '&cЛагерь разрушен'
+    subtitle: ''
+
+  access:
+    containers: '&cОткрывать сундуки и печки лагеря могут только участники лагеря.'
+    doors: '&cОткрывать двери лагеря могут только участники лагеря.'
+
+  error:
+    specify-player: '&cУкажите ник игрока.'
+    specify-upgrade: '&cУкажите улучшение: farm / breaker.'
+    camp-not-found: '&cЛагерь не найден.'
+    promote-member-only: '&cПовысить можно только участника.'
+    lower-elder-only: '&cПонизить можно только старосту.'
+    target-already-group: '&cИгрок уже состоит в лагере или цивилизации.'
+    no-invite: '&cАктивного приглашения нет.'
+    self-already-group: '&cВы уже состоите в лагере или цивилизации.'
+    kick-leader: '&cЛидера нельзя кикнуть.'
+    kick-elder-leader-only: '&cСтаросту может кикнуть только лидер.'
+    leader-cannot-leave: '&cЛидер не может выйти из лагеря. Передайте лидерство или распустите лагерь.'
+    teleport-cooldown: '&cТелепорт будет доступен через {minutes}м {seconds}с.'
+    world-not-found: '&cМир лагеря не найден.'
+    invalid-upgrade: '&cИспользуйте /camp upgrade farm / breaker.'
+    not-in-camp: '&cВы не состоите в лагере.'
+    no-permission: '&cНедостаточно прав в лагере.'
+    elder-only: '&cКоманда доступна только лидеру или старостам.'
+    player-in-civ: '&cИгрок состоит в цивилизации.'
+    not-same-camp: '&cИгрок не из вашего лагеря.'
+    upgrade-owned: '&cУлучшение уже куплено.'

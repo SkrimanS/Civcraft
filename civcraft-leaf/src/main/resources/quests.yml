@@ -1,0 +1,231 @@
+settings:
+  # Сколько квестов показывать для одного уровня лагеря.
+  # Если в levels.<level> настроено больше, лишние не попадут в меню.
+  max-visible-per-level: 21
+
+# Логика уровней:
+# - лагерь 1 уровня видит и выполняет только quests из levels.'1'
+# - лагерь 2 уровня видит и выполняет только quests из levels.'2'
+# - старые квесты после повышения уровня больше не отображаются и не принимают прогресс
+# - выбора активных квестов нет, все квесты текущего уровня доступны сразу
+#
+# Типы objective:
+# ITEM_DELIVERY - сдача предметов через меню квестов
+# MOB_KILL - убийство ванильных entity-types и/или MythicMobs
+# LOCATION_VISIT - поход в координаты; координаты показываются через {coordinates}
+#
+# Типы rewards:
+# MONEY, VANILLA_ITEM/ITEM, ITEMSADDER, MMOITEMS, CIVCRAFT_ITEM, CAMP_EXPERIENCE, CONTROL_HP,
+# UPGRADE, HEALTH_BONUS, DAMAGE_BONUS, COMMAND
+#
+# Награда CivCraft item из папки custom-items:
+# rewards:
+#   - type: CIVCRAFT_ITEM
+#     id: bronze_sword
+#     amount: 1
+levels:
+  '1':
+    sugar_cane_640:
+      title: 'Собрать 640 тростника'
+      description: 'Собрано {progress}/{target} тростника'
+      objective:
+        type: ITEM_DELIVERY
+        target: 640
+        accepted-items:
+          - material: SUGAR_CANE
+      icon:
+        material: SUGAR_CANE
+        name: '&aСобрать 640 тростника'
+        lore:
+          - '&7Собрано: &e{progress}/{target} &7тростника'
+          - '&7Сдавать могут все участники лагеря.'
+          - '&aЛКМ, чтобы сдать предметы.'
+      rewards:
+        - type: MONEY
+          amount: 250
+        - type: CAMP_EXPERIENCE
+          amount: 50
+        - type: VANILLA_ITEM
+          material: BREAD
+          amount: 16
+        - type: CIVCRAFT_ITEM
+          id: camp_ration
+          amount: 2
+    wheat_640:
+      title: 'Собрать 640 пшеницы'
+      description: 'Собрано {progress}/{target} пшеницы'
+      objective:
+        type: ITEM_DELIVERY
+        target: 640
+        accepted-items:
+          - material: WHEAT
+      icon:
+        material: WHEAT
+        name: '&eСобрать 640 пшеницы'
+        lore:
+          - '&7Собрано: &e{progress}/{target} &7пшеницы'
+          - '&aЛКМ, чтобы сдать предметы.'
+      rewards:
+        - type: MONEY
+          amount: 250
+    zombie_kill_25:
+      title: 'Убить 25 зомби'
+      description: 'Убито {progress}/{target} зомби'
+      objective:
+        type: MOB_KILL
+        target: 25
+        entity-types: [ZOMBIE]
+      icon:
+        material: ROTTEN_FLESH
+        name: '&cУбить 25 зомби'
+        lore:
+          - '&7Убито: &e{progress}/{target}'
+          - '&7Прогресс засчитывается автоматически.'
+      rewards:
+        - type: CONTROL_HP
+          amount: 5
+    mythic_example:
+      title: 'Убить 10 кастомных мобов'
+      description: 'Убито {progress}/{target}'
+      objective:
+        type: MOB_KILL
+        target: 10
+        mythicmobs: [forest_bandit]
+      icon:
+        material: IRON_SWORD
+        name: '&cУбить кастомных мобов'
+        lore:
+          - '&7Убито: &e{progress}/{target}'
+          - '&8MythicMobs id: forest_bandit'
+      rewards:
+        - type: MMOITEMS
+          mmoitems-type: MATERIAL
+          mmoitems-id: EXAMPLE_REWARD
+          amount: 1
+    visit_example:
+      title: 'Дойти до точки'
+      description: 'Посещено {progress}/{target}'
+      objective:
+        type: LOCATION_VISIT
+        target: 1
+        locations:
+          - world: world
+            x: 0
+            y: 64
+            z: 0
+            radius: 5
+      icon:
+        material: COMPASS
+        name: '&bДойти до точки'
+        lore:
+          - '&7Посещено: &e{progress}/{target}'
+          - '&7Координаты: &e{coordinates}'
+          - '&7Прогресс засчитывается автоматически.'
+      rewards:
+        - type: HEALTH_BONUS
+          amount: 2
+        - type: DAMAGE_BONUS
+          amount: 0.5
+    potato_640:
+      title: 'Собрать 640 картошки'
+      description: 'Собрано {progress}/{target} картошки'
+      objective: {type: ITEM_DELIVERY, target: 640, accepted-items: [{material: POTATO}]}
+      icon: {material: POTATO, name: '&eСобрать 640 картошки', lore: ['&7Собрано: &e{progress}/{target} &7картошки', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    carrot_640:
+      title: 'Собрать 640 моркови'
+      description: 'Собрано {progress}/{target} моркови'
+      objective: {type: ITEM_DELIVERY, target: 640, accepted-items: [{material: CARROT}]}
+      icon: {material: CARROT, name: '&6Собрать 640 моркови', lore: ['&7Собрано: &e{progress}/{target} &7моркови', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    beetroot_640:
+      title: 'Собрать 640 свёклы'
+      description: 'Собрано {progress}/{target} свёклы'
+      objective: {type: ITEM_DELIVERY, target: 640, accepted-items: [{material: BEETROOT}]}
+      icon: {material: BEETROOT, name: '&cСобрать 640 свёклы', lore: ['&7Собрано: &e{progress}/{target} &7свёклы', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    oak_log_320:
+      title: 'Собрать 320 дуба'
+      description: 'Собрано {progress}/{target} дуба'
+      objective: {type: ITEM_DELIVERY, target: 320, accepted-items: [{material: OAK_LOG}]}
+      icon: {material: OAK_LOG, name: '&6Собрать 320 дуба', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    cobblestone_1024:
+      title: 'Собрать 1024 булыжника'
+      description: 'Собрано {progress}/{target} булыжника'
+      objective: {type: ITEM_DELIVERY, target: 1024, accepted-items: [{material: COBBLESTONE}]}
+      icon: {material: COBBLESTONE, name: '&7Собрать 1024 булыжника', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    stone_1024:
+      title: 'Собрать 1024 камня'
+      description: 'Собрано {progress}/{target} камня'
+      objective: {type: ITEM_DELIVERY, target: 1024, accepted-items: [{material: STONE}]}
+      icon: {material: STONE, name: '&7Собрать 1024 камня', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    coal_128:
+      title: 'Собрать 128 угля'
+      description: 'Собрано {progress}/{target} угля'
+      objective: {type: ITEM_DELIVERY, target: 128, accepted-items: [{material: COAL}]}
+      icon: {material: COAL, name: '&8Собрать 128 угля', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    iron_64:
+      title: 'Собрать 64 железа'
+      description: 'Собрано {progress}/{target} железа'
+      objective: {type: ITEM_DELIVERY, target: 64, accepted-items: [{material: IRON_INGOT}]}
+      icon: {material: IRON_INGOT, name: '&fСобрать 64 железа', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    leather_64:
+      title: 'Собрать 64 кожи'
+      description: 'Собрано {progress}/{target} кожи'
+      objective: {type: ITEM_DELIVERY, target: 64, accepted-items: [{material: LEATHER}]}
+      icon: {material: LEATHER, name: '&6Собрать 64 кожи', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    string_128:
+      title: 'Собрать 128 ниток'
+      description: 'Собрано {progress}/{target} ниток'
+      objective: {type: ITEM_DELIVERY, target: 128, accepted-items: [{material: STRING}]}
+      icon: {material: STRING, name: '&fСобрать 128 ниток', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    bone_128:
+      title: 'Собрать 128 костей'
+      description: 'Собрано {progress}/{target} костей'
+      objective: {type: ITEM_DELIVERY, target: 128, accepted-items: [{material: BONE}]}
+      icon: {material: BONE, name: '&fСобрать 128 костей', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    fish_64:
+      title: 'Собрать 64 сырой рыбы'
+      description: 'Собрано {progress}/{target} рыбы'
+      objective: {type: ITEM_DELIVERY, target: 64, accepted-items: [{material: COD}, {material: SALMON}]}
+      icon: {material: COD, name: '&bСобрать 64 рыбы', lore: ['&7Собрано: &e{progress}/{target}', '&7Подходит COD и SALMON.', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    sand_512:
+      title: 'Собрать 512 песка'
+      description: 'Собрано {progress}/{target} песка'
+      objective: {type: ITEM_DELIVERY, target: 512, accepted-items: [{material: SAND}]}
+      icon: {material: SAND, name: '&eСобрать 512 песка', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    gravel_512:
+      title: 'Собрать 512 гравия'
+      description: 'Собрано {progress}/{target} гравия'
+      objective: {type: ITEM_DELIVERY, target: 512, accepted-items: [{material: GRAVEL}]}
+      icon: {material: GRAVEL, name: '&7Собрать 512 гравия', lore: ['&7Собрано: &e{progress}/{target}', '&aЛКМ, чтобы сдать предметы.']}
+      rewards: []
+    spider_kill_25:
+      title: 'Убить 25 пауков'
+      description: 'Убито {progress}/{target} пауков'
+      objective: {type: MOB_KILL, target: 25, entity-types: [SPIDER]}
+      icon: {material: SPIDER_EYE, name: '&cУбить 25 пауков', lore: ['&7Убито: &e{progress}/{target}', '&7Прогресс засчитывается автоматически.']}
+      rewards: []
+    skeleton_kill_25:
+      title: 'Убить 25 скелетов'
+      description: 'Убито {progress}/{target} скелетов'
+      objective: {type: MOB_KILL, target: 25, entity-types: [SKELETON]}
+      icon: {material: BONE, name: '&fУбить 25 скелетов', lore: ['&7Убито: &e{progress}/{target}', '&7Прогресс засчитывается автоматически.']}
+      rewards: []
+
+  # Для следующих уровней добавляй так же по 21 квесту.
+  # Когда лагерь станет level 2, level 1 квесты перестанут отображаться и выполнять их будет нельзя.
+  '2': {}
+  '3': {}
+  '4': {}
+  '5': {}

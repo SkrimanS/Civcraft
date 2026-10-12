@@ -1,0 +1,54 @@
+name: CivCraft
+main: com.avrgaming.civcraft.modern.CivCraftModernPlugin
+version: 2.0.0-1.21.11-SNAPSHOT
+api-version: '1.21.11'
+authors: [AvRGaming, MineTexas, CivCraft Port Team]
+description: Modern Leaf 1.21.11 playable CivCraft port.
+load: STARTUP
+softdepend:
+  - MythicMobs
+  - MMOItems
+  - dynmap
+  - ExcellentEconomy
+  - Vault
+  - PlaceholderAPI
+  - FastAsyncWorldEdit
+  - WorldEdit
+  - packetevents
+  - DecentHolograms
+  - FancyNpcs
+  - ItemsAdder
+commands:
+  camp:
+    aliases: [c]
+    description: Camp mechanics owned by CivCraft.
+    usage: /<command> [info|invite|kick|promote|lower|setleader|disband|leave|tp|upgrade]
+    permission: civcraft.use
+  civ:
+    description: Civilization mechanics owned by CivCraft.
+    usage: /<command> [create|info|deposit|withdraw]
+    permission: civcraft.use
+  town:
+    aliases: [t]
+    description: Town mechanics owned by CivCraft.
+    usage: /<command> [create|info|claim|unclaim|claims|deposit|withdraw]
+    permission: civcraft.use
+  build:
+    aliases: [b]
+    description: Shows private structure preview and starts construction after yes.
+    usage: /<command> <structureId> [y] [0|90|180|270]
+    permission: civcraft.use
+  research:
+    aliases: [tech]
+    description: Starts and shows civilization technology research.
+    usage: /<command> [list|start <id>|status]
+    permission: civcraft.use
+  civadmin:
+    description: CivCraft admin tools.
+    usage: /<command> [reload|integrations|npc reload|build <legacyFile> [y] [0|90|180|270]]
+    permission: civcraft.admin
+permissions:
+  civcraft.use:
+    default: true
+  civcraft.admin:
+    default: op
