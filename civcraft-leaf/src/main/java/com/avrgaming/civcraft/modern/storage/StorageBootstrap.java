@@ -1297,7 +1297,7 @@ public final class StorageBootstrap implements AutoCloseable {
                     """)) {
                 check.setLong(1, buildId);
                 try (ResultSet rs = check.executeQuery()) {
-                    if (!rs.next() || !rs.getString(1).equalsIgnoreCase("BUILDING")) {
+                    if (!rs.next() || !(rs.getString(1).equalsIgnoreCase("QUEUED") || rs.getString(1).equalsIgnoreCase("BUILDING"))) {
                         throw new SQLException("Cannot snapshot cancelled or missing build #" + buildId);
                     }
                 }
@@ -1319,7 +1319,7 @@ public final class StorageBootstrap implements AutoCloseable {
             }
             if (complete) {
                 try (PreparedStatement statement = connection.prepareStatement("""
-                        UPDATE structure_builds SET snapshot_ready = 1 WHERE id = ? AND status = 'BUILDING'
+                        UPDATE structure_builds SET snapshot_ready = 1 WHERE id = ? AND status IN ('QUEUED', 'BUILDING')
                         """)) {
                     statement.setLong(1, buildId);
                     if (statement.executeUpdate() != 1) {
