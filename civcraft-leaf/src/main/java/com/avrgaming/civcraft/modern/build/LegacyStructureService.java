@@ -125,20 +125,18 @@ public final class LegacyStructureService {
                 resolved.sizeZ(),
                 false
         );
-        if (resolved.schematic() == null) {
-            throw new IllegalArgumentException("Для обычных построек теперь используется только .schem через FAWE. Файл не найден: " + definition.id());
-        }
         pendingPreviews.put(player.getUniqueId(), preview);
-        sendPhantomPreview(player, preview, resolved.schematic());
+        if (resolved.schematic() != null) {
+            sendPhantomPreview(player, preview, resolved.schematic());
+        } else {
+            sendPhantomPreview(player, preview, resolved.legacy());
+        }
     }
 
     public Location previewFoundationStructure(Player player, String structureId, Location location, String direction) throws IOException {
         StructureDefinition definition = definition(structureId);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
-        if (resolved.schematic() == null) {
-            throw new IllegalArgumentException("Для основания нужен .schem файл постройки: " + definition.id());
-        }
         Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
         validateStructureHeight(origin, resolved.sizeY());
         cancelPreview(player, true);
@@ -154,7 +152,11 @@ public final class LegacyStructureService {
                 true
         );
         pendingPreviews.put(player.getUniqueId(), preview);
-        sendPhantomPreview(player, preview, resolved.schematic());
+        if (resolved.schematic() != null) {
+            sendPhantomPreview(player, preview, resolved.schematic());
+        } else {
+            sendPhantomPreview(player, preview, resolved.legacy());
+        }
         return origin.clone();
     }
 
@@ -259,8 +261,8 @@ public final class LegacyStructureService {
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
-        if (resolved.schematic() == null) {
-            throw new IllegalArgumentException("Для обычных построек теперь используется только .schem через FAWE. Файл не найден: " + definition.id());
+        if (resolved.legacy() != null) {
+            return startBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
         }
         return startSchematicBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
     }
@@ -268,8 +270,8 @@ public final class LegacyStructureService {
     private QueuedLegacyBuild buildDefinedStructureAtOrigin(Player player, TownRecord town, StructureDefinition definition, String direction, Location origin, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
-        if (resolved.schematic() == null) {
-            throw new IllegalArgumentException("Для основания нужен .schem файл постройки: " + definition.id());
+        if (resolved.legacy() != null) {
+            return startBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
         }
         return startSchematicBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
     }
@@ -635,11 +637,17 @@ public final class LegacyStructureService {
     }
 
     private ResolvedBuildTemplate resolveBuildTemplate(StructureDefinition definition, String direction) throws IOException {
+        // Prefer modern WorldEdit schematics. Until every structure is migrated, the
+        // original directional .def templates remain a fully supported alternative.
         Path schematicPath = resolveSchematic(definition, direction);
-        if (schematicPath == null) {
-            throw new IOException("FAWE .schem файл не найден для постройки: " + definition.id() + " / " + definition.template());
+        if (schematicPath != null) {
+            return ResolvedBuildTemplate.schematic(schematicPath, loadSchematic(schematicPath));
         }
-        return ResolvedBuildTemplate.schematic(schematicPath, loadSchematic(schematicPath));
+        if (settings.legacyTemplatesEnabled()) {
+            Path legacyPath = resolveTemplate("structures", definition.template(), direction);
+            return ResolvedBuildTemplate.legacy(legacyPath, loadTemplate(legacyPath));
+        }
+        throw new IOException("Нет шаблона .schem, а поддержка оригинальных .def отключена: " + definition.id());
     }
 
     private Path resolveSchematic(StructureDefinition definition, String direction) {
@@ -668,6 +676,11 @@ public final class LegacyStructureService {
     }
 
     public void warmupTemplateCacheAsync() {
+        // The complete original template pack is hundreds of MB. Never load it all
+        // on each server start; lazy-loading avoids enormous RAM spikes.
+        if (!plugin.getConfig().getBoolean("structures.preload-templates", false)) {
+            return;
+        }
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 Path root = templateRoot();
@@ -765,6 +778,12 @@ public final class LegacyStructureService {
     }
 
     private StructureDefinition definition(String structureId) {
+        // Legacy structures.yml does not define a camp: it was handled separately
+        // by original CivCraft. Model it explicitly for the foundation-item path.
+        if (structureId.equalsIgnoreCase(settings.campStructureId())) {
+            return new StructureDefinition(structureId, "camp", "Camp", 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0, settings.campHitpoints(), "", false);
+        }
         return definitions.find(structureId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown structure id: " + structureId));
     }

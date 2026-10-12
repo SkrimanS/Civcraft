@@ -120,6 +120,9 @@ war:
   upkeep-per-aggressive-war: 3000
 
 structures:
+  # Preloading the complete legacy pack (~594MB) causes unnecessary RAM spikes.
+  # Templates are loaded into the cache only when needed.
+  preload-templates: false
   config: plugins/CivCraft/civcraft/data/structures.yml
   min-solid-foundation-ratio: 0.50
   min-y: 63
