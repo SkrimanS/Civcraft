@@ -55,11 +55,15 @@ public final class TownUpgradeService {
         var now=ZonedDateTime.now(zone);
         if(now.getHour()<dailyHour)return;
         try {
-            var payments=storage.transaction(db->{
+            record DailyResult(Map<Long,Long> interest,List<TaxStore.Notice> notices) {}
+            var result=storage.transaction(db->{
+                TaxStore.collect(db,now.toLocalDate().toString(),System.currentTimeMillis());
                 plugin.upkeep().daily(db,now.toLocalDate().toString(),System.currentTimeMillis());
-                return BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis());
+                var notices=TaxStore.advanceGrace(db,now.toLocalDate().toString(),System.currentTimeMillis());
+                return new DailyResult(BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis()),notices);
             });
-            for(var payment:payments.entrySet()) {
+            result.notices().forEach(plugin.taxes()::notify);
+            for(var payment:result.interest().entrySet()) {
                 var town=storage.findTown(payment.getKey()).orElse(null);
                 if(town==null)continue;
                 for(var player:plugin.getServer().getOnlinePlayers()) {

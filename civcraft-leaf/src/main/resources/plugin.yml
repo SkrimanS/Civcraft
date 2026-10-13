@@ -21,8 +21,8 @@ softdepend:
 commands:
   resident:
     aliases: [res]
-    description: CivCraft recipe book.
-    usage: /<command> book
+    description: Книга рецептов и налоговый долг жителя.
+    usage: /<command> [book|taxes|paydebt]
     permission: civcraft.use
   camp:
     aliases: [c]

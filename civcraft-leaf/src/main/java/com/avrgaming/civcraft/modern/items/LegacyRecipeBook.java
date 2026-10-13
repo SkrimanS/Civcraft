@@ -37,10 +37,15 @@ public final class LegacyRecipeBook implements Listener {
         plugin.getCommand("resident").setExecutor((sender,command,label,args) -> {
             if (sender instanceof Player player) {
                 if(args.length==0 || args[0].equalsIgnoreCase("book")) open(player,0);
-                else player.sendMessage(Component.text("Книга рецептов: /res book"));
+                else if(args.length==1 && (args[0].equalsIgnoreCase("taxes") || args[0].equalsIgnoreCase("paydebt"))) {
+                    try{plugin.taxes().resident(player,args[0].equalsIgnoreCase("paydebt"));}
+                    catch(java.sql.SQLException failure){plugin.getLogger().warning("Resident tax command failed: "+failure.getMessage());player.sendMessage(Component.text("Не удалось выполнить налоговую операцию."));}
+                    catch(IllegalArgumentException failure){player.sendMessage(Component.text(failure.getMessage()));}
+                } else player.sendMessage(Component.text("Команды: /res book, /res taxes, /res paydebt"));
             } else sender.sendMessage("Эта команда доступна в игре.");
             return true;
         });
+        plugin.getCommand("resident").setTabCompleter((sender,command,label,args)->args.length==1?List.of("book","taxes","paydebt"):List.of());
     }
 
     public void open(Player player,int number) {

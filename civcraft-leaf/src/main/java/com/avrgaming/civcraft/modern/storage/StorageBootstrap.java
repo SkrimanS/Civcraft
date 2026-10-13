@@ -32,6 +32,8 @@ import org.bukkit.Location;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class StorageBootstrap implements AutoCloseable {
+    private long joinCooldownMillis=12L*3600000;
+    public synchronized void setJoinCooldownMillis(long duration){joinCooldownMillis=duration;}
     private final JavaPlugin plugin;
     private final ModernCivCraftSettings settings;
     private Connection connection;
@@ -529,6 +531,7 @@ public final class StorageBootstrap implements AutoCloseable {
         connection.setAutoCommit(false);
         try {
             long now = System.currentTimeMillis();
+            if(kind.equals("TOWN"))com.avrgaming.civcraft.modern.town.TaxStore.validateRejoin(connection,target,now,joinCooldownMillis);
             long settlementId;
             String inviter;
             try (PreparedStatement find = connection.prepareStatement("""

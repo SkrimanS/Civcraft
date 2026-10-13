@@ -64,6 +64,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades(){return townUpgrades;}
     private com.avrgaming.civcraft.modern.town.UpkeepService upkeep;
     public com.avrgaming.civcraft.modern.town.UpkeepService upkeep(){return upkeep;}
+    private com.avrgaming.civcraft.modern.town.TaxService taxes;
+    public com.avrgaming.civcraft.modern.town.TaxService taxes(){return taxes;}
     public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
     public LegacyStructureService legacyStructures(){return legacyStructures;}
 
@@ -130,6 +132,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             townClaims.useLevels(townUpgrades.catalog());
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);
+            this.taxes=new com.avrgaming.civcraft.modern.town.TaxService(this,storage);
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }

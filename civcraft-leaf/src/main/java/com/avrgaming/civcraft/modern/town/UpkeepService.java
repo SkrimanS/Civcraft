@@ -38,7 +38,7 @@ public final class UpkeepService {
             }
             total*=plugin.governments().upkeepRate(town.government());
             if(!Double.isFinite(total) || total<0 || total>1_000_000_000_000L)throw new SQLException("Unsupported town upkeep");
-            charges.add(new UpkeepStore.Charge(town.id(),town.civ(),town.id()==town.capital(),(long)Math.ceil(total)));
+            charges.add(new UpkeepStore.Charge(town.id(),town.civ(),town.id()==town.capital(),(long)Math.floor(total)));
         }
         return charges;
     }
