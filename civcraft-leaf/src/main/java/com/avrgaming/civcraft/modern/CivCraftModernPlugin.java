@@ -133,6 +133,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             townClaims.useLevels(townUpgrades.catalog());
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);
             this.taxes=new com.avrgaming.civcraft.modern.town.TaxService(this,storage);
+            new com.avrgaming.civcraft.modern.town.PlotService(this,storage,economy);
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }

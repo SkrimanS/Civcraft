@@ -41,24 +41,29 @@ public final class TownClaimProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        protect(event.getBlock().getLocation(), event.getPlayer(), () -> event.setCancelled(true));
+        protect(event.getBlock().getLocation(), event.getPlayer(), "destroy", () -> event.setCancelled(true));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        protect(event.getBlock().getLocation(), event.getPlayer(), () -> event.setCancelled(true));
+        protect(event.getBlock().getLocation(), event.getPlayer(), "build", () -> event.setCancelled(true));
+        if(event instanceof org.bukkit.event.block.BlockMultiPlaceEvent multiple)
+            for(var state:multiple.getReplacedBlockStates())protect(state.getLocation(),event.getPlayer(),"build",()->event.setCancelled(true));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK
+        if ((event.getHand() != EquipmentSlot.HAND && event.getAction()!=Action.PHYSICAL)
+                || (event.getAction() != Action.RIGHT_CLICK_BLOCK && event.getAction()!=Action.PHYSICAL)
                 || event.getClickedBlock() == null) {
             return;
         }
         if(plugin.trades()!=null && plugin.trades().isPublicTradePoint(event.getClickedBlock()))return;
         if (plugin.getConfig().getBoolean("claim-protection.prevent-foreign-interactions", true)) {
-            protect(event.getClickedBlock().getLocation(), event.getPlayer(),
+            protect(event.getClickedBlock().getLocation(), event.getPlayer(), "interact",
                     () -> event.setCancelled(true));
+            if(event.hasItem() && (event.getMaterial().name().endsWith("SPAWN_EGG") || List.of("FLINT_AND_STEEL","FIRE_CHARGE","BONE_MEAL").contains(event.getMaterial().name())))
+                protect(event.getClickedBlock().getLocation(),event.getPlayer(),"itemuse",()->event.setCancelled(true));
         }
     }
 
@@ -68,9 +73,8 @@ public final class TownClaimProtectionListener implements Listener {
                 || !plugin.getConfig().getBoolean("claim-protection.prevent-foreign-interactions", true)) {
             return;
         }
-        Location location = event.getInventory().getLocation();
-        if (location != null) {
-            protect(location, player, () -> event.setCancelled(true));
+        for(Location location:inventoryLocations(event.getInventory())) {
+            protect(location, player, "interact", () -> event.setCancelled(true));
         }
     }
 
@@ -79,36 +83,42 @@ public final class TownClaimProtectionListener implements Listener {
         if (!plugin.getConfig().getBoolean("claim-protection.prevent-cross-border-hoppers", true)) {
             return;
         }
-        Location source = event.getSource().getLocation();
-        Location destination = event.getDestination().getLocation();
-        if (source == null || destination == null) {
-            return;
-        }
         try {
+          for(Location source:inventoryLocations(event.getSource()))for(Location destination:inventoryLocations(event.getDestination())) {
             Optional<TownClaimRecord> from = claims.claimAt(source);
             Optional<TownClaimRecord> to = claims.claimAt(destination);
             if (from.isPresent() || to.isPresent()) {
-                if (from.isEmpty() || to.isEmpty() || from.get().townId() != to.get().townId()) {
+                if (from.isEmpty() || to.isEmpty() || !claims.sameOwner(from.get(),to.get())) {
                     // Keep a city's automatic item transport inside its own
                     // boundaries, even when an external hopper touches a chest.
                     event.setCancelled(true);
                 }
             }
+          }
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to check hopper claim boundary: " + exception.getMessage());
             event.setCancelled(true);
         }
     }
+    private List<Location> inventoryLocations(org.bukkit.inventory.Inventory inventory) {
+        if(inventory.getHolder() instanceof org.bukkit.block.DoubleChest chest) {
+            var locations=new java.util.ArrayList<Location>();
+            if(chest.getLeftSide() instanceof org.bukkit.block.BlockState left)locations.add(left.getLocation());
+            if(chest.getRightSide() instanceof org.bukkit.block.BlockState right)locations.add(right.getLocation());
+            return locations;
+        }
+        return inventory.getLocation()==null?List.of():List.of(inventory.getLocation());
+    }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBucketEmpty(PlayerBucketEmptyEvent event) {
         Block affected = event.getBlockClicked().getRelative(event.getBlockFace());
-        protect(affected.getLocation(), event.getPlayer(), () -> event.setCancelled(true));
+        protect(affected.getLocation(), event.getPlayer(), "itemuse", () -> event.setCancelled(true));
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBucketFill(PlayerBucketFillEvent event) {
-        protect(event.getBlockClicked().getLocation(), event.getPlayer(),
+        protect(event.getBlockClicked().getLocation(), event.getPlayer(), "itemuse",
                 () -> event.setCancelled(true));
     }
 
@@ -193,7 +203,7 @@ public final class TownClaimProtectionListener implements Listener {
             Optional<TownClaimRecord> from = claims.claimAt(source);
             Optional<TownClaimRecord> to = claims.claimAt(destination);
             return from.isPresent() && to.isPresent()
-                    && from.get().townId() == to.get().townId();
+                    && claims.sameOwner(from.get(),to.get());
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to check fluid claim boundary: " + exception.getMessage());
             return false;
@@ -210,13 +220,13 @@ public final class TownClaimProtectionListener implements Listener {
         }
     }
 
-    private void protect(Location location, Player player, Runnable cancel) {
+    private void protect(Location location, Player player, String action, Runnable cancel) {
         try {
             Optional<TownClaimRecord> claim = claims.claimAt(location);
-            if (claim.isPresent() && !claims.canBuild(player, claim.get())) {
+            if (claim.isPresent() && !claims.canAccess(player, claim.get(),action)) {
                 cancel.run();
                 player.sendMessage(miniMessage.deserialize(
-                        "<red>Эта территория принадлежит другому городу.</red>"));
+                        "<red>У вас нет права на это действие на участке.</red>"));
             }
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to check town protection: " + exception.getMessage());

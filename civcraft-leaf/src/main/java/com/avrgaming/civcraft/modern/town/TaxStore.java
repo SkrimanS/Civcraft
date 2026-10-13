@@ -15,16 +15,18 @@ public final class TaxStore {
         column(db,"residents","days_til_evict","INTEGER NOT NULL DEFAULT 0");
         column(db,"town_claims","owner_uuid","TEXT");
         column(db,"town_claims","purchase_value","INTEGER NOT NULL DEFAULT 0");
+        PlotStore.installClaims(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS town_assistants(town_id INTEGER NOT NULL,player_uuid TEXT NOT NULL,PRIMARY KEY(town_id,player_uuid))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS resident_tax_payments(day TEXT NOT NULL,player_uuid TEXT NOT NULL,town_id INTEGER NOT NULL,assessed INTEGER NOT NULL,paid INTEGER NOT NULL,debt_added INTEGER NOT NULL,PRIMARY KEY(day,player_uuid))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS resident_rejoin_cooldowns(player_uuid TEXT PRIMARY KEY,civ_id INTEGER NOT NULL,departed_at INTEGER NOT NULL)");
+            s.executeUpdate("DROP TRIGGER IF EXISTS resident_tax_membership_cleanup");
             s.executeUpdate("""
                 CREATE TRIGGER IF NOT EXISTS resident_tax_membership_cleanup AFTER UPDATE OF town_id ON residents
                 WHEN OLD.town_id IS NOT NULL AND OLD.town_id IS NOT NEW.town_id
                 BEGIN
                   UPDATE residents SET debt=0,days_til_evict=0 WHERE uuid=NEW.uuid;
-                  UPDATE town_claims SET owner_uuid=NULL WHERE town_id=OLD.town_id AND owner_uuid=NEW.uuid;
+                  UPDATE town_claims SET owner_uuid=NULL,plot_groups='default',permit_build=3,permit_destroy=3,permit_interact=3,permit_itemuse=3 WHERE town_id=OLD.town_id AND owner_uuid=NEW.uuid;
                   DELETE FROM town_assistants WHERE town_id=OLD.town_id AND player_uuid=NEW.uuid;
                 END
                 """);
@@ -114,7 +116,7 @@ public final class TaxStore {
         try(var s=db.prepareStatement("UPDATE residents SET town_id=NULL,debt=0,days_til_evict=0,updated_at=? WHERE uuid=? AND town_id=?")) {
             s.setLong(1,now);s.setString(2,player.toString());s.setLong(3,town);s.executeUpdate();
         }
-        try(var s=db.prepareStatement("UPDATE town_claims SET owner_uuid=NULL WHERE town_id=? AND owner_uuid=?")){s.setLong(1,town);s.setString(2,player.toString());s.executeUpdate();}
+        try(var s=db.prepareStatement("UPDATE town_claims SET owner_uuid=NULL,plot_groups='default',permit_build=3,permit_destroy=3,permit_interact=3,permit_itemuse=3 WHERE town_id=? AND owner_uuid=?")){s.setLong(1,town);s.setString(2,player.toString());s.executeUpdate();}
         try(var s=db.prepareStatement("DELETE FROM town_assistants WHERE town_id=? AND player_uuid=?")){s.setLong(1,town);s.setString(2,player.toString());s.executeUpdate();}
         try(var s=db.prepareStatement("DELETE FROM settlement_invites WHERE target_uuid=?")){s.setString(1,player.toString());s.executeUpdate();}
     }

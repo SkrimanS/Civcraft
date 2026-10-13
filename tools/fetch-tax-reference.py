@@ -3,7 +3,7 @@ from urllib.request import urlopen
 import json
 root=Path(__file__).resolve().parent/'legacy-reference'
 tree=json.loads((root/'original-tree.json').read_text(encoding='utf-8'))['tree']
-names={'Resident.java','EconObject.java','TownChunk.java','CivSettings.java','TownSetCommand.java','CivSetCommand.java','ResidentCommand.java'}
+names={'Resident.java','EconObject.java','TownChunk.java','CivSettings.java','TownSetCommand.java','CivSetCommand.java','ResidentCommand.java','PlotCommand.java','PlotPermCommand.java','PlotPermissions.java','PermissionNode.java','CommandBase.java'}
 for item in tree:
     name=Path(item['path']).name
     if name not in names or '/src/' not in item['path']:continue

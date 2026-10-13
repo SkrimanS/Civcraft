@@ -12,7 +12,7 @@ public final class TaxService {
     private final StorageBootstrap storage;
     public TaxService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
-        storage.query(db->{TaxStore.install(db);return null;});
+        storage.transaction(db->{TaxStore.install(db);return null;});
         long hours=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getLong("global.join_civ_cooldown",12);
         if(hours<0 || hours>87600)throw new IllegalArgumentException("Invalid civilization rejoin cooldown");
         storage.setJoinCooldownMillis(hours*3600000);

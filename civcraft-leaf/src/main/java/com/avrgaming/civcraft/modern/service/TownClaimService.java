@@ -81,17 +81,28 @@ public final class TownClaimService {
     }
 
     public boolean canBuild(Player player, TownClaimRecord claim) throws SQLException {
+        return canAccess(player,claim,"build");
+    }
+    public boolean canAccess(Player player,TownClaimRecord claim,String action)throws SQLException {
         if (player.hasPermission("civcraft.admin")) {
             return true;
         }
-        ResidentProfile resident = game.resident(player);
-        return resident.townId() != null && resident.townId() == claim.townId();
+        return storage.query(db->com.avrgaming.civcraft.modern.town.PlotStore.allowed(db,
+                new com.avrgaming.civcraft.modern.town.PlotStore.Key(claim.world(),claim.chunkX(),claim.chunkZ()),player.getUniqueId(),action));
     }
 
     private void requireMayor(Player player, TownRecord town) {
         if (!town.mayorUuid().equals(player.getUniqueId()) && !player.hasPermission("civcraft.admin")) {
             throw new IllegalArgumentException("Управлять приватами города может только мэр.");
         }
+    }
+    public boolean sameOwner(TownClaimRecord first,TownClaimRecord second)throws SQLException {
+        if(first.townId()!=second.townId())return false;
+        return storage.query(db->{
+            var a=com.avrgaming.civcraft.modern.town.PlotStore.find(db,new com.avrgaming.civcraft.modern.town.PlotStore.Key(first.world(),first.chunkX(),first.chunkZ()));
+            var b=com.avrgaming.civcraft.modern.town.PlotStore.find(db,new com.avrgaming.civcraft.modern.town.PlotStore.Key(second.world(),second.chunkX(),second.chunkZ()));
+            return java.util.Objects.equals(a.owner(),b.owner());
+        });
     }
 
     private TownRecord requireTown(ResidentProfile resident) throws SQLException {
