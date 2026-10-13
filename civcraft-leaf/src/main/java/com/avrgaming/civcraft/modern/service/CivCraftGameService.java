@@ -120,6 +120,12 @@ public final class CivCraftGameService {
     }
 
     public CampRecord createCampAt(Player player, String name, Location location) throws SQLException, IllegalArgumentException {
+        return createCampAt(player,name,location,settings.campCost());
+    }
+    public CampRecord createCampFromFoundationAt(Player player,String name,Location location)throws SQLException {
+        return createCampAt(player,name,location,0);
+    }
+    private CampRecord createCampAt(Player player,String name,Location location,double cost)throws SQLException {
         if (!Validation.isValidFoundationName(name)) {
             throw new IllegalArgumentException("Название лагеря должно быть от 5 до 16 символов и без спецсимволов.");
         }
@@ -130,11 +136,11 @@ public final class CivCraftGameService {
         if (resident.campId() != null || storage.findCampByOwner(player.getUniqueId()).isPresent()) {
             throw new IllegalArgumentException("У вас уже есть лагерь.");
         }
-        economy.withdraw(player, settings.campCost(), "camp create");
+        economy.withdraw(player, cost, "camp create");
         try {
             return storage.createCamp(player.getUniqueId(), name, location, 0.0, settings.campHitpoints(), settings.campFirepointsHours());
         } catch (SQLException | RuntimeException exception) {
-            economy.deposit(player, settings.campCost(), "camp create refund");
+            economy.deposit(player, cost, "camp create refund");
             throw exception;
         }
     }
@@ -144,6 +150,12 @@ public final class CivCraftGameService {
     }
 
     public CivRecord createCivilization(Player player, String name, String tag) throws SQLException, IllegalArgumentException {
+        return createCivilization(player,name,tag,settings.civCost());
+    }
+    public CivRecord createCivilizationFromFoundation(Player player,String name,String tag)throws SQLException {
+        return createCivilization(player,name,tag,0);
+    }
+    private CivRecord createCivilization(Player player,String name,String tag,double cost)throws SQLException {
         if (!Validation.isValidFoundationName(name)) {
             throw new IllegalArgumentException("Название цивилизации должно быть от 5 до 16 символов и без спецсимволов.");
         }
@@ -157,11 +169,11 @@ public final class CivCraftGameService {
         if (resident.civId() != null) {
             throw new IllegalArgumentException("Вы уже состоите в цивилизации.");
         }
-        economy.withdraw(player, settings.civCost(), "civilization create");
+        economy.withdraw(player, cost, "civilization create");
         try {
             return storage.createCivilization(player.getUniqueId(), name, tag, 0.0, settings.startingGovernment());
         } catch (SQLException | RuntimeException exception) {
-            economy.deposit(player, settings.civCost(), "civilization create refund");
+            economy.deposit(player, cost, "civilization create refund");
             throw exception;
         }
     }
@@ -171,6 +183,12 @@ public final class CivCraftGameService {
     }
 
     public TownRecord createTownAt(Player player, String name, Location location) throws SQLException, IllegalArgumentException {
+        return createTownAt(player,name,location,settings.townCost());
+    }
+    public TownRecord createCapitalAt(Player player,String name,Location location)throws SQLException {
+        return createTownAt(player,name,location,0);
+    }
+    private TownRecord createTownAt(Player player,String name,Location location,double cost)throws SQLException {
         if (!Validation.isValidFoundationName(name)) {
             throw new IllegalArgumentException("Название города должно быть от 5 до 16 символов и без спецсимволов.");
         }
@@ -184,44 +202,53 @@ public final class CivCraftGameService {
         if (storage.hasTownNear(location, settings.minTownDistance())) {
             throw new IllegalArgumentException("Слишком близко к другому городу. Минимальная дистанция: " + settings.minTownDistance());
         }
-        economy.withdraw(player, settings.townCost(), "town create");
+        economy.withdraw(player, cost, "town create");
         try {
             return storage.createTown(player.getUniqueId(), resident.civId(), name, location, 0.0, settings.townHammersPerHour());
         } catch (SQLException | RuntimeException exception) {
-            economy.deposit(player, settings.townCost(), "town create refund");
+            economy.deposit(player, cost, "town create refund");
             throw exception;
         }
     }
 
 
     public void rollbackCreatedCamp(Player player, CampRecord camp) throws SQLException {
+        rollbackCreatedCamp(player,camp,settings.campCost());
+    }
+    public void rollbackCreatedCamp(Player player,CampRecord camp,double paidCost)throws SQLException {
         if (camp == null) {
             return;
         }
         storage.deleteCamp(camp.id(), player.getUniqueId());
         // The foundation flow rolls back its new record if structure placement
         // fails. The original charge must be returned exactly once here.
-        economy.deposit(player, settings.campCost(), "camp foundation rollback");
+        economy.deposit(player, paidCost, "camp foundation rollback");
     }
 
     public void rollbackCreatedTown(Player player, TownRecord town) throws SQLException {
+        rollbackCreatedTown(player,town,settings.townCost());
+    }
+    public void rollbackCreatedTown(Player player,TownRecord town,double paidCost)throws SQLException {
         if (town == null) {
             return;
         }
         storage.deleteTown(town.id(), player.getUniqueId());
         // The foundation flow rolls back its new record if structure placement
         // fails. The original charge must be returned exactly once here.
-        economy.deposit(player, settings.townCost(), "town foundation rollback");
+        economy.deposit(player, paidCost, "town foundation rollback");
     }
 
     public void rollbackCreatedCivilization(Player player, CivRecord civ) throws SQLException {
+        rollbackCreatedCivilization(player,civ,settings.civCost());
+    }
+    public void rollbackCreatedCivilization(Player player,CivRecord civ,double paidCost)throws SQLException {
         if (civ == null) {
             return;
         }
         storage.deleteCivilization(civ.id(), player.getUniqueId());
         // The foundation flow rolls back its new record if structure placement
         // fails. The original charge must be returned exactly once here.
-        economy.deposit(player, settings.civCost(), "civilization foundation rollback");
+        economy.deposit(player, paidCost, "civilization foundation rollback");
     }
 
 }

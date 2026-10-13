@@ -126,6 +126,7 @@ public final class NativeLegacyItems implements Listener {
         if(combat(id).deathDamage()>0)lore.add(display("&7Потеря прочности при смерти: "+Math.round(combat(id).deathDamage()*100)+"%"));
         meta.lore(lore);
         meta.setUnbreakable(definition.unbreakable());meta.getPersistentDataContainer().set(identity,PersistentDataType.STRING,id);
+        if(id.equals("mat_found_camp"))meta.getPersistentDataContainer().set(new NamespacedKey(plugin,"soulbound"),PersistentDataType.BYTE,(byte)1);
         stack.setItemMeta(meta);return stack;
     }
     public String id(ItemStack stack) {return stack==null || !stack.hasItemMeta()?null:stack.getItemMeta().getPersistentDataContainer().get(identity,PersistentDataType.STRING);}

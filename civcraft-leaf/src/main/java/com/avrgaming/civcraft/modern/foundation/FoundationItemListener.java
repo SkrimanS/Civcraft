@@ -254,7 +254,7 @@ public final class FoundationItemListener implements Listener {
         Location origin = data.previewOrigin == null ? data.location : data.previewOrigin;
         switch (data.kind) {
             case CAMP -> {
-                CampRecord camp = game.createCampAt(player, data.campName, origin);
+                CampRecord camp = game.createCampFromFoundationAt(player, data.campName, origin);
                 data.createdCamp = camp;
                 structures.buildCampStructureAtOrigin(player, origin);
                 data.success = true;
@@ -268,17 +268,17 @@ public final class FoundationItemListener implements Listener {
                 structures.buildTownHallStructureAtOrigin(player, town, origin);
                 data.success = true;
                 pending.remove(player.getUniqueId());
-                player.sendMessage(component("foundation.town-created", "&aГород {name} основан. Ратуша построена.", "name", town.name()));
+                player.sendMessage(component("foundation.town-created", "&aГород {name} основан. Строительство ратуши начато.", "name", town.name()));
             }
             case CIVILIZATION -> {
-                CivRecord civ = game.createCivilization(player, data.civName, data.civTag);
+                CivRecord civ = game.createCivilizationFromFoundation(player, data.civName, data.civTag);
                 data.createdCiv = civ;
-                TownRecord capital = game.createTownAt(player, data.capitalName, origin);
+                TownRecord capital = game.createCapitalAt(player, data.capitalName, origin);
                 data.createdTown = capital;
                 structures.buildCapitalStructureAtOrigin(player, capital, origin);
                 data.success = true;
                 pending.remove(player.getUniqueId());
-                player.sendMessage(component("foundation.civ-created", "&aЦивилизация {name} [{tag}] основана. Столица: {capital}. Капитолий построен.", "name", civ.name(), "tag", civ.tag(), "capital", capital.name()));
+                player.sendMessage(component("foundation.civ-created", "&aЦивилизация {name} [{tag}] основана. Столица: {capital}. Строительство капитолия начато.", "name", civ.name(), "tag", civ.tag(), "capital", capital.name()));
             }
         }
     }
@@ -320,7 +320,7 @@ public final class FoundationItemListener implements Listener {
         }
         if (data.createdTown != null) {
             try {
-                game.rollbackCreatedTown(player, data.createdTown);
+            game.rollbackCreatedTown(player, data.createdTown,data.kind==FoundationKind.CIVILIZATION?0:settings.townCost());
             } catch (SQLException exception) {
                 plugin.getLogger().warning("Unable to rollback town " + data.createdTown.id() + ": " + exception.getMessage());
             }
@@ -328,7 +328,7 @@ public final class FoundationItemListener implements Listener {
         }
         if (data.createdCiv != null) {
             try {
-                game.rollbackCreatedCivilization(player, data.createdCiv);
+            game.rollbackCreatedCivilization(player, data.createdCiv,0);
             } catch (SQLException exception) {
                 plugin.getLogger().warning("Unable to rollback civilization " + data.createdCiv.id() + ": " + exception.getMessage());
             }
@@ -336,7 +336,7 @@ public final class FoundationItemListener implements Listener {
         }
         if (data.createdCamp != null) {
             try {
-                game.rollbackCreatedCamp(player, data.createdCamp);
+            game.rollbackCreatedCamp(player, data.createdCamp,0);
             } catch (SQLException exception) {
                 plugin.getLogger().warning("Unable to rollback camp " + data.createdCamp.id() + ": " + exception.getMessage());
             }

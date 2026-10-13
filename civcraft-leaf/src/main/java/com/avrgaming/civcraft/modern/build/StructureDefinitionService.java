@@ -15,6 +15,7 @@ public final class StructureDefinitionService {
     private final JavaPlugin plugin;
     private final Map<String, StructureDefinition> definitions = new LinkedHashMap<>();
     private ModernCivCraftSettings settings;
+    private final Map<String,StaticAttributes> attributes=new LinkedHashMap<>();
 
     public StructureDefinitionService(JavaPlugin plugin, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -29,6 +30,7 @@ public final class StructureDefinitionService {
 
     public void reload() {
         definitions.clear();
+        attributes.clear();
         File file = new File(settings.structureConfigPath());
         if (!file.isFile()) {
             plugin.getLogger().warning("Structure config not found: " + file.getAbsolutePath());
@@ -52,6 +54,8 @@ public final class StructureDefinitionService {
             if (id.isBlank() || template.isBlank()) {
                 continue;
             }
+            StaticAttributes stats=StaticAttributes.parse(raw.get("components"));
+            attributes.put(id.toLowerCase(Locale.ROOT),stats);
             StructureDefinition definition = new StructureDefinition(
                     id,
                     template,
@@ -59,10 +63,10 @@ public final class StructureDefinitionService {
                     number(raw.get("cost"), 0.0),
                     number(raw.get("upkeep"), 0.0),
                     number(raw.get("hammer_cost"), 0.0),
-                    number(raw.get("hammers_per_hour"), 0.0),
-                    number(raw.get("beakers_per_hour"), 0.0),
-                    number(raw.get("money_per_hour"), 0.0),
-                    happiness(raw, id),
+                    number(raw.get("hammers_per_hour"), 0.0)+stats.get("HAMMERS"),
+                    number(raw.get("beakers_per_hour"), 0.0)+stats.get("BEAKERS"),
+                    number(raw.get("money_per_hour"), 0.0)+stats.get("MONEY"),
+                    (int)number(raw.get("happiness"),0)+stats.happiness(),
                     (int) number(raw.get("max_hitpoints"), 1.0),
                     string(raw.get("require_tech")),
                     Math.max(0, (int) number(raw.get("limit"), 0.0)),
@@ -73,8 +77,10 @@ public final class StructureDefinitionService {
     }
 
     public Optional<StructureDefinition> find(String id) {
+        if(id==null)return Optional.empty();
         return Optional.ofNullable(definitions.get(id.toLowerCase(Locale.ROOT)));
     }
+    public StaticAttributes attributes(String id){return id==null?new StaticAttributes(Map.of()):attributes.getOrDefault(id.toLowerCase(Locale.ROOT),new StaticAttributes(Map.of()));}
 
     public List<StructureDefinition> list(int limit) {
         return definitions.values().stream()

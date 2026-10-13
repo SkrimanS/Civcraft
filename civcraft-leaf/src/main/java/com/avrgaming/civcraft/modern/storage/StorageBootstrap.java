@@ -36,6 +36,8 @@ public final class StorageBootstrap implements AutoCloseable {
     private final ModernCivCraftSettings settings;
     private Connection connection;
     private com.avrgaming.civcraft.modern.government.GovernmentDefinitions governments;
+    private com.avrgaming.civcraft.modern.build.StructureDefinitionService structureDefinitions;
+    public void setStructureDefinitions(com.avrgaming.civcraft.modern.build.StructureDefinitionService definitions){this.structureDefinitions=definitions;}
 
     public void setGovernments(com.avrgaming.civcraft.modern.government.GovernmentDefinitions governments) {
         this.governments=governments;
@@ -1857,6 +1859,7 @@ public final class StorageBootstrap implements AutoCloseable {
         double beakers = 0.0;
         double money = 0.0;
         int structureHappiness = 0;
+        double education=0;
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT
                     COALESCE(SUM(production_hammers_per_hour), 0) AS hammers,
@@ -1876,6 +1879,31 @@ public final class StorageBootstrap implements AutoCloseable {
                 }
             }
         }
+        if(structureDefinitions!=null) {
+            structureHammers=0;beakers=0;money=0;structureHappiness=0;
+            int residents;
+            try(var query=connection.prepareStatement("SELECT COUNT(*) FROM residents WHERE town_id=?")) {
+                query.setLong(1,townId);try(var row=query.executeQuery()){residents=row.next()?row.getInt(1):0;}
+            }
+            try(var query=connection.prepareStatement("""
+                    SELECT structure_id,COUNT(*),SUM(production_hammers_per_hour),SUM(beakers_per_hour),SUM(money_per_hour),SUM(happiness)
+                    FROM structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id
+                    """)) {
+                query.setLong(1,townId);try(var rows=query.executeQuery()) {
+                    while(rows.next()) {
+                        String id=rows.getString(1);int count=rows.getInt(2);
+                        var definition=structureDefinitions.find(id).orElse(null);
+                        if(definition!=null) {
+                            structureHammers+=definition.hammersPerHourBonus()*count;beakers+=definition.beakersPerHour()*count;
+                            money+=definition.moneyPerHour()*count;structureHappiness+=definition.happiness()*count;
+                            education+=structureDefinitions.attributes(id).education(id,residents)*count;
+                        } else {
+                            structureHammers+=rows.getDouble(3);beakers+=rows.getDouble(4);money+=rows.getDouble(5);structureHappiness+=rows.getInt(6);
+                        }
+                    }
+                }
+            }
+        }
         int happiness = clampHappiness(baseHappiness + structureHappiness);
         double multiplier = happinessMultiplier(happiness);
         double hammerRate=1,beakerRate=1;
@@ -1892,7 +1920,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
         return new TownProduction(
                 (Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate,
-                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * multiplier * beakerRate,
+                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * multiplier * beakerRate,
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * multiplier,
                 happiness,
                 happinessState(happiness),

@@ -58,7 +58,7 @@ public final class CampService {
     private static final String ROLE_MEMBER = "MEMBER";
     private static final long TP_COOLDOWN_MILLIS = 30L * 60L * 1000L;
     private static final long PLANT_GROW_MILLIS = 30L * 60L * 1000L;
-    private static final long CONTROL_ATTACK_DELAY_MILLIS = 22L * 60L * 60L * 1000L;
+    private static final long CONTROL_ATTACK_DELAY_MILLIS = 24L * 60L * 60L * 1000L;
     private static final int CONTROL_MAX_HP = 50;
     private static final String CONTROL_HOLOGRAM_PREFIX = "§cКонтрольный блок: ";
 
