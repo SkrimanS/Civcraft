@@ -123,6 +123,7 @@ public final class StorageBootstrap implements AutoCloseable {
             migrateBootstrapSchema();
             WonderUniqueness.install(connection);
             com.avrgaming.civcraft.modern.trade.TradeStore.install(connection);
+            com.avrgaming.civcraft.modern.build.StructureChestStore.install(connection);
             normalizeMoneyValues();
             plugin.getLogger().info("Local CivCraft SQLite storage ready: " + databaseFile);
         } catch (IOException | SQLException exception) {
@@ -1376,6 +1377,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 if (pending > 0) {
                     insert.executeBatch();
                 }
+                com.avrgaming.civcraft.modern.build.StructureChestStore.record(writeConnection,buildId,placements);
                 writeConnection.commit();
             } catch (SQLException exception) {
                 writeConnection.rollback();
@@ -1453,6 +1455,7 @@ public final class StorageBootstrap implements AutoCloseable {
                     insert.executeBatch();
                 }
                 com.avrgaming.civcraft.modern.trade.TradeStore.recordPoints(writeConnection,buildId,placements);
+                com.avrgaming.civcraft.modern.build.StructureChestStore.record(writeConnection,buildId,placements);
                 writeConnection.commit();
                 return true;
             } catch (SQLException exception) {

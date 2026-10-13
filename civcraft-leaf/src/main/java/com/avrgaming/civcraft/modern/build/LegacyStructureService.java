@@ -277,6 +277,39 @@ public final class LegacyStructureService {
             }
         }
     }
+    public void restoreCompletedChestMarkers() {
+        record Completed(long id,String world,int x,int y,int z,String path) {}
+        final List<Completed> builds;
+        try{builds=storage.query(db->{var list=new ArrayList<Completed>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE'")){while(r.next())list.add(new Completed(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return list;});}
+        catch(SQLException failure){plugin.getLogger().warning("Unable to inspect structural chests: "+failure.getMessage());return;}
+        plugin.getServer().getScheduler().runTaskAsynchronously(plugin,()->{
+            for(var build:builds)try {
+                Path path=Path.of(build.path()).toRealPath();
+                if(!path.startsWith(templateRoot().toRealPath()) || !path.getFileName().toString().endsWith(".def"))continue;
+                var markers=loader.readChestMarkers(path);
+                if(markers.isEmpty() || !plugin.isEnabled())continue;
+                plugin.getServer().getScheduler().runTask(plugin,()->{
+                    var world=Bukkit.getWorld(build.world());if(world==null)return;
+                    var placements=new ArrayList<BlockPlacement>();
+                    try {
+                        for(var marker:markers) {
+                            int x=build.x()+marker.x(),y=build.y()+marker.y(),z=build.z()+marker.z();
+                            boolean owned=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds sb ON sb.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND p.build_id=? AND sb.status='COMPLETE'")){s.setString(1,build.world());s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);s.setLong(5,build.id());try(var r=s.executeQuery()){return r.next();}}});
+                            if(!owned)continue;var block=world.getBlockAt(x,y,z);
+                            if(block.getState() instanceof org.bukkit.block.Sign)StructureChestBlocks.place(block,marker.legacyData());
+                            else if(block.getType()!=Material.CHEST)continue;
+                            placements.add(new BlockPlacement(build.world(),x,y,z,"CHEST",marker.signLines()));
+                        }
+                        StructureChestBlocks.pair(placements);
+                        storage.transaction(db->{
+                            StructureChestStore.record(db,build.id(),placements);
+                            try(var s=db.prepareStatement("UPDATE protected_blocks SET material='CHEST' WHERE world=? AND x=? AND y=? AND z=? AND build_id=?")){for(var p:placements){s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());s.setLong(5,build.id());s.addBatch();}s.executeBatch();}return null;
+                        });
+                    }catch(SQLException failure){plugin.getLogger().warning("Unable to restore structural chests #"+build.id()+": "+failure.getMessage());}
+                });
+            }catch(IOException failure){plugin.getLogger().warning("Unable to inspect chest template #"+build.id()+": "+failure.getMessage());}
+        });
+    }
 
     private void resumeInterruptedBuild(StorageBootstrap.InterruptedBuild build) throws IOException, SQLException {
         World world = plugin.getServer().getWorld(build.world());

@@ -264,6 +264,7 @@ public final class BuildQueue {
 
                     if (placedBlockCursor >= prepared.orderedBlocks.size()) {
                         restoreAllBedrockPreview();
+                        StructureChestBlocks.pair(placements);
                         if (buildId > 0L) {
                             activeBuilds.remove(buildId);
                         }
@@ -939,8 +940,12 @@ public final class BuildQueue {
                 origin.getBlockY() + legacyBlock.y(),
                 origin.getBlockZ() + legacyBlock.z()
         );
-        block.setType(material, false);
-        LegacyBlockStateApplier.apply(block, legacyBlock);
+        if(ChestMarker.parse(legacyBlock.signLines()).isPresent()) {
+            StructureChestBlocks.place(block,legacyBlock.legacyData());material=Material.CHEST;
+        }else {
+            block.setType(material, false);
+            LegacyBlockStateApplier.apply(block, legacyBlock);
+        }
 
         if (!legacyBlock.signLines().isEmpty() && block.getState() instanceof Sign sign) {
             for (int i = 0; i < Math.min(4, legacyBlock.signLines().size()); i++) {
