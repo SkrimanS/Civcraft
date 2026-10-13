@@ -26,6 +26,7 @@ public final class GovernmentService {
         for(long id:active)storage.transaction(db->retimeData(db,id));
     }
     public String name(String stored){return definitions.require(stored).name();}
+    public double upkeepRate(String stored){return definitions.require(stored).upkeep();}
     public List<String> ids(){return definitions.list().stream().map(GovernmentDefinition::id).filter(id->!id.equals("gov_anarchy")).toList();}
     public void command(Player player,String[] args)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();

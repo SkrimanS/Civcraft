@@ -7,6 +7,7 @@ import com.avrgaming.civcraft.modern.domain.ResidentProfile;
 import com.avrgaming.civcraft.modern.domain.TownRecord;
 import com.avrgaming.civcraft.modern.economy.CivCraftEconomyService;
 import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
+import com.avrgaming.civcraft.modern.town.UpkeepStore;
 import java.sql.SQLException;
 import java.util.Optional;
 import org.bukkit.Location;
@@ -46,14 +47,18 @@ public final class CivCraftGameService {
     public TownRecord depositTown(Player player, double amount) throws SQLException {
         ResidentProfile resident = resident(player);
         TownRecord town = requireTown(resident);
+        if(!economy.usesExternalProvider()) {
+            storage.transaction(db->{UpkeepStore.transferDeposit(db,"towns",town.id(),player.getUniqueId(),depositAmount(amount));return null;});
+            return storage.findTown(town.id()).orElseThrow();
+        }
         economy.withdraw(player, amount, "town deposit");
         try {
-            storage.depositTown(town.id(), amount);
-            return storage.findTown(town.id()).orElseThrow();
+            storage.transaction(db->{UpkeepStore.deposit(db,"towns",town.id(),depositAmount(amount));return null;});
         } catch (SQLException | RuntimeException exception) {
             economy.deposit(player, amount, "town deposit refund");
             throw exception;
         }
+        return storage.findTown(town.id()).orElseThrow();
     }
 
     public TownRecord withdrawTown(Player player, double amount) throws SQLException {
@@ -75,14 +80,24 @@ public final class CivCraftGameService {
     public CivRecord depositCiv(Player player, double amount) throws SQLException {
         ResidentProfile resident = resident(player);
         CivRecord civ = requireCiv(resident);
+        if(!economy.usesExternalProvider()) {
+            storage.transaction(db->{UpkeepStore.transferDeposit(db,"civilizations",civ.id(),player.getUniqueId(),depositAmount(amount));return null;});
+            return storage.findCiv(civ.id()).orElseThrow();
+        }
         economy.withdraw(player, amount, "civilization deposit");
         try {
-            storage.depositCiv(civ.id(), amount);
-            return storage.findCiv(civ.id()).orElseThrow();
+            storage.transaction(db->{UpkeepStore.deposit(db,"civilizations",civ.id(),depositAmount(amount));return null;});
         } catch (SQLException | RuntimeException exception) {
             economy.deposit(player, amount, "civilization deposit refund");
             throw exception;
         }
+        return storage.findCiv(civ.id()).orElseThrow();
+    }
+
+    private static long depositAmount(double amount) {
+        if(!Double.isFinite(amount) || amount<=0 || amount!=Math.rint(amount) || amount>=0x1p63)
+            throw new IllegalArgumentException("Укажите положительную целую сумму.");
+        return (long)amount;
     }
 
     public CivRecord withdrawCiv(Player player, double amount) throws SQLException {

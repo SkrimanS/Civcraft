@@ -55,7 +55,10 @@ public final class TownUpgradeService {
         var now=ZonedDateTime.now(zone);
         if(now.getHour()<dailyHour)return;
         try {
-            var payments=storage.transaction(db->BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis()));
+            var payments=storage.transaction(db->{
+                plugin.upkeep().daily(db,now.toLocalDate().toString(),System.currentTimeMillis());
+                return BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis());
+            });
             for(var payment:payments.entrySet()) {
                 var town=storage.findTown(payment.getKey()).orElse(null);
                 if(town==null)continue;
@@ -64,7 +67,7 @@ public final class TownUpgradeService {
                     if(resident!=null && resident.townId()!=null && resident.townId().equals(town.id()))player.sendMessage(Component.text("Банк города "+town.name()+" начислил "+payment.getValue()+" монет процентов."));
                 }
             }
-        } catch(SQLException exception){plugin.getLogger().warning("Daily bank interest failed: "+exception.getMessage());}
+        } catch(SQLException exception){plugin.getLogger().warning("Daily upkeep and bank interest failed: "+exception.getMessage());}
     }
     private void refreshBanks(long town)throws SQLException {
         var ids=storage.query(db->{

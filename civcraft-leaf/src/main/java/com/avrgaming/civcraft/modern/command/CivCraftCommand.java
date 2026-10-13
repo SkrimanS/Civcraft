@@ -138,6 +138,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,true);return;}
         if(args.length>=2 && (args[1].equalsIgnoreCase("gov") || args[1].equalsIgnoreCase("government"))) {
             plugin.governments().command(player,args);return;
         }
@@ -149,6 +150,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     "&e/civ deposit <сумма> / withdraw <сумма> &7- казна"))) {
                 send(player, line);
             }
+            send(player,"&e/civ upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
@@ -209,6 +211,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}
         if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
             for (String line : lang.list("commands.help.town", List.of(
@@ -218,6 +221,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     "&e/town claim / unclaim / claims &7- управление территорией"))) {
                 send(player, line);
             }
+            send(player,"&e/town upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
@@ -664,6 +668,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
         String primary = alias.toLowerCase(Locale.ROOT);
         if(primary.equals("ad"))primary="civadmin";
+        if(List.of("civ","town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("upkeep"))return List.of("pay");
         if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {
             if(args.length==2)return List.of("list","purchased","buy");
             if(args.length==3 && args[1].equalsIgnoreCase("buy"))return plugin.townUpgrades().ids();
@@ -682,10 +687,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("help", "create", "info", "gov", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
+            return List.of("help", "create", "info", "gov", "upkeep", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("help", "create", "info", "upgrade", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("help", "create", "info", "upgrade", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {
