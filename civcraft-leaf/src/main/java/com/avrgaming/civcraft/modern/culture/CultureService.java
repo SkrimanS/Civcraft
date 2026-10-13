@@ -50,6 +50,7 @@ public final class CultureService {
                         """)){hall.setLong(1,id);try(var center=hall.executeQuery()){if(center.next()){x=center.getInt(1);z=center.getInt(2);}}}
                     list.add(new CultureRegions.Town(id,new CultureRegions.Cell(r.getString(2),x,z),value,levels.forCulture(value)));}}
                 return List.copyOf(list);});
+            if(!initialized || !towns.equals(lastTowns))storage.transaction(db->{com.avrgaming.civcraft.modern.town.TownLimitsStore.seed(db,System.currentTimeMillis());return null;});
             var plots=storage.query(db->{var map=new HashMap<CultureRegions.Cell,Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT world,chunk_x,chunk_z,town_id FROM town_claims")){while(r.next())map.put(new CultureRegions.Cell(r.getString(1),r.getInt(2),r.getInt(3)),r.getLong(4));}return Map.copyOf(map);});
             if(!initialized || !towns.equals(lastTowns) || !plots.equals(lastPlots)) {
                 storage.transaction(db->{

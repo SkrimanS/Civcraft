@@ -18,7 +18,12 @@ public final class TownClaimService {
     private final CivCraftEconomyService economy;
     private ModernCivCraftSettings settings;
     private com.avrgaming.civcraft.modern.town.TownCatalog townLevels;
-    public void useLevels(com.avrgaming.civcraft.modern.town.TownCatalog levels){this.townLevels=levels;}
+    private int minimumCivilizationDistance=15;
+    public void useLevels(com.avrgaming.civcraft.modern.town.TownCatalog levels,int distance)throws SQLException {
+        if(distance<0)throw new IllegalArgumentException("Invalid civilization land distance");
+        this.townLevels=levels;minimumCivilizationDistance=distance;
+        storage.transaction(db->{com.avrgaming.civcraft.modern.town.TownLimitsStore.install(db);com.avrgaming.civcraft.modern.town.TownLimitsStore.seed(db,System.currentTimeMillis());return null;});
+    }
 
     public TownClaimService(StorageBootstrap storage, CivCraftGameService game, ModernCivCraftSettings settings, CivCraftEconomyService economy) {
         this.storage = storage;
@@ -34,39 +39,25 @@ public final class TownClaimService {
     public TownClaimRecord claim(Player player) throws SQLException {
         ResidentProfile resident = game.resident(player);
         TownRecord town = requireTown(resident);
-        requireMayor(player, town);
         Chunk chunk = player.getLocation().getChunk();
-        validateClaimLocation(town, player.getLocation(), chunk);
-        // Reject an already-claimed chunk before touching the player's money.
-        // The transactional storage check below still protects against races.
-        if (storage.findTownClaim(chunk.getWorld().getName(), chunk.getX(), chunk.getZ()).isPresent()) {
-            throw new IllegalArgumentException("Этот чанк уже приватизирован.");
-        }
-        int count = storage.townClaimCount(town.id());
-        int maximum=townLevels==null?settings.maxTownClaims():townLevels.level(town.level()).plots();
-        if (count >= maximum) {
-            throw new IllegalArgumentException("Город достиг лимита клаймов: " + maximum);
-        }
-        economy.withdraw(player, settings.townClaimCost(), "town claim");
-        try {
-            return storage.claimTownChunk(player.getUniqueId(), town.id(), town.civId(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ(), 0.0);
-        } catch (SQLException | RuntimeException exception) {
-            economy.deposit(player, settings.townClaimCost(), "town claim refund");
-            throw exception;
-        }
+        var key=new com.avrgaming.civcraft.modern.town.PlotStore.Key(chunk.getWorld().getName(),chunk.getX(),chunk.getZ());
+        long now=System.currentTimeMillis();
+        long cost=storage.transaction(db->com.avrgaming.civcraft.modern.town.TownLimitsStore.claim(db,town.id(),player.getUniqueId(),key,townLevels,minimumCivilizationDistance,now));
+        player.sendMessage(net.kyori.adventure.text.Component.text("Из казны города списано "+cost+" монет."));
+        return new TownClaimRecord(key.world(),key.x(),key.z(),town.id(),town.civId(),player.getUniqueId(),now);
     }
 
     public void unclaim(Player player) throws SQLException {
         ResidentProfile resident = game.resident(player);
         TownRecord town = requireTown(resident);
-        requireMayor(player, town);
         Chunk chunk = player.getLocation().getChunk();
         TownClaimRecord existing = storage.findTownClaim(chunk.getWorld().getName(), chunk.getX(), chunk.getZ())
                 .orElseThrow(() -> new IllegalArgumentException("Этот чанк не приватизирован."));
         if (existing.townId() != town.id()) {
             throw new IllegalArgumentException("Этот чанк принадлежит другому городу.");
         }
-        storage.unclaimTownChunk(town.id(), chunk.getWorld().getName(), chunk.getX(), chunk.getZ());
+        var key=new com.avrgaming.civcraft.modern.town.PlotStore.Key(chunk.getWorld().getName(),chunk.getX(),chunk.getZ());
+        storage.transaction(db->{com.avrgaming.civcraft.modern.town.TownLimitsStore.unclaim(db,town.id(),player.getUniqueId(),key);return null;});
     }
 
     public Optional<TownClaimRecord> claimAt(Location location) throws SQLException {

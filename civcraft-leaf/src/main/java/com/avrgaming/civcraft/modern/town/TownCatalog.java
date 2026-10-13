@@ -29,6 +29,10 @@ public final class TownCatalog {
         if(found==null)throw new IllegalArgumentException("Неизвестное улучшение: "+name);return found;
     }
     public List<UpgradeDefinition> upgrades(){return List.copyOf(upgrades.values());}
+    public long nextPlotCost(int count) {
+        return levels.values().stream().filter(l->count<l.plots()).min(Comparator.comparingInt(Level::plots))
+                .orElseGet(()->levels.values().stream().max(Comparator.comparingInt(Level::plots)).orElseThrow()).plotCost();
+    }
     private static String text(Object value){return value==null?"":value.toString().trim();}
     private static long money(Object value) {
         double amount=value==null?0:((Number)value).doubleValue();
