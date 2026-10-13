@@ -36,6 +36,13 @@ public final class StorageBootstrap implements AutoCloseable {
     private Double legacyTownBaseHammers;
     public synchronized void setLegacyTownBaseHammers(double rate){legacyTownBaseHammers=rate;}
     public synchronized double townBaseHammers(double fallback){return legacyTownBaseHammers==null?fallback:legacyTownBaseHammers;}
+    public synchronized double staticTownCulture(long town)throws SQLException {
+        double total=0;
+        try(var s=connection.prepareStatement("SELECT structure_id,COUNT(*) FROM structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id")) {
+            s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())if(structureDefinitions!=null)total+=structureDefinitions.attributes(r.getString(1)).get("CULTURE")*r.getInt(2);}
+        }
+        return total;
+    }
     public synchronized void setCultureBiomes(com.avrgaming.civcraft.modern.culture.BiomePotential catalog){cultureBiomes=catalog;}
     private long joinCooldownMillis=12L*3600000;
     public synchronized void setJoinCooldownMillis(long duration){joinCooldownMillis=duration;}
