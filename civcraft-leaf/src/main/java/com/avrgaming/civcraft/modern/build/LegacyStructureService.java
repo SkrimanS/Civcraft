@@ -194,7 +194,8 @@ public final class LegacyStructureService {
         if (town.id() != preview.townId) {
             throw new IllegalArgumentException("Превью было создано для другого города.");
         }
-        return buildStructureForTown(player, town, preview.structureId, preview.direction, preview.origin, null, true);
+        StructureDefinition definition=definition(preview.structureId);
+        return buildDefinedStructureAtOrigin(player,town,definition,preview.direction,preview.origin,definition.hammerCost(),true);
     }
 
     public void cancelPreview(Player player) {
@@ -221,6 +222,9 @@ public final class LegacyStructureService {
     /** Read-only diagnostic. Does not launch builds or change any persisted state. */
     public List<StorageBootstrap.InterruptedBuild> recoveryStatus() throws SQLException {
         return storage.interruptedStructureBuilds();
+    }
+    public void retimeBuild(long buildId,long duration) {
+        buildQueue.retimeBuild(buildId,duration);
     }
 
     public void recoverInterruptedBuilds() {
@@ -467,9 +471,9 @@ public final class LegacyStructureService {
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
         if (resolved.legacy() != null) {
-            return startBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
+            return startBuild(player, town, definition.templateKind(), definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
         }
-        return startSchematicBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
+        return startSchematicBuild(player, town, definition.templateKind(), definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
     }
 
     private QueuedLegacyBuild buildDefinedStructureAtOrigin(Player player, TownRecord town, StructureDefinition definition, String direction, Location origin, double hammerCost, boolean chargeMoney) throws IOException, SQLException {
@@ -478,9 +482,9 @@ public final class LegacyStructureService {
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         if (resolved.legacy() != null) {
-            return startBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
+            return startBuild(player, town, definition.templateKind(), definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
         }
-        return startSchematicBuild(player, town, "structures", definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
+        return startSchematicBuild(player, town, definition.templateKind(), definition.template(), cleanDirection, resolved.path(), resolved.schematic(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin.clone(), true);
     }
 
     private QueuedLegacyBuild startBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, LegacyDefTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
@@ -909,7 +913,7 @@ public final class LegacyStructureService {
             return ResolvedBuildTemplate.schematic(schematicPath, loadSchematic(schematicPath));
         }
         if (settings.legacyTemplatesEnabled()) {
-            Path legacyPath = resolveTemplate("structures", definition.template(), direction);
+            Path legacyPath = resolveTemplate(definition.templateKind(), definition.template(), direction);
             return ResolvedBuildTemplate.legacy(legacyPath, loadTemplate(legacyPath));
         }
         throw new IOException("Нет шаблона .schem, а поддержка оригинальных .def отключена: " + definition.id());
@@ -1051,6 +1055,14 @@ public final class LegacyStructureService {
     }
 
     private void validateStructureLimit(TownRecord town, StructureDefinition definition) throws SQLException {
+        if (definition.wonder()) {
+            if (town == null) {
+                throw new IllegalArgumentException("Чудо света можно построить только в городе.");
+            }
+            if (storage.isWonderReserved(definition.id())) {
+                throw new IllegalArgumentException("Чудо света уже построено: " + definition.displayName());
+            }
+        }
         // In legacy CivCraft configuration, limit: 0 means unlimited.
         // Count unfinished and completed structures; cancelled/demolished free a slot.
         if (town == null || definition.maxPerTown() <= 0) {
@@ -1124,7 +1136,19 @@ public final class LegacyStructureService {
         List<BlockBackup> backupCopy = List.copyOf(backups);
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                storage.recordProtectedBlocksBackupsAndCompleteBuild(buildId, placementCopy, backupCopy);
+                if (!storage.recordProtectedBlocksBackupsAndCompleteBuild(buildId, placementCopy, backupCopy)) {
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        try {
+                            restorePendingRollback(buildId, true);
+                            plugin.getServer().broadcast(net.kyori.adventure.text.Component.text(
+                                    "Стройка чуда #" + buildId + " отменена: другой город завершил его первым. Стоимость возвращена."));
+                        } catch (SQLException exception) {
+                            plugin.getLogger().severe("Unable to restore losing wonder #" + buildId + ": " + exception.getMessage());
+                        }
+                    });
+                } else if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.trades()!=null) {
+                    plugin.getServer().getScheduler().runTask(plugin,()->civ.trades().refreshBuild(buildId));
+                }
             } catch (SQLException exception) {
                 plugin.getLogger().warning("Unable to complete structure build " + buildId + ": " + exception.getMessage());
             }

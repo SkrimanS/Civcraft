@@ -14,6 +14,7 @@ import com.avrgaming.civcraft.modern.config.ModernCivCraftSettings;
 import com.avrgaming.civcraft.modern.economy.CivCraftEconomyService;
 import com.avrgaming.civcraft.modern.foundation.FoundationItemListener;
 import com.avrgaming.civcraft.modern.integration.IntegrationRegistry;
+import com.avrgaming.civcraft.modern.items.NativeLegacyItems;
 import com.avrgaming.civcraft.modern.placeholder.CivCraftPlaceholderExpansion;
 import com.avrgaming.civcraft.modern.research.ResearchService;
 import com.avrgaming.civcraft.modern.restriction.GameplayRestrictionService;
@@ -55,6 +56,12 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private CampNpcMenusService campNpcMenus;
     private Lang lang;
     private GameplayRestrictionService gameplayRestrictions;
+    private NativeLegacyItems nativeItems;
+    private com.avrgaming.civcraft.modern.government.GovernmentService governments;
+    private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
+    public com.avrgaming.civcraft.modern.trade.NativeTradeService trades(){return trades;}
+    public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
+    public LegacyStructureService legacyStructures(){return legacyStructures;}
 
 
     @Override
@@ -76,10 +83,23 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         ensureBuildingsFolder();
         this.storage = new StorageBootstrap(this, settings);
         storage.initializeLocalStorage();
+        if (!storage.isReady()) {
+            getLogger().severe("CivCraft cannot start without a working database.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         storage.warmupAsync();
 
         this.economy = new CivCraftEconomyService(this, storage, settings);
+        try {
+            this.nativeItems = new NativeLegacyItems(this, storage);
+        } catch (IOException | IllegalArgumentException exception) {
+            throw new IllegalStateException("Failed to initialize original CivCraft items and recipes", exception);
+        }
         this.game = new CivCraftGameService(storage, settings, economy);
+        new com.avrgaming.civcraft.modern.items.LegacyRecipeBook(this, nativeItems);
+        new com.avrgaming.civcraft.modern.items.LegacyCombatListener(this, nativeItems);
+        new com.avrgaming.civcraft.modern.items.LegacyStarterKit(this, nativeItems);
         this.tabPrefixes = new TabPrefixService(this, game);
         this.campService = new CampService(this, game, economy, settings);
         this.campService.startTasks();
@@ -92,9 +112,20 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.gameplayRestrictions = new GameplayRestrictionService(this, settings);
         this.gameplayRestrictions.start();
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
+        try {
+            this.governments=new com.avrgaming.civcraft.modern.government.GovernmentService(this,storage);
+        } catch(java.sql.SQLException exception) {
+            throw new IllegalStateException("Unable to initialize governments",exception);
+        }
+        getServer().getScheduler().runTaskTimer(this,governments::tick,20L*60,20L*60);
         this.research = new ResearchService(this, storage, game, settings, economy);
         this.townClaims = new TownClaimService(storage, game, settings, economy);
         this.memberships = new SettlementMembershipService(this, game, storage);
+        try {
+            this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
+        } catch(java.sql.SQLException exception) {
+            throw new IllegalStateException("Unable to initialize native trading",exception);
+        }
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {
@@ -198,6 +229,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public Lang lang() {
         return lang;
     }
+
+    public NativeLegacyItems nativeItems() { return nativeItems; }
 
     private void saveBundledStructureTemplates() {
         // Template manifest is part of the JAR. Bundled assets require no external

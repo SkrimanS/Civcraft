@@ -35,6 +35,11 @@ public final class StorageBootstrap implements AutoCloseable {
     private final JavaPlugin plugin;
     private final ModernCivCraftSettings settings;
     private Connection connection;
+    private com.avrgaming.civcraft.modern.government.GovernmentDefinitions governments;
+
+    public void setGovernments(com.avrgaming.civcraft.modern.government.GovernmentDefinitions governments) {
+        this.governments=governments;
+    }
 
     public record StructureBuildView(
             long id,
@@ -83,7 +88,7 @@ public final class StorageBootstrap implements AutoCloseable {
         this.settings = settings;
     }
 
-    public void initializeLocalStorage() {
+    public synchronized void initializeLocalStorage() {
         if (!settings.storageType().equalsIgnoreCase("sqlite")) {
             plugin.getLogger().warning("Only local SQLite bootstrap is implemented in this port foundation. Requested: " + settings.storageType());
             return;
@@ -98,10 +103,41 @@ public final class StorageBootstrap implements AutoCloseable {
             applySqlitePragmas(connection);
             createBootstrapSchema();
             migrateBootstrapSchema();
+            WonderUniqueness.install(connection);
+            com.avrgaming.civcraft.modern.trade.TradeStore.install(connection);
             normalizeMoneyValues();
             plugin.getLogger().info("Local CivCraft SQLite storage ready: " + databaseFile);
         } catch (IOException | SQLException exception) {
             plugin.getLogger().severe("Unable to initialize local CivCraft storage: " + exception.getMessage());
+            close();
+            connection = null;
+        }
+    }
+
+    @FunctionalInterface
+    public interface SqlWork<T> {
+        T apply(Connection connection) throws SQLException;
+    }
+
+    /** Shares the connection lock with all existing gameplay/storage operations. */
+    public synchronized <T> T query(SqlWork<T> work) throws SQLException {
+        if (!isReady()) throw new SQLException("CivCraft storage is not initialized");
+        return work.apply(connection);
+    }
+
+    public synchronized <T> T transaction(SqlWork<T> work) throws SQLException {
+        if (!isReady()) throw new SQLException("CivCraft storage is not initialized");
+        if (!connection.getAutoCommit()) throw new SQLException("Nested CivCraft transaction is not supported");
+        connection.setAutoCommit(false);
+        try {
+            T result = work.apply(connection);
+            connection.commit();
+            return result;
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(true);
         }
     }
 
@@ -390,7 +426,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void warmupAsync() {
+    public synchronized void warmupAsync() {
         if (connection == null) {
             return;
         }
@@ -405,11 +441,11 @@ public final class StorageBootstrap implements AutoCloseable {
         });
     }
 
-    public boolean isReady() {
+    public synchronized boolean isReady() {
         return connection != null;
     }
 
-    public ResidentProfile getOrCreateResident(UUID uuid, String name, double startingCoins) throws SQLException {
+    public synchronized ResidentProfile getOrCreateResident(UUID uuid, String name, double startingCoins) throws SQLException {
         Optional<ResidentProfile> existing = findResident(uuid);
         if (existing.isPresent()) {
             updateResidentName(uuid, name);
@@ -427,7 +463,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return findResident(uuid).orElseThrow();
     }
 
-    public Optional<ResidentProfile> findResident(UUID uuid) throws SQLException {
+    public synchronized Optional<ResidentProfile> findResident(UUID uuid) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM residents WHERE uuid = ?")) {
             statement.setString(1, uuid.toString());
             try (ResultSet rs = statement.executeQuery()) {
@@ -439,7 +475,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<ResidentProfile> findResidentByName(String name) throws SQLException {
+    public synchronized Optional<ResidentProfile> findResidentByName(String name) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 "SELECT * FROM residents WHERE name = ? COLLATE NOCASE LIMIT 1")) {
             statement.setString(1, name);
@@ -449,7 +485,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<CampRecord> findCampByOwner(UUID uuid) throws SQLException {
+    public synchronized Optional<CampRecord> findCampByOwner(UUID uuid) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps WHERE owner_uuid = ?")) {
             statement.setString(1, uuid.toString());
             try (ResultSet rs = statement.executeQuery()) {
@@ -463,7 +499,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * Persistent, single-use invitation. One outstanding invitation per player
      * and kind; newer invitations replace older ones. Caller checks roles.
      */
-    public void issueSettlementInvite(UUID target, String kind, long settlementId, UUID inviter, long expiresAt) throws SQLException {
+    public synchronized void issueSettlementInvite(UUID target, String kind, long settlementId, UUID inviter, long expiresAt) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
             throw new IllegalArgumentException("Invalid settlement invitation type");
         }
@@ -484,7 +520,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public String acceptSettlementInvite(UUID target, String kind) throws SQLException {
+    public synchronized String acceptSettlementInvite(UUID target, String kind) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
             throw new IllegalArgumentException("Invalid invitation type");
         }
@@ -578,7 +614,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void transferCivilizationLeadership(long civId, UUID currentLeader, UUID newLeader) throws SQLException {
+    public synchronized void transferCivilizationLeadership(long civId, UUID currentLeader, UUID newLeader) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 UPDATE civilizations SET leader_uuid = ?
                 WHERE id = ? AND leader_uuid = ?
@@ -595,7 +631,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void transferTownMayorship(long townId, UUID currentMayor, UUID newMayor) throws SQLException {
+    public synchronized void transferTownMayorship(long townId, UUID currentMayor, UUID newMayor) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 UPDATE towns SET mayor_uuid = ?
                 WHERE id = ? AND mayor_uuid = ?
@@ -612,7 +648,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public List<String> settlementMemberNames(String kind, long id) throws SQLException {
+    public synchronized List<String> settlementMemberNames(String kind, long id) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
             throw new IllegalArgumentException("Invalid settlement type");
         }
@@ -635,7 +671,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * This is a membership change, not settlement destruction. Founders and
      * mayors are protected by an ownership predicate inside the UPDATE.
      */
-    public void removeSettlementMember(UUID player, String kind, long settlementId) throws SQLException {
+    public synchronized void removeSettlementMember(UUID player, String kind, long settlementId) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
             throw new IllegalArgumentException("Invalid settlement type");
         }
@@ -680,7 +716,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<CivRecord> findCiv(long id) throws SQLException {
+    public synchronized Optional<CivRecord> findCiv(long id) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM civilizations WHERE id = ?")) {
             statement.setLong(1, id);
             try (ResultSet rs = statement.executeQuery()) {
@@ -689,7 +725,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<TownRecord> findTown(long id) throws SQLException {
+    public synchronized Optional<TownRecord> findTown(long id) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM towns WHERE id = ?")) {
             statement.setLong(1, id);
             try (ResultSet rs = statement.executeQuery()) {
@@ -698,7 +734,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void depositTown(long townId, double amount) throws SQLException {
+    public synchronized void depositTown(long townId, double amount) throws SQLException {
         long money = moneyToLong(amount);
         try (PreparedStatement statement = connection.prepareStatement("UPDATE towns SET coins = coins + ? WHERE id = ?")) {
             statement.setLong(1, money);
@@ -709,7 +745,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void withdrawTown(long townId, double amount) throws SQLException {
+    public synchronized void withdrawTown(long townId, double amount) throws SQLException {
         long money = moneyToLong(amount);
         connection.setAutoCommit(false);
         try {
@@ -735,7 +771,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void depositCiv(long civId, double amount) throws SQLException {
+    public synchronized void depositCiv(long civId, double amount) throws SQLException {
         long money = moneyToLong(amount);
         try (PreparedStatement statement = connection.prepareStatement("UPDATE civilizations SET coins = coins + ? WHERE id = ?")) {
             statement.setLong(1, money);
@@ -746,7 +782,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void withdrawCiv(long civId, double amount) throws SQLException {
+    public synchronized void withdrawCiv(long civId, double amount) throws SQLException {
         long money = moneyToLong(amount);
         connection.setAutoCommit(false);
         try {
@@ -772,7 +808,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public boolean hasTownNear(Location location, double distance) throws SQLException {
+    public synchronized boolean hasTownNear(Location location, double distance) throws SQLException {
         double squared = distance * distance;
         try (PreparedStatement statement = connection.prepareStatement("SELECT world, x, y, z FROM towns WHERE world = ?")) {
             statement.setString(1, location.getWorld().getName());
@@ -790,7 +826,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return false;
     }
 
-    public CampRecord createCamp(UUID owner, String name, Location location, double cost, int hitpoints, int firepointsHours) throws SQLException {
+    public synchronized CampRecord createCamp(UUID owner, String name, Location location, double cost, int hitpoints, int firepointsHours) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(owner, cost);
@@ -835,11 +871,11 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public CivRecord createCivilization(UUID leader, String name, double cost, String government) throws SQLException {
+    public synchronized CivRecord createCivilization(UUID leader, String name, double cost, String government) throws SQLException {
         return createCivilization(leader, name, "", cost, government);
     }
 
-    public CivRecord createCivilization(UUID leader, String name, String tag, double cost, String government) throws SQLException {
+    public synchronized CivRecord createCivilization(UUID leader, String name, String tag, double cost, String government) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(leader, cost);
@@ -870,7 +906,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public TownRecord createTown(UUID mayor, long civId, String name, Location location, double cost, double hammersPerHour) throws SQLException {
+    public synchronized TownRecord createTown(UUID mayor, long civId, String name, Location location, double cost, double hammersPerHour) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(mayor, cost);
@@ -908,7 +944,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<TownClaimRecord> findTownClaim(String world, int chunkX, int chunkZ) throws SQLException {
+    public synchronized Optional<TownClaimRecord> findTownClaim(String world, int chunkX, int chunkZ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM town_claims WHERE world = ? AND chunk_x = ? AND chunk_z = ?")) {
             statement.setString(1, world);
             statement.setInt(2, chunkX);
@@ -919,7 +955,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public int townClaimCount(long townId) throws SQLException {
+    public synchronized int townClaimCount(long townId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM town_claims WHERE town_id = ?")) {
             statement.setLong(1, townId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -928,7 +964,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public TownClaimRecord claimTownChunk(UUID claimant, long townId, long civId, String world, int chunkX, int chunkZ, double cost) throws SQLException {
+    public synchronized TownClaimRecord claimTownChunk(UUID claimant, long townId, long civId, String world, int chunkX, int chunkZ, double cost) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(claimant, cost);
@@ -966,7 +1002,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void unclaimTownChunk(long townId, String world, int chunkX, int chunkZ) throws SQLException {
+    public synchronized void unclaimTownChunk(long townId, String world, int chunkX, int chunkZ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("DELETE FROM town_claims WHERE town_id = ? AND world = ? AND chunk_x = ? AND chunk_z = ?")) {
             statement.setLong(1, townId);
             statement.setString(2, world);
@@ -978,7 +1014,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public long recordStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt) throws SQLException {
+    public synchronized long recordStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt) throws SQLException {
         long now = System.currentTimeMillis();
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT INTO structure_builds(builder_uuid, town_id, type, template, direction, world, x, y, z, template_path, queued_blocks, structure_id, display_name, cost, max_hitpoints, total_hammers, hammers_per_hour, production_hammers_per_hour, beakers_per_hour, money_per_hour, happiness, started_at, finish_at, status, journal_started, created_at)
@@ -1018,7 +1054,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     /** Keep buildings in progress or recovery locked until their terrain is stable. */
-    public boolean isActiveStructureChunk(String world, int cx, int cz) throws SQLException {
+    public synchronized boolean isActiveStructureChunk(String world, int cx, int cz) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM structure_chunks sc
                 JOIN structure_builds sb ON sb.id=sc.build_id
@@ -1035,7 +1071,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public boolean hasStructureChunkOverlap(Collection<StructureChunkCoord> chunks) throws SQLException {
+    public synchronized boolean hasStructureChunkOverlap(Collection<StructureChunkCoord> chunks) throws SQLException {
         if (chunks == null || chunks.isEmpty()) {
             return false;
         }
@@ -1054,7 +1090,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return false;
     }
 
-    public int countTownStructureBuildings(long townId, String structureId) throws SQLException {
+    public synchronized int countTownStructureBuildings(long townId, String structureId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT COUNT(*) FROM structure_builds
                 WHERE town_id = ? AND structure_id = ? COLLATE NOCASE
@@ -1068,7 +1104,21 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public boolean hasActiveStructureBuild(long townId) throws SQLException {
+    public synchronized boolean isWonderReserved(String structureId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("""
+                SELECT 1 FROM structure_builds
+                WHERE lower(structure_id) = lower(?)
+                AND lower(structure_id) NOT IN ('w_colosseum','w_battledome')
+                AND status IN ('COMPLETE', 'DEMOLISH_PENDING') LIMIT 1
+                """)) {
+            statement.setString(1, structureId);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next();
+            }
+        }
+    }
+
+    public synchronized boolean hasActiveStructureBuild(long townId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT 1 FROM structure_builds
                 WHERE town_id = ? AND status NOT IN ('COMPLETE', 'CANCELLED', 'DEMOLISHED')
@@ -1081,7 +1131,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<StructureBuildView> findActiveStructureBuildForTown(long townId) throws SQLException {
+    public synchronized Optional<StructureBuildView> findActiveStructureBuildForTown(long townId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT sb.*, t.name AS town_name
                 FROM structure_builds sb
@@ -1097,7 +1147,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Optional<StructureBuildView> findStructureBuildAtChunk(String world, int chunkX, int chunkZ) throws SQLException {
+    public synchronized Optional<StructureBuildView> findStructureBuildAtChunk(String world, int chunkX, int chunkZ) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT sb.*, t.name AS town_name, sc.chunk_x AS info_chunk_x, sc.chunk_z AS info_chunk_z
                 FROM structure_chunks sc
@@ -1121,7 +1171,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * QUEUED to ROLLBACK_PENDING. Keep claims locked and original snapshots
      * intact until world blocks have been restored.
      */
-    public void requestStructureRollback(long buildId, long townId, long refund) throws SQLException {
+    public synchronized void requestStructureRollback(long buildId, long townId, long refund) throws SQLException {
         if (refund < 0L) {
             throw new SQLException("Refund must be non-negative");
         }
@@ -1158,7 +1208,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     /** Mark a rollback complete only after terrain restoration has finished. */
-    public void finishStructureRollback(long buildId) throws SQLException {
+    public synchronized void finishStructureRollback(long buildId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement update = connection.prepareStatement("""
@@ -1191,7 +1241,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void cancelStructureBuild(long buildId) throws SQLException {
+    public synchronized void cancelStructureBuild(long buildId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM protected_blocks WHERE build_id = ?")) {
@@ -1216,7 +1266,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void recordStructureChunks(long buildId, Long townId, Collection<StructureChunkCoord> chunks) throws SQLException {
+    public synchronized void recordStructureChunks(long buildId, Long townId, Collection<StructureChunkCoord> chunks) throws SQLException {
         if (chunks == null || chunks.isEmpty()) {
             return;
         }
@@ -1242,7 +1292,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void completeStructureBuild(long id) throws SQLException {
+    public synchronized void completeStructureBuild(long id) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("UPDATE structure_builds SET status = 'COMPLETE', completed_at = ? WHERE id = ? AND status IN ('QUEUED', 'BUILDING')")) {
             statement.setLong(1, System.currentTimeMillis());
             statement.setLong(2, id);
@@ -1250,7 +1300,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void recordProtectedBlocks(long buildId, Collection<BlockPlacement> placements) throws SQLException {
+    public synchronized void recordProtectedBlocks(long buildId, Collection<BlockPlacement> placements) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT OR REPLACE INTO protected_blocks(world, x, y, z, build_id, material)
                 VALUES(?, ?, ?, ?, ?, ?)
@@ -1268,7 +1318,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void recordProtectedBlocksAndCompleteBuild(long buildId, Collection<BlockPlacement> placements) throws SQLException {
+    public synchronized void recordProtectedBlocksAndCompleteBuild(long buildId, Collection<BlockPlacement> placements) throws SQLException {
         Path databaseFile = settings.sqlitePath(plugin.getDataFolder().toPath());
         try (Connection writeConnection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile)) {
             applySqlitePragmas(writeConnection);
@@ -1317,7 +1367,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void recordProtectedBlocksBackupsAndCompleteBuild(long buildId, Collection<BlockPlacement> placements, Collection<BlockBackup> backups) throws SQLException {
+    public synchronized boolean recordProtectedBlocksBackupsAndCompleteBuild(long buildId, Collection<BlockPlacement> placements, Collection<BlockBackup> backups) throws SQLException {
         Path databaseFile = settings.sqlitePath(plugin.getDataFolder().toPath());
         try (Connection writeConnection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile)) {
             applySqlitePragmas(writeConnection);
@@ -1335,11 +1385,15 @@ public final class StorageBootstrap implements AutoCloseable {
             ) {
                 // Claim completion at transaction start. If a cancellation
                 // already won, never resurrect protected blocks or status.
+                if (WonderUniqueness.rollbackLosingBuild(writeConnection, buildId)) {
+                    writeConnection.commit();
+                    return false;
+                }
                 complete.setLong(1, System.currentTimeMillis());
                 complete.setLong(2, buildId);
                 if (complete.executeUpdate() != 1) {
                     writeConnection.rollback();
-                    return;
+                    return true;
                 }
                 int batchSize = Math.max(1, settings.maxDatabaseWritesPerTick());
                 int pendingBackups = 0;
@@ -1379,7 +1433,9 @@ public final class StorageBootstrap implements AutoCloseable {
                 if (pending > 0) {
                     insert.executeBatch();
                 }
+                com.avrgaming.civcraft.modern.trade.TradeStore.recordPoints(writeConnection,buildId,placements);
                 writeConnection.commit();
+                return true;
             } catch (SQLException exception) {
                 writeConnection.rollback();
                 throw exception;
@@ -1394,7 +1450,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * corresponding build session mutates any block. INSERT OR IGNORE retains
      * the original snapshot on a build that was resumed after a restart.
      */
-    public void persistStructureSnapshot(long buildId, List<BlockBackup> originals, boolean complete) throws SQLException {
+    public synchronized void persistStructureSnapshot(long buildId, List<BlockBackup> originals, boolean complete) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement check = connection.prepareStatement("""
@@ -1451,7 +1507,7 @@ public final class StorageBootstrap implements AutoCloseable {
                                    boolean snapshotReady) {
     }
 
-    public List<InterruptedBuild> interruptedStructureBuilds() throws SQLException {
+    public synchronized List<InterruptedBuild> interruptedStructureBuilds() throws SQLException {
         List<InterruptedBuild> interrupted = new ArrayList<>();
         try (PreparedStatement query = connection.prepareStatement("""
                 SELECT id, status, world, x, y, z, template_path, finish_at,
@@ -1473,7 +1529,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return interrupted;
     }
 
-    public List<BlockBackup> loadStructureBlockBackups(long buildId) throws SQLException {
+    public synchronized List<BlockBackup> loadStructureBlockBackups(long buildId) throws SQLException {
         List<BlockBackup> backups = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT world, x, y, z, block_data
@@ -1492,7 +1548,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     /** Atomically reserve a finished building for demolition and pay one refund. */
-    public void requestStructureDemolition(long buildId, long townId, long refund) throws SQLException {
+    public synchronized void requestStructureDemolition(long buildId, long townId, long refund) throws SQLException {
         if (refund < 0L) {
             throw new SQLException("Demolition refund must be non-negative");
         }
@@ -1528,7 +1584,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     /** Delete structure ownership only AFTER world rollback completes. */
-    public void finishStructureDemolition(long buildId) throws SQLException {
+    public synchronized void finishStructureDemolition(long buildId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement update = connection.prepareStatement("""
@@ -1557,7 +1613,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void demolishStructureBuild(long buildId) throws SQLException {
+    public synchronized void demolishStructureBuild(long buildId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM protected_blocks WHERE build_id = ?")) {
@@ -1586,7 +1642,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public boolean isProtectedBlock(String world, int x, int y, int z) throws SQLException {
+    public synchronized boolean isProtectedBlock(String world, int x, int y, int z) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM protected_blocks WHERE world = ? AND x = ? AND y = ? AND z = ?")) {
             statement.setString(1, world);
             statement.setInt(2, x);
@@ -1598,7 +1654,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public Set<String> researchedTechs(long civId) throws SQLException {
+    public synchronized Set<String> researchedTechs(long civId) throws SQLException {
         Set<String> techs = new HashSet<>();
         try (PreparedStatement statement = connection.prepareStatement("SELECT tech_id FROM civ_technologies WHERE civ_id = ?")) {
             statement.setLong(1, civId);
@@ -1611,7 +1667,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return techs;
     }
 
-    public Optional<ResearchProgress> researchProgress(long civId, double requiredBeakers) throws SQLException {
+    public synchronized Optional<ResearchProgress> researchProgress(long civId, double requiredBeakers) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT tech_id, progress FROM civ_research WHERE civ_id = ?")) {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -1623,7 +1679,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void startResearch(long civId, String techId) throws SQLException {
+    public synchronized void startResearch(long civId, String techId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT INTO civ_research(civ_id, tech_id, progress, updated_at)
                 VALUES(?, ?, 0, ?)
@@ -1636,7 +1692,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public List<ActiveResearch> activeResearches() throws SQLException {
+    public synchronized List<ActiveResearch> activeResearches() throws SQLException {
         List<ActiveResearch> researches = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement("SELECT civ_id, tech_id, progress FROM civ_research")) {
             try (ResultSet rs = statement.executeQuery()) {
@@ -1648,7 +1704,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return researches;
     }
 
-    public boolean addResearchBeakers(long civId, String techId, double beakers, double requiredBeakers) throws SQLException {
+    public synchronized boolean addResearchBeakers(long civId, String techId, double beakers, double requiredBeakers) throws SQLException {
         if (Double.isNaN(beakers) || Double.isInfinite(beakers) || beakers < 0) {
             throw new SQLException("Invalid beaker amount: " + beakers);
         }
@@ -1698,7 +1754,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
 
-    public int civTownCount(long civId) throws SQLException {
+    public synchronized int civTownCount(long civId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
                 "SELECT COUNT(*) FROM towns WHERE civ_id = ?")) {
             statement.setLong(1, civId);
@@ -1708,7 +1764,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public double civBeakersPerHour(long civId) throws SQLException {
+    public synchronized double civBeakersPerHour(long civId) throws SQLException {
         List<TownBaseProduction> towns = townBaseProductions(civId);
         double total = 0.0;
         for (TownBaseProduction town : towns) {
@@ -1723,7 +1779,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * The transaction ensures a single tick never credits only part of the towns.
      * There is no offline catch-up; the service only accrues while the server runs.
      */
-    public long distributeTownIncomeMinute() throws SQLException {
+    public synchronized long distributeTownIncomeMinute() throws SQLException {
         record IncomeBase(long id, double hammers, double beakers, double money, int happiness,
                           double remainder) {
         }
@@ -1774,7 +1830,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public double civMoneyPerHour(long civId) throws SQLException {
+    public synchronized double civMoneyPerHour(long civId) throws SQLException {
         List<TownBaseProduction> towns = townBaseProductions(civId);
         double total = 0.0;
         for (TownBaseProduction town : towns) {
@@ -1822,9 +1878,21 @@ public final class StorageBootstrap implements AutoCloseable {
         }
         int happiness = clampHappiness(baseHappiness + structureHappiness);
         double multiplier = happinessMultiplier(happiness);
+        double hammerRate=1,beakerRate=1;
+        if(governments!=null) {
+            try(var query=connection.prepareStatement("SELECT c.government FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")) {
+                query.setLong(1,townId);
+                try(var result=query.executeQuery()) {
+                    if(result.next()) {
+                        var government=governments.require(result.getString(1));
+                        hammerRate=government.hammers();beakerRate=government.beakers();
+                    }
+                }
+            }
+        }
         return new TownProduction(
-                (Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier,
-                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * multiplier,
+                (Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate,
+                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * multiplier * beakerRate,
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * multiplier,
                 happiness,
                 happinessState(happiness),
@@ -1886,7 +1954,7 @@ public final class StorageBootstrap implements AutoCloseable {
     private record TownProduction(double hammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, String state, double multiplier) {
     }
 
-    public int townCount(long civId) throws SQLException {
+    public synchronized int townCount(long civId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM towns WHERE civ_id = ?")) {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -1895,7 +1963,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void chargeAndStartResearch(UUID uuid, double amount, long civId, String techId) throws SQLException {
+    public synchronized void chargeAndStartResearch(UUID uuid, double amount, long civId, String techId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(uuid, amount);
@@ -1918,7 +1986,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void chargeResident(UUID uuid, double amount) throws SQLException {
+    public synchronized void chargeResident(UUID uuid, double amount) throws SQLException {
         connection.setAutoCommit(false);
         try {
             withdrawResident(uuid, amount);
@@ -1931,7 +1999,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void depositResident(UUID uuid, double amount) throws SQLException {
+    public synchronized void depositResident(UUID uuid, double amount) throws SQLException {
         long money = moneyToLong(amount);
         try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET coins = coins + ?, updated_at = ? WHERE uuid = ?")) {
             statement.setLong(1, money);
@@ -1982,7 +2050,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
 
-    public void deleteCamp(long campId, UUID owner) throws SQLException {
+    public synchronized void deleteCamp(long campId, UUID owner) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = NULL, updated_at = ? WHERE uuid = ? AND camp_id = ?")) {
@@ -2005,7 +2073,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void deleteTown(long townId, UUID mayor) throws SQLException {
+    public synchronized void deleteTown(long townId, UUID mayor) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM structure_chunks WHERE town_id = ?")) {
@@ -2044,7 +2112,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void deleteCivilization(long civId, UUID leader) throws SQLException {
+    public synchronized void deleteCivilization(long civId, UUID leader) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement townSelect = connection.prepareStatement("SELECT id FROM towns WHERE civ_id = ?")) {
@@ -2108,7 +2176,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
-    public void deleteStructureBuild(long buildId) throws SQLException {
+    public synchronized void deleteStructureBuild(long buildId) throws SQLException {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM structure_chunks WHERE build_id = ?")) {
@@ -2241,7 +2309,7 @@ public final class StorageBootstrap implements AutoCloseable {
         return rs.wasNull() ? null : value;
     }
 
-    public boolean isFirstCompletedStructureInTown(long buildId, long townId) throws SQLException {
+    public synchronized boolean isFirstCompletedStructureInTown(long buildId, long townId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT id
                 FROM structure_builds
@@ -2257,7 +2325,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         if (connection == null) {
             return;
         }

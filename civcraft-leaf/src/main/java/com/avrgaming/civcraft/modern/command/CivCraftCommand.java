@@ -138,6 +138,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && (args[1].equalsIgnoreCase("gov") || args[1].equalsIgnoreCase("government"))) {
+            plugin.governments().command(player,args);return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
             for (String line : lang.list("commands.help.civ", List.of(
                     "&6Цивилизация: /civ info, members, invite <ник>, join, leave",
@@ -185,7 +188,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("create")) {
             CivRecord civ = game.createCivilization(player, joinName(args, 2));
-            success(player, msg("commands.civ.created", "Цивилизация {name} создана. Правительство: {government}", "name", civ.name(), "government", civ.government()));
+            success(player, msg("commands.civ.created", "Цивилизация {name} создана. Правительство: {government}", "name", civ.name(), "government", plugin.governments().name(civ.government())));
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("deposit")) {
@@ -200,7 +203,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         ResidentProfile resident = game.resident(player);
         game.civ(resident).ifPresentOrElse(
-                civ -> send(player, msg("commands.civ.info", "&6Цивилизация: &e{name} &7government={government}, coins={coins}", "name", civ.name(), "government", civ.government(), "coins", civ.coins())),
+                civ -> send(player, msg("commands.civ.info", "&6Цивилизация: &e{name} &7government={government}, coins={coins}", "name", civ.name(), "government", plugin.governments().name(civ.government()), "coins", civ.coins())),
                 () -> error(player, msg("commands.civ.none", "Вы не состоите в цивилизации. Используйте /civ create <название>."))
         );
     }
@@ -313,11 +316,14 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             );
             return;
         }
-        if (args.length >= 2 && args[1].equalsIgnoreCase("list")) {
-            List<String> structures = legacyStructures.listDefinitions(25).stream()
-                    .map(definition -> definition.id() + "(" + definition.displayName() + ", cost=" + definition.cost() + ", hammers=" + definition.hammerCost() + ", beakers=" + definition.beakersPerHour() + "/h, happiness=" + definition.happiness() + ")")
-                    .toList();
-            send(player, msg("commands.build.list", "&6Постройки: &e{list}", "list", String.join(", ", structures)));
+        if (args.length >= 2 && (args[1].equalsIgnoreCase("list") || args[1].equalsIgnoreCase("wonders"))) {
+            boolean wonders=args[1].equalsIgnoreCase("wonders");
+            send(player,wonders?"&6Чудеса света:":"&6Постройки:");
+            for(var definition:legacyStructures.listDefinitions(Integer.MAX_VALUE)) {
+                if(wonders && !definition.wonder())continue;
+                send(player,"&e"+definition.id()+" &7— "+definition.displayName()
+                        + ", стоимость: "+definition.cost()+", молотки: "+definition.hammerCost());
+            }
             return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("legacy")) {
@@ -348,6 +354,20 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     private void handleCivAdmin(CommandSender sender, String[] args) throws IOException, SQLException {
         if (!sender.hasPermission("civcraft.admin")) {
             throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только администратору."));
+        }
+        if (args.length >= 2 && args[1].equalsIgnoreCase("item")) {
+            if (args.length < 5 || !args[2].equalsIgnoreCase("give")) {
+                send(sender, "&e/civadmin item give <ник> <ID предмета> [количество]");
+                return;
+            }
+            Player target = Bukkit.getPlayerExact(args[3]);
+            if (target == null) throw new IllegalArgumentException("Игрок должен быть онлайн.");
+            int amount = args.length >= 6 ? Integer.parseInt(args[5]) : 1;
+            ItemStack stack = plugin.nativeItems().create(args[4], amount);
+            java.util.Map<Integer, ItemStack> overflow = target.getInventory().addItem(stack);
+            for (ItemStack item : overflow.values()) target.getWorld().dropItemNaturally(target.getLocation(), item);
+            success(sender, "Выдан предмет " + args[4] + " игроку " + target.getName());
+            return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("recovery")) {
             if (args.length >= 3 && !args[2].equalsIgnoreCase("status")) {
@@ -642,6 +662,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
         String primary = alias.toLowerCase(Locale.ROOT);
+        if(primary.equals("civ") && args.length>=2 && (args[0].equalsIgnoreCase("gov") || args[0].equalsIgnoreCase("government"))) {
+            if(args.length==2)return List.of("info","list","change");
+            if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
+        }
         if (List.of("build", "b").contains(primary) && args.length == 1) {
             return List.of("list", "cancel", "demolish", "info", "time", "s_townhall", "s_capitol");
         }
@@ -652,7 +676,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("help", "create", "info", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
+            return List.of("help", "create", "info", "gov", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
             return List.of("help", "create", "info", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");

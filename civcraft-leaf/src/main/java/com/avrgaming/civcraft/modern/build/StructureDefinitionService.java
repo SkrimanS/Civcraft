@@ -34,8 +34,19 @@ public final class StructureDefinitionService {
             plugin.getLogger().warning("Structure config not found: " + file.getAbsolutePath());
             return;
         }
+        load(file, "structures");
+        File wonders = new File(file.getParentFile(), "wonders.yml");
+        if (wonders.isFile()) {
+            load(wonders, "wonders");
+        } else {
+            plugin.getLogger().warning("Wonder config not found: " + wonders.getAbsolutePath());
+        }
+        plugin.getLogger().info("Loaded " + definitions.size() + " CivCraft structure and wonder definitions.");
+    }
+
+    private void load(File file, String section) {
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
-        for (Map<?, ?> raw : yaml.getMapList("structures")) {
+        for (Map<?, ?> raw : yaml.getMapList(section)) {
             String id = string(raw.get("id"));
             String template = string(raw.get("template"));
             if (id.isBlank() || template.isBlank()) {
@@ -59,7 +70,6 @@ public final class StructureDefinitionService {
             );
             definitions.put(id.toLowerCase(Locale.ROOT), definition);
         }
-        plugin.getLogger().info("Loaded " + definitions.size() + " CivCraft structure definitions.");
     }
 
     public Optional<StructureDefinition> find(String id) {

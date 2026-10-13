@@ -41,7 +41,7 @@ unit_info:
 units:
 
   - id: 'u_spy'
-    name: "Spy"
+    name: "Шпион"
     class_name: 'com.avrgaming.civcraft.items.units.Spy'
     require_tech: 'tech_nationalism'
     require_struct:
@@ -53,7 +53,7 @@ units:
     item_data: 0
     
   - id: 'u_settler'
-    name: "Settler"
+    name: "Поселенец"
     class_name: 'com.avrgaming.civcraft.items.units.Settler'
     require_tech:
     require_struct:

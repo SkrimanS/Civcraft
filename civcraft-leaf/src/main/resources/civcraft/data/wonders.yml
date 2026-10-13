@@ -123,7 +123,7 @@ wonders:
   - id: w_council_of_eight
     template: council_of_eight
     template_y_shift: 0
-    displayName: Council Of Eight
+    displayName: "Совет Восьми"
     require_tech: 'tech_council_of_eight'
     require_upgrade:
     check_event:
@@ -232,7 +232,7 @@ wonders:
   - id: w_battledome
     template: battledome
     template_y_shift: -1
-    displayName: Battledome
+    displayName: "Боевой купол"
     require_tech: 'tech_battledome'
     require_upgrade:
     check_event:

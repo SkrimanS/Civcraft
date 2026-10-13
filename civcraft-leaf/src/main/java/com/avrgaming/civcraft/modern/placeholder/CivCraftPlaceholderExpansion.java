@@ -89,7 +89,7 @@ public final class CivCraftPlaceholderExpansion extends PlaceholderExpansion {
                 case "player_civ", "civ_name" -> game.civ(resident).map(CivRecord::name).orElse(settings.placeholderEmptyValue());
                 case "player_town", "town_name" -> game.town(resident).map(TownRecord::name).orElse(settings.placeholderEmptyValue());
                 case "player_camp" -> camps.placeholderInfo(player.getUniqueId()).map(CampService.CampPlaceholderInfo::name).orElse(settings.placeholderEmptyValue());
-                case "civ_government" -> game.civ(resident).map(CivRecord::government).orElse(settings.placeholderEmptyValue());
+                case "civ_government" -> game.civ(resident).map(civ -> plugin.governments().name(civ.government())).orElse(settings.placeholderEmptyValue());
                 case "town_level" -> game.town(resident).map(town -> String.valueOf(town.level())).orElse(settings.placeholderEmptyValue());
                 case "town_claims" -> resident.townId() == null ? settings.placeholderEmptyValue() : String.valueOf(townClaims.claimCount(player));
                 case "civ_research" -> research.progress(resident).map(ResearchProgress::techId).orElse(settings.placeholderEmptyValue());

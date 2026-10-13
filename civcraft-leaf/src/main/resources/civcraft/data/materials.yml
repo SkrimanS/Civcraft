@@ -77,10 +77,10 @@ materials:
         - id: 'mat_carved_leather'
           item_id: 334
           item_data: 0
-          name: 'T1 Carved Leather'
+          name: "Т1 Обработанная кожа"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 334
                 data: 0
@@ -90,10 +90,10 @@ materials:
         - id: 'mat_refined_stone'
           item_id: 1
           item_data: 0
-          name: 'T1 Refined Stone'
+          name: "T1 Очищенный камень"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 4
                 data: 0
@@ -103,10 +103,10 @@ materials:
         - id: 'mat_refined_stone_alt0'
           item_id: 1
           item_data: 0
-          name: 'T1 Refined Stone'
+          name: "T1 Очищенный камень"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 1
                 data: 1
@@ -116,10 +116,10 @@ materials:
         - id: 'mat_refined_stone_alt1'
           item_id: 1
           item_data: 0
-          name: 'T1 Refined Stone'
+          name: "T1 Очищенный камень"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 1
                 data: 3
@@ -129,10 +129,10 @@ materials:
         - id: 'mat_refined_stone_alt2'
           item_id: 1
           item_data: 0
-          name: 'T1 Refined Stone'
+          name: "T1 Очищенный камень"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 1
                 data: 5
@@ -155,10 +155,10 @@ materials:
         - id: 'mat_refined_feathers'
           item_id: 406
           item_data: 0
-          name: 'T1 Packed Feathers'
+          name: "T1 Обработанные перья"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 288
                 data: 0
@@ -168,10 +168,10 @@ materials:
         - id: 'mat_crafted_string'
           item_id: 287
           item_data: 0
-          name: 'T1 Crafted String'
+          name: "T1 Обработанная нить"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 287
                 data: 0
@@ -181,10 +181,10 @@ materials:
         - id: 'mat_refined_slime'
           item_id: 341
           item_data: 0
-          name: 'T1 Refined Slime'
+          name: "T1 Сгусток слизи"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 341 
                 custom_id: 'mat_vanilla_slime'
@@ -208,12 +208,12 @@ materials:
         - id: 'mat_crafted_reeds'
           item_id: 338
           item_data: 0
-          name: 'T1 Crafted Reeds'
+          name: "T1 Обработанный тростник"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 0.5
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 338
                 data: 0
@@ -236,10 +236,10 @@ materials:
         - id: 'mat_crafted_sticks'
           item_id: 280
           item_data: 0
-          name: 'T1 Crafted Sticks'
+          name: "T1 Обработанная палка"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 280
                 data: 0
@@ -249,10 +249,10 @@ materials:
         - id: 'mat_refined_sulphur'
           item_id: 289
           item_data: 0
-          name: 'T1 Refined Sulphur'
+          name: "T1 Очищенный порох"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 289
                 data: 0
@@ -261,10 +261,10 @@ materials:
         - id: 'mat_compacted_sand'
           item_id: 24
           item_data: 1
-          name: 'T1 Compacted Sand'
+          name: "T1 Плотный песок"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 12
                 data: -1
@@ -274,10 +274,10 @@ materials:
         - id: 'mat_forged_clay'
           item_id: 336
           item_data: 0
-          name: 'T1 Forged Clay'
+          name: "T1 Кованая глина"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 337
                 data: 0
@@ -287,10 +287,10 @@ materials:
         - id: 'mat_refined_sugar'
           item_id: 353
           item_data: 0
-          name: 'T1 Refined Sugar'
+          name: "T1 Рафинированный сахар"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 353
                 data: 0
@@ -300,10 +300,10 @@ materials:
         - id: 'mat_refined_wart'
           item_id: 372
           item_data: 0
-          name: 'T1 Refined Wart'
+          name: "T1 Редкий нарост"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 372
                 data: 0
@@ -313,10 +313,10 @@ materials:
         - id: 'mat_forged_chromium'
           item_id: 265
           item_data: 0
-          name: 'T1 Forged Chromium'
+          name: "T1 Кованый хром"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 0
                 data: 0
@@ -327,10 +327,10 @@ materials:
         - id: 'mat_forged_tungsten'
           item_id: 133
           item_data: 0
-          name: 'T1 Forged Tungsten'
+          name: "T1 Кованый вольфрам"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 0
                 data: 0
@@ -341,10 +341,10 @@ materials:
         - id: 'mat_refined_wood'
           item_id: 126
           item_data: 0
-          name: 'T1 Refined Wood'
+          name: "T1 Обработанная древесина"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 17
                 data: -1
@@ -354,10 +354,10 @@ materials:
         - id: 'mat_refined_wood_alt2'
           item_id: 126
           item_data: 0
-          name: 'T1 Refined Wood'
+          name: "T1 Обработанная древесина"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 162
                 data: -1
@@ -383,12 +383,12 @@ materials:
           item_data: 0
           tradeable: true
           tradeValue: 0.5
-          name: 'Tungsten Ore'
+          name: "Вольфрамовая руда"
           components:
               - name: 'NoRightClick'
           craftable: false
           shaped: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
         
           # XXX Statically coded to drop from trommel 
         # Checked 10/8/13
@@ -397,10 +397,10 @@ materials:
           item_data: 0
           tradeable: true
           tradeValue: 0.1
-          name: 'Chromium Ore'
+          name: "Хромовая руда"
           craftable: false
           shaped: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
 
 
 
@@ -411,12 +411,12 @@ materials:
         - id: 'mat_crafted_leather'
           item_id: 31
           item_data: 0
-          name: 'T2 Crafted Leather'
+          name: "T2 Резная кожа"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_carved_leather'
@@ -431,12 +431,12 @@ materials:
         - id: 'mat_decorative_jewels'
           item_id: 372
           item_data: 0
-          name: 'T2 Decorative Jewels'
+          name: "T2 Брилиантовые украшения"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 57
                 data: 0
@@ -446,12 +446,12 @@ materials:
         - id: 'mat_crushed_stone'
           item_id: 44
           item_data: 0
-          name: 'T2 Crushed Stone'
+          name: "T2 Прессованый камень"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_refined_stone'
@@ -463,12 +463,12 @@ materials:
         - id: 'mat_jewelry_grade_gold'
           item_id: 322
           item_data: 0
-          name: 'T2 Jewelry Grade Gold'
+          name: "T2 Ювелирное золото"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1400.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 41
                 data: 0
@@ -478,12 +478,12 @@ materials:
         - id: 'mat_milled_lumber'
           item_id: 53
           item_data: 0
-          name: 'T2 Milled Lumber'
+          name: "T2 Пиломатериалы"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_refined_wood'
@@ -494,12 +494,12 @@ materials:
         - id: 'mat_woven_mesh_patch'
           item_id: 358
           item_data: 0
-          name: 'T2 Woven Mesh Patch'
+          name: "T2 Плетёная ткань"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_crafted_string'
@@ -518,12 +518,12 @@ materials:
         - id: 'mat_steel_ingot'
           item_id: 265
           item_data: 0
-          name: 'T2 Steel Ingot'
+          name: "T2 Стальной слиток"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 400.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 42
                 data: 0
@@ -540,12 +540,12 @@ materials:
         - id: 'mat_varnish'
           item_id: 384
           item_data: 0
-          name: 'T2 Varnish'
+          name: "T2 Лак"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -566,12 +566,12 @@ materials:
         - id: 'mat_sticky_resin'
           item_id: 374
           item_data: 0
-          name: 'T2 Sticky Resin'
+          name: "T2 Липкая смола"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -591,12 +591,12 @@ materials:
         - id: 'mat_clay_molding'
           item_id: 45
           item_data: 0
-          name: 'T2 Clay Molding'
+          name: "T2 Формовочная глина"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_clay'
@@ -616,12 +616,12 @@ materials:
         - id: 'mat_chromium_ingot'
           item_id: 399
           item_data: 0
-          name: 'T2 Chromium Ingot'
+          name: "T2 Хромовый слиток"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 2.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_chromium'
@@ -643,12 +643,12 @@ materials:
         - id: 'mat_aged_wood_stave'
           item_id: 280
           item_data: 0
-          name: 'T2 Aged Wood Stave'
+          name: "T2 Редкая палка"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_crafted_sticks'
@@ -667,12 +667,12 @@ materials:
         - id: 'mat_woven_threading'
           item_id: 420
           item_data: 0
-          name: 'T2 Woven Threading'
+          name: "T2 Тканая нить"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 1.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -689,10 +689,10 @@ materials:
         - id: 'mat_steel_sword_blade'
           item_id: 265
           item_data: 0
-          name: 'T2 Steel Sword Blade'
+          name: "T2 Стальное лезвие меча"
           craftable: true
           shaped: false
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_steel_ingot'
@@ -707,10 +707,10 @@ materials:
         - id: 'mat_steel_sword_hilt'
           item_id: 280
           item_data: 0
-          name: 'T2 Steel Sword Hilt'
+          name: "T2 Эфес стального меча"
           craftable: true
           shaped: false
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_steel_ingot'
@@ -733,12 +733,12 @@ materials:
         - id: 'mat_steel_plate'
           item_id: 148
           item_data: 0
-          name: 'T2 Steel Plate'
+          name: "T2 Стальная пластина"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 400.0
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_steel_ingot'
@@ -762,12 +762,12 @@ materials:
         - id: 'mat_leather_straps'
           item_id: 32
           item_data: 0
-          name: 'T3 Leather Straps'
+          name: "T3 Кожаные ремни"
           craftable: true
           tradeable: true
           tradeValue: 5.0
           shaped: false
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_crafted_leather'
@@ -782,12 +782,12 @@ materials:
         - id: 'mat_clay_steel_cast'
           item_id: 343
           item_data: 0
-          name: 'T3 Clay Steel Casting'
+          name: "T3 Литая глина"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -812,12 +812,12 @@ materials:
         - id: 'mat_reinforced_braid'
           item_id: 287
           item_data: 0
-          name: 'T3 Reinforced Braid'
+          name: "T3 Армированное волокно"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_woven_threading'
@@ -836,12 +836,12 @@ materials:
         - id: 'mat_carbide_steel_ingot'
           item_id: 318
           item_data: 0
-          name: 'T3 Carbide Steel Ingot'
+          name: "T3 Карбидный слиток"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 800.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_steel_ingot'
@@ -860,10 +860,10 @@ materials:
         - id: 'mat_longbow_stave'
           item_id: 280
           item_data: 0
-          name: 'T3 Longbow Stave'
+          name: "T3 Особая палка"
           craftable: true
           shaped: false
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_aged_wood_stave'
@@ -878,12 +878,12 @@ materials:
         - id: 'mat_feathered_lining'
           item_id: 288
           item_data: 0
-          name: 'T3 Feathered Lining'
+          name: "T3 Перьевая подкладка"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_woven_mesh_patch'
@@ -902,12 +902,12 @@ materials:
         - id: 'mat_carbide_molding'
           item_id: 380
           item_data: 0
-          name: 'T3 Carbide Molding'
+          name: "T3 Форма для литья"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -928,12 +928,12 @@ materials:
         - id: 'mat_smithy_resin'
           item_id: 378
           item_data: 0
-          name: 'T3 Smithy Resin'
+          name: "T3 Кузнечная смола"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_sticky_resin'
@@ -951,12 +951,12 @@ materials:
         - id: 'mat_tungsten_ingot'
           item_id: 368
           item_data: 0
-          name: 'T3 Tungsten Ingot'
+          name: "T3 Вольфрамовый слиток"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -976,12 +976,12 @@ materials:
         - id: 'mat_clay_tungsten_casting'
           item_id: 368
           item_data: 0
-          name: 'T3 Clay Tungsten Casting'
+          name: "T3 Форма для литья вольфрама"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -1003,12 +1003,12 @@ materials:
         - id: 'mat_masonry_mortar'
           item_id: 45
           item_data: 0
-          name: 'T3 Masonry Mortar'
+          name: "T3 Раствор для кладки"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_sticky_resin'
@@ -1023,10 +1023,10 @@ materials:
         - id: 'mat_royal_crown'
           item_id: 314
           item_data: 0
-          name: 'Royal Crown'
+          name: "Корона"
           craftable: true
           shaped: false
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'NoDurability'
           ingredients:
@@ -1046,10 +1046,10 @@ materials:
         - id: 'mat_proof_of_leadership'
           item_id: 347
           item_data: 0
-          name: 'Proof Of Leadership'
+          name: "Регалия власти"
           craftable: true
           shaped: false
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'Tagged'
           ingredients:
@@ -1061,10 +1061,10 @@ materials:
         - id: 'mat_badge_of_leadership'
           item_id: 421
           item_data: 0
-          name: 'Badge Of Leadership'
+          name: "Докозательство лидерства"
           craftable: true
           shaped: false
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'Tagged'
           ingredients:
@@ -1076,10 +1076,10 @@ materials:
         - id: 'mat_token_of_leadership'
           item_id: 370
           item_data: 0
-          name: 'Token Of Leadership'
+          name: "Жетон лидера"
           craftable: false
           shaped: false
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'Tagged'
          
@@ -1087,10 +1087,10 @@ materials:
         - id: 'mat_chieftains_headdress'
           item_id: 302
           item_data: 0
-          name: 'Chieftains Headdress'
+          name: "Шапка вождя"
           craftable: true
           shaped: false
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'NoDurability'
           ingredients:
@@ -1107,12 +1107,12 @@ materials:
         - id: 'mat_compacted_stone'
           item_id: 98
           item_data: 0
-          name: 'T3 Compacted Stone'
+          name: "T3 Укомплектованный камень"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_crushed_stone'
@@ -1123,10 +1123,10 @@ materials:
         - id: 'mat_carbide_steel_sword_hilt'
           item_id: 280
           item_data: 0
-          name: 'T3 Carbide Steel Sword Hilt'
+          name: "T3 Эфес карбидного меча"
           craftable: true
           shaped: false
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_clay_steel_cast'
@@ -1150,10 +1150,10 @@ materials:
         - id: 'mat_carbide_steel_sword_blade'
           item_id: 265
           item_data: 0
-          name: 'T3 Carbide Steel Sword Blade'
+          name: "T3 Лезвие карбидного меча"
           craftable: true
           shaped: false
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_clay_steel_cast'
@@ -1172,12 +1172,12 @@ materials:
         - id: 'mat_carbide_steel_plate'
           item_id: 265
           item_data: 0
-          name: 'T3 Carbide Steel Plate'
+          name: "T3 Карбидная пластина"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 800.0
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_sticky_resin'
@@ -1199,12 +1199,12 @@ materials:
         - id: 'mat_artisan_leather'
           item_id: 31
           item_data: 0
-          name: 'T4 Artisan Leather'
+          name: "T4 Искусственная кожа"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 10.0
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_leather_straps'
@@ -1219,12 +1219,12 @@ materials:
         - id: 'mat_tungsten_plate'
           item_id: 405
           item_data: 0
-          name: 'T4 Tungsten Plate'
+          name: "T4 Вольфрамовая пластина"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 10.0
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_clay_tungsten_casting'
@@ -1243,10 +1243,10 @@ materials:
         - id: 'mat_tungsten_sword_blade'
           item_id: 57
           item_data: 0
-          name: 'T4 Tungsten Sword Blade'
+          name: "T4 Лезвие вольфрамового меча"
           craftable: true
           shaped: false
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_clay_tungsten_casting'
@@ -1265,10 +1265,10 @@ materials:
         - id: 'mat_tungsten_sword_hilt'
           item_id: 280
           item_data: 0
-          name: 'T4 Tungsten Sword Hilt'
+          name: "T4 Эфес вольфрамового меча"
           craftable: true
           shaped: false
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_clay_tungsten_casting'
@@ -1291,10 +1291,10 @@ materials:
         - id: 'mat_composite_bow_stave'
           item_id: 280
           item_data: 0
-          name: 'T4 Composite Bow Stave'
+          name: "T4 Идеальная палка"
           craftable: true
           shaped: false
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_longbow_stave'
@@ -1313,10 +1313,10 @@ materials:
         - id: 'mat_composite_bow_string'
           item_id: 287
           item_data: 0
-          name: 'T4 Composite Bow String'
+          name: "T4 Идеальная нить"
           craftable: true
           shaped: false
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_smithy_resin'
@@ -1331,12 +1331,12 @@ materials:
         - id: 'mat_cannon_wheel'
           item_id: 163
           item_data: 0
-          name: 'T4 Cannon Wheel'
+          name: "T4 Пушечное колесо"
           craftable: true
           shaped: false
           tradeable: true
           tradeValue: 10.0
-          category: '<gold>Tier 3 Materials'
+          category: "<gold>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_milled_lumber'
@@ -1346,12 +1346,12 @@ materials:
         - id: 'mat_cannon_barrel_part'
           item_id: 171
           item_data: 15
-          name: 'T4 Cannon Barrel Part'
+          name: "T4 Пушечный ствол"
           craftable: true
           shaped: true
           tradeable: true
           tradeValue: 10.0
-          category: '<gold>Tier 3 Materials'
+          category: "<gold>Материалы T3"
           ingredients:
               - type_id: 0
                 data: 0
@@ -1367,10 +1367,10 @@ materials:
         - id: 'mat_found_civ'
           item_id: 369
           item_data: 0
-          name: 'Founding Civilization Flag'
+          name: "Флаг основания цивилизации"
           craftable: true
           shaped: true
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'FoundCivilization'
           ingredients:
@@ -1397,10 +1397,10 @@ materials:
         - id: 'mat_found_camp'
           item_id: 324
           item_data: 0
-          name: 'Camp'
+          name: "Лагерь"
           craftable: true
           shaped: true
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'FoundCamp'
           ingredients:
@@ -1423,10 +1423,10 @@ materials:
         - id: 'mat_found_warcamp'
           item_id: 7
           item_data: 0
-          name: 'War Camp'
+          name: "Военный лагерь"
           craftable: true
           shaped: true
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'FoundWarCamp'
           ingredients:
@@ -1450,10 +1450,10 @@ materials:
         - id: 'mat_build_cannon'
           item_id: 154
           item_data: 0
-          name: 'War Cannon'
+          name: "Пушка"
           craftable: true
           shaped: true
-          category: 'Special'
+          category: "Особые предметы"
           components:
               - name: 'BuildCannon'
               - name: 'NoRightClick'
@@ -1477,10 +1477,10 @@ materials:
         - id: 'mat_wood_sword'
           item_id: 268
           item_data: 0
-          name: 'Training Sword'
+          name: "Тренировочный меч"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Attack'
                 value: '4'
@@ -1503,10 +1503,10 @@ materials:
         - id: 'mat_leather_helmet'
           item_id: 298
           item_data: 0
-          name: 'Leather Helmet'
+          name: "Кожаный шлем"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'NoVanillaDurability'
               - name: 'DurabilityOnDeath'
@@ -1524,10 +1524,10 @@ materials:
         - id: 'mat_leather_chestplate'
           item_id: 299
           item_data: 0
-          name: 'Leather Jacket'
+          name: "Кожаная куртка"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'NoVanillaDurability'
               - name: 'DurabilityOnDeath'
@@ -1545,10 +1545,10 @@ materials:
         - id: 'mat_leather_leggings'
           item_id: 300
           item_data: 0
-          name: 'Leather Pants'
+          name: "Кожаные штаны"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'NoVanillaDurability'
               - name: 'DurabilityOnDeath'
@@ -1566,10 +1566,10 @@ materials:
         - id: 'mat_leather_Boots'
           item_id: 301
           item_data: 0
-          name: 'Leather Moccasins'
+          name: "Кожаные ботинки"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'NoVanillaDurability'
               - name: 'DurabilityOnDeath'
@@ -1589,11 +1589,11 @@ materials:
         - id: 'mat_refined_leather_helmet'
           item_id: 298
           item_data: 0
-          name: 'Refined Leather Cap'
+          name: "Шлем из резной кожи"
           craftable: true
           required_techs: 'tech_leather_refinement'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '0.5'
@@ -1617,11 +1617,11 @@ materials:
         - id: 'mat_refined_leather_chestplate'
           item_id: 299
           item_data: 0
-          name: 'Refined Leather Chestplate'
+          name: "Куртка из резной кожи"
           craftable: true
           required_techs: 'tech_leather_refinement'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '2.0'
@@ -1645,11 +1645,11 @@ materials:
         - id: 'mat_refined_leather_leggings'
           item_id: 300
           item_data: 0
-          name: 'Refined Leather Leggings'
+          name: "Штаны из резной кожи"
           craftable: true
           required_techs: 'tech_leather_refinement'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '1.0'
@@ -1673,11 +1673,11 @@ materials:
         - id: 'mat_refined_leather_boots'
           item_id: 301
           item_data: 0
-          name: 'Refined Leather Moccasins'
+          name: "Сапоги из резной кожи"
           craftable: true
           required_techs: 'tech_leather_refinement'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '0.5'
@@ -1703,11 +1703,11 @@ materials:
         - id: 'mat_hardened_leather_helmet'
           item_id: 298
           item_data: 0
-          name: 'Hardened Leather Cap'
+          name: "Укреплённый кожаный шлем"
           craftable: true
           required_techs: 'tech_tanning'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '1.5'
@@ -1731,11 +1731,11 @@ materials:
         - id: 'mat_hardened_leather_chestplate'
           item_id: 299
           item_data: 0
-          name: 'Hardened Leather Jacket'
+          name: "Укреплённая кожаная куртка"
           craftable: true
           required_techs: 'tech_tanning'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '4.0'
@@ -1759,11 +1759,11 @@ materials:
         - id: 'mat_hardened_leather_leggings'
           item_id: 300
           item_data: 0
-          name: 'Hardened Leather Pants'
+          name: "Укреплённые кожаные штаны"
           craftable: true
           required_techs: 'tech_tanning'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '1.5'
@@ -1787,11 +1787,11 @@ materials:
         - id: 'mat_hardened_leather_boots'
           item_id: 301
           item_data: 0
-          name: 'Hardened Leather Moccasins'
+          name: "Укреплёные кожаные ботинки"
           craftable: true
           required_techs: 'tech_tanning'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '2'
@@ -1817,11 +1817,11 @@ materials:
         - id: 'mat_composite_leather_helmet'
           item_id: 298
           item_data: 0
-          name: 'Composite Leather Cap'
+          name: "Композитный кожаный шлем"
           craftable: true
           required_techs: 'tech_composites'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '3.0'
@@ -1845,11 +1845,11 @@ materials:
         - id: 'mat_composite_leather_chestplate'
           item_id: 299
           item_data: 0
-          name: 'Composite Leather Jacket'
+          name: "Композитная кожаная куртка"
           craftable: true
           required_techs: 'tech_composites'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '6'
@@ -1873,11 +1873,11 @@ materials:
         - id: 'mat_composite_leather_leggings'
           item_id: 300
           item_data: 0
-          name: 'Composite Leather Pants'
+          name: "Композитные кожаные штаны"
           craftable: true
           required_techs: 'tech_composites'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '3.5'
@@ -1901,11 +1901,11 @@ materials:
         - id: 'mat_composite_leather_boots'
           item_id: 301
           item_data: 0
-          name: 'Composite Leather Moccasins'
+          name: "Композитные кожаные ботинки"
           craftable: true
           required_techs: 'tech_composites'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '2.5'
@@ -1931,11 +1931,11 @@ materials:
         - id: 'mat_hunting_bow'
           item_id: 261
           item_data: 0
-          name: 'Hunting Bow'
+          name: "Лук"
           craftable: true
           required_techs: 'tech_archery'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'RangedAttack'
                 value: '18'
@@ -1958,11 +1958,11 @@ materials:
         - id: 'mat_recurve_bow'
           item_id: 261
           item_data: 0
-          name: 'Recurve Bow'
+          name: "Охотничий лук"
           craftable: true
           required_techs: 'tech_fletching'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'RangedAttack'
                 value: '24'
@@ -1987,11 +1987,11 @@ materials:
         - id: 'mat_longbow'
           item_id: 261
           item_data: 0
-          name: 'Longbow'
+          name: "Длинный лук"
           craftable: true
           required_techs: 'tech_tillering'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'RangedAttack'
                 value: '30'
@@ -2016,11 +2016,11 @@ materials:
         - id: 'mat_marksmen_bow'
           item_id: 261
           item_data: 0
-          name: 'Marksmen Bow'
+          name: "Снайперский лук"
           craftable: true
           required_techs: 'tech_laminates'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'RangedAttack'
                 value: '36'
@@ -2047,10 +2047,10 @@ materials:
         - id: 'mat_stone_sword'
           item_id: 272
           item_data: 0
-          name: 'Stone Shank'
+          name: "Каменный меч"
           craftable: true
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Attack'
                 value: '5'
@@ -2075,11 +2075,11 @@ materials:
         - id: 'mat_iron_sword'
           item_id: 267
           item_data: 0
-          name: 'Iron Shortsword'
+          name: "Железный меч"
           craftable: true
           required_techs: 'tech_metal_casting'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Attack'
                 value: '12'
@@ -2102,11 +2102,11 @@ materials:
         - id: 'mat_iron_helmet'
           item_id: 306
           item_data: 0
-          name: 'Iron Helmet'
+          name: "Железный шлем"
           craftable: true
           required_techs: 'tech_blacksmithing'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Defense'
                 value: '0.5'
@@ -2126,11 +2126,11 @@ materials:
         - id: 'mat_iron_chestplate'
           item_id: 307
           item_data: 0
-          name: 'Iron Chestplate'
+          name: "Железный нагрудник"
           craftable: true
           required_techs: 'tech_blacksmithing'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Defense'
                 value: '1.0'
@@ -2150,11 +2150,11 @@ materials:
         - id: 'mat_iron_leggings'
           item_id: 308
           item_data: 0
-          name: 'Iron Leggings'
+          name: "Железные поножи"
           craftable: true
           required_techs: 'tech_blacksmithing'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Defense'
                 value: '0.5'
@@ -2175,11 +2175,11 @@ materials:
         - id: 'mat_iron_boots'
           item_id: 309
           item_data: 0
-          name: 'Iron Boots'
+          name: "Железные ботинки"
           craftable: true
           required_techs: 'tech_blacksmithing'
           shaped: true
-          category: '<lightgreen>Gear Tier 1'
+          category: "<lightgreen>Снаряжение T1"
           components:
               - name: 'Defense'
                 value: '0.5'
@@ -2202,11 +2202,11 @@ materials:
         - id: 'mat_steel_helmet'
           item_id: 302
           item_data: 0
-          name: 'Steel Helmet'
+          name: "Стальной шлем"
           craftable: true
           required_techs: 'tech_alloys'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '2.5'
@@ -2227,11 +2227,11 @@ materials:
         - id: 'mat_steel_boots'
           item_id: 305
           item_data: 0
-          name: 'Steel Assault Boots'
+          name: "Стальные ботинки"
           craftable: true
           required_techs: 'tech_alloys'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '2'
@@ -2252,11 +2252,11 @@ materials:
         - id: 'mat_steel_chestplate'
           item_id: 303
           item_data: 0
-          name: 'Steel Chestplate'
+          name: "Стальной нагрудник"
           craftable: true
           required_techs: 'tech_alloys'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '3.0'
@@ -2277,11 +2277,11 @@ materials:
         - id: 'mat_steel_leggings'
           item_id: 304
           item_data: 0
-          name: 'Steel Leggings'
+          name: "Стальные поножи"
           craftable: true
           required_techs: 'tech_alloys'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Defense'
                 value: '2.5' 
@@ -2302,11 +2302,11 @@ materials:
         - id: 'mat_steel_sword'
           item_id: 267
           item_data: 0
-          name: 'Steel Longsword'
+          name: "Стальной меч"
           craftable: true
           required_techs: 'tech_sword_smithing'
           shaped: true
-          category: '<lightblue>Gear Tier 2'
+          category: "<lightblue>Снаряжение T2"
           components:
               - name: 'Attack'
                 value: '18'
@@ -2333,11 +2333,11 @@ materials:
         - id: 'mat_carbide_steel_sword'
           item_id: 283
           item_data: 0
-          name: 'Carbide Steel sword'
+          name: "Карбидный меч"
           craftable: true
           required_techs: 'tech_folded_steel'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Attack'
                 value: '24'
@@ -2362,11 +2362,11 @@ materials:
         - id: 'mat_carbide_steel_helmet'
           item_id: 314
           item_data: 0
-          name: 'Carbide Steel Helmet'
+          name: "Карбидный шлем"
           craftable: true
           required_techs: 'tech_chemical_bonding'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '4'
@@ -2387,11 +2387,11 @@ materials:
         - id: 'mat_carbide_steel_chestplate'
           item_id: 315
           item_data: 0
-          name: 'Carbide Steel Chestplate'
+          name: "Карбидный нагрудник"
           craftable: true
           required_techs: 'tech_chemical_bonding'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '4.5'
@@ -2412,11 +2412,11 @@ materials:
         - id: 'mat_carbide_steel_leggings'
           item_id: 316
           item_data: 0
-          name: 'Carbide Steel leggings'
+          name: "Карбидные поножи"
           craftable: true
           required_techs: 'tech_chemical_bonding'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '4'
@@ -2437,11 +2437,11 @@ materials:
         - id: 'mat_carbide_steel_boots'
           item_id: 317
           item_data: 0
-          name: 'Carbide Steel Boots'
+          name: "Карбидные ботинки"
           craftable: true
           required_techs: 'tech_chemical_bonding'
           shaped: true
-          category: '<lightpurple>Gear Tier 3'
+          category: "<lightpurple>Снаряжение T3"
           components:
               - name: 'Defense'
                 value: '4'
@@ -2465,11 +2465,11 @@ materials:
         - id: 'mat_tungsten_sword'
           item_id: 276
           item_data: 0
-          name: 'Tungsten Broadsword'
+          name: "Вольфрамовый меч"
           craftable: true
           required_techs: 'tech_tempering'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Attack'
                 value: '30'
@@ -2494,11 +2494,11 @@ materials:
         - id: 'mat_tungsten_boots'
           item_id: 313
           item_data: 0
-          name: 'Tungsten Boots'
+          name: "Вольфрамовые ботинки"
           craftable: true
           required_techs: 'tech_forging'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '4.5'
@@ -2519,11 +2519,11 @@ materials:
         - id: 'mat_tungsten_chestplate'
           item_id: 311 
           item_data: 0
-          name: 'Tungsten Chestplate'
+          name: "Вольфрамовый нагрудник"
           craftable: true
           required_techs: 'tech_forging'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '5'
@@ -2544,11 +2544,11 @@ materials:
         - id: 'mat_tungsten_leggings'
           item_id: 312
           item_data: 0
-          name: 'Tungsten Leggings'
+          name: "Вольфрамовые поножи"
           craftable: true
           required_techs: 'tech_forging'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '4.5'
@@ -2569,11 +2569,11 @@ materials:
         - id: 'mat_tungsten_helmet'
           item_id: 310
           item_data: 0
-          name: 'Tungsten Helmet'
+          name: "Вольфрамовый шлем"
           craftable: true
           required_techs: 'tech_forging'
           shaped: true
-          category: '<gold>Gear Tier 4'
+          category: "<gold>Снаряжение T4"
           components:
               - name: 'Defense'
                 value: '4'
@@ -2596,10 +2596,10 @@ materials:
         - id: 'mat_metallic_crystal_fragment_1'
           item_id: 370
           item_data: 0
-          name: 'Common Metallic Crystal Fragment'
+          name: "Осколок обычного металлического кристалла"
           shaped: false
           craftable: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_chromium_ore'
@@ -2612,10 +2612,10 @@ materials:
         - id: 'mat_metallic_crystal_1'
           item_id: 399
           item_data: 0
-          name: 'T1 Common Metallic Crystal'
+          name: "T1 Обычный металлический кристалл"
           shaped: false
           craftable: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2627,10 +2627,10 @@ materials:
         - id: 'mat_metallic_crystal_fragment_2'
           item_id: 370
           item_data: 0
-          name: 'Uncommon Metallic Crystal Fragment'
+          name: "Осколок необычного металлического кристалла"
           shaped: false
           craftable: true
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_chromium'
@@ -2643,10 +2643,10 @@ materials:
         - id: 'mat_metallic_crystal_2'
           item_id: 399
           item_data: 0
-          name: 'T2 Uncommon Metallic Crystal'
+          name: "T2 Необычный металлический кристалл"
           shaped: false
           craftable: true
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2658,10 +2658,10 @@ materials:
         - id: 'mat_metallic_crystal_fragment_3'
           item_id: 370
           item_data: 0
-          name: 'Rare Metallic Crystal Fragment'
+          name: "Осколок редкого металлического кристалла"
           shaped: false
           craftable: true
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_chromium'
@@ -2674,10 +2674,10 @@ materials:
         - id: 'mat_metallic_crystal_3'
           item_id: 399
           item_data: 0
-          name: 'T3 Rare Metallic Crystal'
+          name: "T3 Редкий металлический кристалл"
           shaped: false
           craftable: true
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2689,10 +2689,10 @@ materials:
         - id: 'mat_metallic_crystal_fragment_4'
           item_id: 370
           item_data: 0
-          name: 'Legendary Metallic Crystal Fragment'
+          name: "Осколок легендарного металлического кристалла"
           shaped: false
           craftable: true
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_chromium'
@@ -2705,10 +2705,10 @@ materials:
         - id: 'mat_metallic_crystal_4'
           item_id: 399
           item_data: 0
-          name: 'T4 Legendary Metallic Crystal'
+          name: "T4 Легендарный металлический кристалл"
           shaped: false
           craftable: true
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2720,12 +2720,12 @@ materials:
         - id: 'mat_ionic_crystal_fragment_1'
           item_id: 377
           item_data: 0
-          name: 'Common Ionic Crystal Fragment'
+          name: "Осколок обычного ионного кристалла"
           shaped: false
           craftable: true
           components:
               - name: 'NoRightClick'
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_tungsten_ore'
@@ -2738,10 +2738,10 @@ materials:
         - id: 'mat_ionic_crystal_1'
           item_id: 378
           item_data: 0
-          name: 'T1 Common Ionic Crystal'
+          name: "T1 Обычный ионный кристалл"
           shaped: false
           craftable: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2754,12 +2754,12 @@ materials:
         - id: 'mat_ionic_crystal_fragment_2'
           item_id: 377
           item_data: 0
-          name: 'Uncommon Ionic Crystal Fragment'
+          name: "Осколок необычного ионного кристалла"
           shaped: false
           craftable: true
           components:
               - name: 'NoRightClick'
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_tungsten'
@@ -2772,10 +2772,10 @@ materials:
         - id: 'mat_ionic_crystal_2'
           item_id: 378
           item_data: 0
-          name: 'T2 Uncommon Ionic Crystal'
+          name: "T2 Необычный ионный кристалл"
           shaped: false
           craftable: true
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2787,12 +2787,12 @@ materials:
         - id: 'mat_ionic_crystal_fragment_3'
           item_id: 377
           item_data: 0
-          name: 'Rare Ionic Crystal Fragment'
+          name: "Осколок редкого ионного кристалла"
           shaped: false
           craftable: true
           components:
               - name: 'NoRightClick'
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_tungsten'
@@ -2805,10 +2805,10 @@ materials:
         - id: 'mat_ionic_crystal_3'
           item_id: 378
           item_data: 0
-          name: 'T3 Rare Ionic Crystal'
+          name: "T3 Редкий ионный кристалл"
           shaped: false
           craftable: true
-          category: '<lightpurple>Tier 3 Materials'
+          category: "<lightpurple>Материалы T3"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2820,12 +2820,12 @@ materials:
         - id: 'mat_ionic_crystal_fragment_4'
           item_id: 377
           item_data: 0
-          name: 'Legendary Ionic Crystal Fragment'
+          name: "Осколок легендарного ионного кристалла"
           shaped: false
           craftable: true
           components:
               - name: 'NoRightClick'
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_forged_tungsten'
@@ -2838,10 +2838,10 @@ materials:
         - id: 'mat_ionic_crystal_4'
           item_id: 378
           item_data: 0
-          name: 'T4 Legendary Ionic Crystal'
+          name: "T4 Легендарный ионный кристалл"
           shaped: false
           craftable: true
-          category: '<gold>Tier 4 Materials'
+          category: "<gold>Материалы T4"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -2853,12 +2853,12 @@ materials:
         - id: 'mat_creeper_egg'
           item_id: 383
           item_data: 50
-          name: 'Creeper Egg'
+          name: "Т1 Яйцо крипера"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 289
                 data: 0
@@ -2875,12 +2875,12 @@ materials:
         - id: 'mat_creeper_egg_2'
           item_id: 383
           item_data: 50
-          name: 'Creeper Egg 2'
+          name: "Т2 Яйцо крипера"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_creeper_egg'
@@ -2898,12 +2898,12 @@ materials:
         - id: 'mat_creeper_egg_3'
           item_id: 383
           item_data: 50
-          name: 'Creeper Egg 3'
+          name: "Т3 Яйцо крипера"
           shaped: true
           tradeable: true
           tradeValue: 2500.0
           craftable: true
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_creeper_egg_2'
@@ -2921,12 +2921,12 @@ materials:
         - id: 'mat_creeper_egg_4'
           item_id: 383
           item_data: 50
-          name: 'Creeper Egg 4'
+          name: "Т4 Яйцо крипера"
           shaped: true
           tradeable: true
           tradeValue: 5000.0
           craftable: true
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_creeper_egg_3'
@@ -2944,12 +2944,12 @@ materials:
         - id: 'mat_skeleton_egg'
           item_id: 383
           item_data: 51
-          name: 'Skeleton Egg'
+          name: "Т1 Яйцо скелета"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 352
                 data: 0
@@ -2966,12 +2966,12 @@ materials:
         - id: 'mat_skeleton_egg_2'
           item_id: 383
           item_data: 51
-          name: 'Skeleton Egg 2'
+          name: "Т2 Яйцо скелета"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_skeleton_egg'
@@ -2989,12 +2989,12 @@ materials:
         - id: 'mat_skeleton_egg_3'
           item_id: 383
           item_data: 51
-          name: 'Skeleton Egg 3'
+          name: "Т3 Яйцо скелета"
           shaped: true
           tradeable: true
           tradeValue: 2500.0
           craftable: true
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_skeleton_egg_2'
@@ -3012,12 +3012,12 @@ materials:
         - id: 'mat_skeleton_egg_4'
           item_id: 383
           item_data: 51
-          name: 'Skeleton Egg 4'
+          name: "Т4 Яйцо скелета"
           shaped: true
           tradeable: true
           tradeValue: 5000.0
           craftable: true
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_skeleton_egg_3'
@@ -3035,12 +3035,12 @@ materials:
         - id: 'mat_spider_egg'
           item_id: 383
           item_data: 52
-          name: 'Spider Egg'
+          name: "Т1 Яйцо паука"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 375
                 data: 0
@@ -3057,12 +3057,12 @@ materials:
         - id: 'mat_spider_egg_2'
           item_id: 383
           item_data: 52
-          name: 'Spider Egg 2'
+          name: "Т2 Яйцо паука"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3080,12 +3080,12 @@ materials:
         - id: 'mat_spider_egg_3'
           item_id: 383
           item_data: 52
-          name: 'Spider Egg 3'
+          name: "Т3 Яйцо паука"
           shaped: true
           tradeable: true
           tradeValue: 2500.0
           craftable: true
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3103,12 +3103,12 @@ materials:
         - id: 'mat_spider_egg_4'
           item_id: 383
           item_data: 52
-          name: 'Spider Egg 4'
+          name: "Т4 Яйцо паука"
           shaped: true
           tradeable: true
           tradeValue: 5000.0
           craftable: true
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3126,12 +3126,12 @@ materials:
         - id: 'mat_zombie_egg'
           item_id: 383
           item_data: 54
-          name: 'Zombie Egg'
+          name: "Т1 Яйцо зомби"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 367
                 data: 0
@@ -3148,12 +3148,12 @@ materials:
         - id: 'mat_zombie_egg_2'
           item_id: 383
           item_data: 54
-          name: 'Zombie Egg 2'
+          name: "Т2 Яйцо зомби"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3171,12 +3171,12 @@ materials:
         - id: 'mat_zombie_egg_3'
           item_id: 383
           item_data: 54
-          name: 'Zombie Egg 3'
+          name: "Т3 Яйцо зомби"
           shaped: true
           tradeable: true
           tradeValue: 2500.0
           craftable: true
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3194,12 +3194,12 @@ materials:
         - id: 'mat_zombie_egg_4'
           item_id: 383
           item_data: 54
-          name: 'Zombie Egg 4'
+          name: "Т4 Яйцо зомби"
           shaped: true
           tradeable: true
           tradeValue: 5000.0
           craftable: true
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3217,12 +3217,12 @@ materials:
         - id: 'mat_slime_egg'
           item_id: 383
           item_data: 55
-          name: 'Slime Egg'
+          name: "Т1 Яйцо слизня"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_vanilla_slime'
@@ -3240,12 +3240,12 @@ materials:
         - id: 'mat_slime_egg_2'
           item_id: 383
           item_data: 55
-          name: 'Slime Egg 2'
+          name: "Т2 Яйцо слизня"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3263,12 +3263,12 @@ materials:
         - id: 'mat_slime_egg_3'
           item_id: 383
           item_data: 55
-          name: 'Slime Egg 3'
+          name: "Т3 Яйцо слизня"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3286,12 +3286,12 @@ materials:
         - id: 'mat_slime_egg_4'
           item_id: 383
           item_data: 55
-          name: 'Slime Egg 4'
+          name: "Т4 Яйцо слизня"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 5000.0
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3309,12 +3309,12 @@ materials:
         - id: 'mat_enderman_egg'
           item_id: 383
           item_data: 58
-          name: 'Enderman Egg'
+          name: "Т1 Яйцо эндермена"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ender_pearl'
@@ -3332,12 +3332,12 @@ materials:
         - id: 'mat_enderman_egg_2'
           item_id: 383
           item_data: 58
-          name: 'Enderman Egg 2'
+          name: "Т2 Яйцо эндермена"
           shaped: true
           tradeable: true
           tradeValue: 500.0
           craftable: true
-          category: '<lightblue>Eggs Tier 2'
+          category: "<lightblue>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_1'
@@ -3355,12 +3355,12 @@ materials:
         - id: 'mat_enderman_egg_3'
           item_id: 383
           item_data: 58
-          name: 'Enderman Egg 3'
+          name: "Т3 Яйцо эндермена"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<lightpurple>Eggs Tier 3'
+          category: "<lightpurple>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_2'
@@ -3378,12 +3378,12 @@ materials:
         - id: 'mat_enderman_egg_4'
           item_id: 383
           item_data: 58
-          name: 'Enderman Egg 4'
+          name: "Т4 Яйцо эндермена"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 5000.0
-          category: '<gold>Eggs Tier 4'
+          category: "<gold>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_3'
@@ -3403,12 +3403,12 @@ materials:
         - id: 'mat_pig_egg'
           item_id: 383
           item_data: 90
-          name: 'Pig Egg'
+          name: "Яйцо свиньи"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 320
                 data: 0
@@ -3425,12 +3425,12 @@ materials:
         - id: 'mat_pig_egg_2'
           item_id: 383
           item_data: 90
-          name: 'Pig Egg 2'
+          name: "Яйцо свиньи 2"
           shaped: true
           tradeable: true
           tradeValue: 50.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 2'
+          category: "<lightgreen>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_1'
@@ -3448,12 +3448,12 @@ materials:
         - id: 'mat_pig_egg_3'
           item_id: 383
           item_data: 90
-          name: 'Pig Egg 3'
+          name: "Яйцо свиньи 3"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 500.0
-          category: '<lightgreen>Eggs Tier 3'
+          category: "<lightgreen>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_2'
@@ -3471,12 +3471,12 @@ materials:
         - id: 'mat_pig_egg_4'
           item_id: 383
           item_data: 90
-          name: 'Pig Egg 4'
+          name: "Яйцо свиньи 4"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 1000.0
-          category: '<lightgreen>Eggs Tier 4'
+          category: "<lightgreen>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_3'
@@ -3494,12 +3494,12 @@ materials:
         - id: 'mat_cow_egg'
           item_id: 383
           item_data: 92
-          name: 'Cow Egg'
+          name: "Яйцо коровы"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 364
                 data: 0
@@ -3516,12 +3516,12 @@ materials:
         - id: 'mat_cow_egg_2'
           item_id: 383
           item_data: 92
-          name: 'Cow Egg 2'
+          name: "Яйцо коровы 2"
           shaped: true
           tradeable: true
           tradeValue: 50.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 2'
+          category: "<lightgreen>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_1'
@@ -3539,12 +3539,12 @@ materials:
         - id: 'mat_cow_egg_3'
           item_id: 383
           item_data: 92
-          name: 'Cow Egg 3'
+          name: "Яйцо коровы 3"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 500.0
-          category: '<lightgreen>Eggs Tier 3'
+          category: "<lightgreen>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_2'
@@ -3562,12 +3562,12 @@ materials:
         - id: 'mat_cow_egg_4'
           item_id: 383
           item_data: 92
-          name: 'Cow Egg 4'
+          name: "Яйцо коровы 4"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 1000.0
-          category: '<lightgreen>Eggs Tier 4'
+          category: "<lightgreen>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_ionic_crystal_3'
@@ -3585,12 +3585,12 @@ materials:
         - id: 'mat_sheep_egg'
           item_id: 383
           item_data: 91
-          name: 'Sheep Egg'
+          name: "Яйцо овцы"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 424
                 data: 0
@@ -3607,12 +3607,12 @@ materials:
         - id: 'mat_sheep_egg_2'
           item_id: 383
           item_data: 91
-          name: 'Sheep Egg 2'
+          name: "Яйцо овцы 2"
           shaped: true
           tradeable: true
           tradeValue: 50.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 2'
+          category: "<lightgreen>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3630,12 +3630,12 @@ materials:
         - id: 'mat_sheep_egg_3'
           item_id: 383
           item_data: 91
-          name: 'Sheep Egg 3'
+          name: "Яйцо овцы 3"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 500.0
-          category: '<lightgreen>Eggs Tier 3'
+          category: "<lightgreen>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3653,12 +3653,12 @@ materials:
         - id: 'mat_sheep_egg_4'
           item_id: 383
           item_data: 91
-          name: 'Sheep Egg 4'
+          name: "Яйцо овцы 4"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 1000.0
-          category: '<lightgreen>Eggs Tier 4'
+          category: "<lightgreen>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3676,12 +3676,12 @@ materials:
         - id: 'mat_chicken_egg'
           item_id: 383
           item_data: 93
-          name: 'Chicken Egg'
+          name: "Яйцо курицы"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 366
                 data: 0
@@ -3698,12 +3698,12 @@ materials:
         - id: 'mat_chicken_egg_2'
           item_id: 383
           item_data: 93
-          name: 'Chicken Egg 2'
+          name: "Яйцо курицы 2"
           shaped: true
           tradeable: true
           tradeValue: 50.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 2'
+          category: "<lightgreen>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3721,12 +3721,12 @@ materials:
         - id: 'mat_chicken_egg_3'
           item_id: 383
           item_data: 93
-          name: 'Chicken Egg 3'
+          name: "Яйцо курицы 3"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 500.0
-          category: '<lightgreen>Eggs Tier 3'
+          category: "<lightgreen>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3744,12 +3744,12 @@ materials:
         - id: 'mat_chicken_egg_4'
           item_id: 383
           item_data: 93
-          name: 'Chicken Egg 4'
+          name: "Яйцо курицы 4"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 1000.0
-          category: '<lightgreen>Eggs Tier 4'
+          category: "<lightgreen>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3767,12 +3767,12 @@ materials:
         - id: 'mat_rabbit_egg'
           item_id: 383
           item_data: 101
-          name: 'Rabbit Egg'
+          name: "Яйцо кролика"
           shaped: true
           tradeable: true
           tradeValue: 10.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 1'
+          category: "<lightgreen>Яйца T1"
           ingredients:
               - type_id: 412
                 data: 0
@@ -3789,12 +3789,12 @@ materials:
         - id: 'mat_rabbit_egg_2'
           item_id: 383
           item_data: 101
-          name: 'Rabbit Egg 2'
+          name: "Яйцо кролика 2"
           shaped: true
           tradeable: true
           tradeValue: 50.0
           craftable: true
-          category: '<lightgreen>Eggs Tier 2'
+          category: "<lightgreen>Яйца T2"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_1'
@@ -3812,12 +3812,12 @@ materials:
         - id: 'mat_rabbit_egg_3'
           item_id: 383
           item_data: 101
-          name: 'Rabbit Egg 3'
+          name: "Яйцо кролика 3"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 500.0
-          category: '<lightgreen>Eggs Tier 3'
+          category: "<lightgreen>Яйца T3"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_2'
@@ -3835,12 +3835,12 @@ materials:
         - id: 'mat_rabbit_egg_4'
           item_id: 383
           item_data: 101
-          name: 'Rabbit Egg 4'
+          name: "Яйцо кролика 4"
           shaped: true
           craftable: true
           tradeable: true
           tradeValue: 1000.0
-          category: '<lightgreen>Eggs Tier 4'
+          category: "<lightgreen>Яйца T4"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_metallic_crystal_3'
@@ -3883,10 +3883,10 @@ materials:
         - id: 'mat_mercury'
           item_id: 362
           item_data: 0
-          name: 'Mercury'
+          name: "Меркурий"
           shaped: false
           craftable: true
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 41
                 data: 0
@@ -3898,10 +3898,10 @@ materials:
         - id: 'mat_mercury_bath'
           item_id: 368
           item_data: 0
-          name: 'T2 Mercury Bath'
+          name: "T2 Меркуриевая ванна"
           shaped: false
           craftable: true
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -3913,10 +3913,10 @@ materials:
         - id: 'mat_industrial_diamond'
           item_id: 264
           item_data: 0
-          name: 'T2 Industrial Diamond'
+          name: "T2 Промышленный алмаз"
           shaped: false
           craftable: true
-          category: '<lightblue>Tier 2 Materials'
+          category: "<lightblue>Материалы T2"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -3928,10 +3928,10 @@ materials:
         - id: 'mat_common_attack_catalyst'
           item_id: 340
           item_data: 0
-          name: 'Common Attack Catalyst'
+          name: "Обычный катализатор атаки"
           craftable: true
           shaped: true
-          category: '<lightgreen>Catalyst Tier 1'
+          category: "<lightgreen>Катализаторы T1"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -3959,10 +3959,10 @@ materials:
         - id: 'mat_common_defense_catalyst'
           item_id: 340
           item_data: 0
-          name: 'Common Defense Catalyst'
+          name: "Обычный катализатор защиты"
           craftable: true
           shaped: true
-          category: '<lightgreen>Catalyst Tier 1'
+          category: "<lightgreen>Катализаторы T1"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -3992,10 +3992,10 @@ materials:
         - id: 'mat_uncommon_attack_catalyst'
           item_id: 387
           item_data: 0
-          name: 'Uncommon Attack Catalyst'
+          name: "Необычный катализатор атаки"
           craftable: true
           shaped: true
-          category: '<lightblue>Catalyst Tier 2'
+          category: "<lightblue>Катализаторы T2"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -4024,10 +4024,10 @@ materials:
         - id: 'mat_uncommon_defense_catalyst'
           item_id: 387
           item_data: 0
-          name: 'Uncommon Defense Catalyst'
+          name: "Необычный катазатор защиты"
           craftable: true
           shaped: true
-          category: '<lightblue>Catalyst Tier 2'
+          category: "<lightblue>Катализаторы T2"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -4059,10 +4059,10 @@ materials:
         - id: 'mat_rare_attack_catalyst'
           item_id: 387
           item_data: 0
-          name: 'Rare Attack Catalyst'
+          name: "Редкий катализатор атаки"
           craftable: true
           shaped: true
-          category: '<lightpurple>Catalyst Tier 3'
+          category: "<lightpurple>Катализаторы T3"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -4091,10 +4091,10 @@ materials:
         - id: 'mat_rare_defense_catalyst'
           item_id: 387
           item_data: 0
-          name: 'Rare Defense Catalyst'
+          name: "Редкий катализатор защиты"
           craftable: true
           shaped: true
-          category: '<lightpurple>Catalyst Tier 3'
+          category: "<lightpurple>Катализаторы T3"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -4125,10 +4125,10 @@ materials:
         - id: 'mat_legendary_attack_catalyst'
           item_id: 369
           item_data: 0
-          name: 'Legendary Attack Catalyst'
+          name: "Легендарный катализатор атаки"
           craftable: true
           shaped: true
-          category: '<gold>Catalyst Tier 4'
+          category: "<gold>Катализаторы T4"
           components:
               - name: 'NoRightClick'              
               - name: 'Catalyst'
@@ -4157,10 +4157,10 @@ materials:
         - id: 'mat_legendary_defense_catalyst'
           item_id: 369
           item_data: 0
-          name: 'Legendary Defense Catalyst'
+          name: "Легендарный катализатор защиты"
           craftable: true
           shaped: true
-          category: '<gold>Catalyst Tier 4'
+          category: "<gold>Катализаторы T4"
           components:
               - name: 'NoRightClick'
               - name: 'Catalyst'
@@ -4191,7 +4191,7 @@ materials:
         - id: 'mat_tutorial_book'
           item_id: 340
           item_data: 0
-          name: 'CivCraft Info'
+          name: "CivilizationCraft - книга знаний"
           craftable: false
           shaped: false
           components:
@@ -4200,7 +4200,7 @@ materials:
         - id: 'mat_vanilla_hopper'
           item_id: 154
           item_data: 0
-          name: 'Hopper'
+          name: "Воронка"
           craftable: true
           shaped: true
           vanilla: false
@@ -4223,10 +4223,10 @@ materials:
         - id: 'mat_ender_pearl'
           item_id: 368
           item_data: 0
-          name: 'Ender Pearl'
+          name: "Жемчуг эндера"
           craftable: false
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           components:
               - name: 'NoRightClick'
           ingredients:
@@ -4238,10 +4238,10 @@ materials:
         - id: 'mat_vanilla_slime'
           item_id: 341
           item_data: 0
-          name: 'T1 SlimeBall'
+          name: "Слизь"
           craftable: true
           shaped: false
-          category: '<lightgreen>Tier 1 Materials'
+          category: "<lightgreen>Материалы T1"
           ingredients:
               - type_id: 0
                 custom_id: 'mat_refined_sugar'
@@ -4254,7 +4254,7 @@ materials:
         - id: 'mat_vanilla_sticky_piston'
           item_id: 29
           item_data: 0
-          name: 'Sticky Piston'
+          name: "Липкий поршень"
           craftable: true
           vanilla: true
           shaped: true
@@ -4274,7 +4274,7 @@ materials:
         - id: 'mat_vanilla_magma_cream'
           item_id: 378
           item_data: 0
-          name: 'Magma Cream'
+          name: "Сгусток магмы"
           craftable: true
           vanilla: true
           shaped: false
@@ -4290,7 +4290,7 @@ materials:
         - id: 'mat_vanilla_lead'
           item_id: 420
           item_data: 0
-          name: 'Lead'
+          name: "Поводок"
           craftable: true
           vanilla: true
           shaped: true
@@ -4311,10 +4311,10 @@ materials:
         - id: 'mat_vanilla_stone_pickaxe'
           item_id: 274
           item_data: 0
-          name: 'Stone Pickaxe'
+          name: "Каменная кирка"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4335,10 +4335,10 @@ materials:
         - id: 'mat_vanilla_iron_pickaxe'
           item_id: 257
           item_data: 0
-          name: 'Iron Pickaxe'
+          name: "Железная кирка"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4359,10 +4359,10 @@ materials:
         - id: 'mat_vanilla_gold_pickaxe'
           item_id: 285
           item_data: 0
-          name: 'Gold Pickaxe'
+          name: "Золотая кирка"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4383,10 +4383,10 @@ materials:
         - id: 'mat_vanilla_diamond_pickaxe'
           item_id: 278
           item_data: 0
-          name: 'Diamond Pickaxe'
+          name: "Алмазная кирка"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4407,10 +4407,10 @@ materials:
         - id: 'mat_vanilla_iron_shovel'
           item_id: 256
           item_data: 0
-          name: 'Iron Shovel'
+          name: "Железная лопата"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4431,10 +4431,10 @@ materials:
         - id: 'mat_vanilla_gold_shovel'
           item_id: 284
           item_data: 0
-          name: 'Gold Shovel'
+          name: "Золотая лопата"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4455,10 +4455,10 @@ materials:
         - id: 'mat_vanilla_diamond_shovel'
           item_id: 277
           item_data: 0
-          name: 'Diamond Shovel'
+          name: "Алмазная лопата"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4478,10 +4478,10 @@ materials:
         - id: 'mat_vanilla_iron_axe'
           item_id: 258
           item_data: 0
-          name: 'Iron Axe'
+          name: "Железный топор"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4502,10 +4502,10 @@ materials:
         - id: 'mat_vanilla_gold_axe'
           item_id: 286
           item_data: 0
-          name: 'Gold Axe'
+          name: "Золотой топор"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4526,10 +4526,10 @@ materials:
         - id: 'mat_vanilla_diamond_axe'
           item_id: 279
           item_data: 0
-          name: 'Diamond Axe'
+          name: "Алмазный топор"
           craftable: true
           shaped: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4550,11 +4550,11 @@ materials:
         - id: 'mat_vanilla_iron_hoe'
           item_id: 292
           item_data: 0
-          name: 'Iron Hoe'
+          name: "Железная мотыга"
           craftable: true
           shaped: true
           vanilla: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4575,11 +4575,11 @@ materials:
         - id: 'mat_vanilla_gold_hoe'
           item_id: 294
           item_data: 0
-          name: 'Gold Hoe'
+          name: "Золотая мотыга"
           craftable: true
           shaped: true
           vanilla: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4600,11 +4600,11 @@ materials:
         - id: 'mat_vanilla_diamond_hoe'
           item_id: 293
           item_data: 0
-          name: 'Diamond Hoe'
+          name: "Алмазная мотыга"
           craftable: true
           shaped: true
           vanilla: true
-          category: '<blue>Tools'
+          category: "<blue>Инструменты"
           components:
               - name: 'Attack'
                 value: '0.5'
@@ -4625,7 +4625,7 @@ materials:
         - id: 'mat_vanilla_dispenser'
           item_id: 23
           item_data: 0
-          name: 'Dispenser'
+          name: "Раздатчик"
           craftable: true
           vanilla: true
           shaped: true
@@ -4648,7 +4648,7 @@ materials:
         - id: 'mat_vanilla_TNT'
           item_id: 46
           item_data: 0
-          name: 'TNT'
+          name: "Динамит"
           craftable: true
           vanilla: true
           shaped: false
@@ -4669,7 +4669,7 @@ materials:
         - id: 'mat_vanilla_ender_chest'
           item_id: 130
           item_data: 0
-          name: 'Ender Chest'
+          name: "Эндер-сундук"
           craftable: true
           shaped: true
           vanilla: false         
@@ -4696,429 +4696,429 @@ materials:
         - id: 'mat_pond_scum'
           item_id: 351
           item_data: 2
-          name: 'Pond Scum'
+          name: "Тина"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 0.1
-          category: '<lightpurple>Fishing Junk'
+          category: "<lightpurple>Рыболовный мусор"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_tangled_string'
           item_id: 30
           item_data: 0
-          name: 'Tangled String'
+          name: "Сеть"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 0.1
-          category: '<lightpurple>Fishing Junk'
+          category: "<lightpurple>Рыболовный мусор"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_seaweed'
           item_id: 31
           item_data: 1
-          name: 'Seaweed'
+          name: "Водоросль"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 0.1
-          category: '<lightpurple>Fishing Junk'
+          category: "<lightpurple>Рыболовный мусор"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_minnows'
           item_id: 362
           item_data: 0
-          name: 'Minnows'
+          name: "Пескарь"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 0.5
-          category: '<lightpurple>Fishing Junk'
+          category: "<lightpurple>Рыболовный мусор"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_tadpole'
           item_id: 375
           item_data: 0
-          name: 'Tadpole'
+          name: "Головастик"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 0.2
-          category: '<lightpurple>Fishing Junk'
+          category: "<lightpurple>Рыболовный мусор"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_brown_trout'
           item_id: 349
           item_data: 0
-          name: 'Brown Trout'
+          name: "Полосатая форель"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_brook_trout'
           item_id: 349
           item_data: 1
-          name: 'Brook Trout'
+          name: "Речная форель"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_cutthroat_trout'
           item_id: 349
           item_data: 1
-          name: 'Cutthroat Trout'
+          name: "Форель-убийца"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_rainbow_trout'
           item_id: 349
           item_data: 1
-          name: 'Rainbow Trout'
+          name: "Радужная форель"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_atlantic_striped_bass'
           item_id: 350
           item_data: 0
-          name: 'Atlantic Striped Bass'
+          name: "Полосатый окунь"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_pacific_ocean_perch'
           item_id: 349
           item_data: 1
-          name: 'Pacific Ocean Perch'
+          name: "Окунь-убийца"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_acadian_redfish'
           item_id: 349
           item_data: 2
-          name: 'Acadian Redfish'
+          name: "Радужный окунь"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_widow_rockfish'
           item_id: 349
           item_data: 0
-          name: 'Widow Rockfish'
+          name: "Ёрш"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_atlantic_surfclam'
           item_id: 353
           item_data: 0
-          name: 'Atlantic Surf Clam'
+          name: "Атлантический моллюск"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_ocean_quahog'
           item_id: 289
           item_data: 0
-          name: 'Ocean Quahog'
+          name: "Минтай"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_northern_quahog'
           item_id: 337
           item_data: 0
-          name: 'Northern Quahog'
+          name: "Куахог"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_geoduck'
           item_id: 414
           item_data: 0
-          name: 'Geoduck'
+          name: "Камбала"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_atlantic_cod'
           item_id: 350
           item_data: 0
-          name: 'Atlantic Cod'
+          name: "Полосатая треска"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_pacific_cod'
           item_id: 349
           item_data: 1
-          name: 'Pacific Cod'
+          name: "Радужная треска"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_lingcod'
           item_id: 350
           item_data: 1
-          name: 'Lingcod'
+          name: "Треска-убийца"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_sablefish'
           item_id: 349
           item_data: 0
-          name: 'Sablefish'
+          name: "Палтус"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_arrowtooth_flounder'
           item_id: 349
           item_data: 3
-          name: 'Arrowtooth Flounder'
+          name: "Пикша"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_summer_flounder'
           item_id: 349
           item_data: 3
-          name: 'Summer Flounder'
+          name: "Навага"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_winter_flounder'
           item_id: 349
           item_data: 3
-          name: 'Winter Flounder'
+          name: "Сельдь"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_yellowtail_flounder'
           item_id: 349
           item_data: 3
-          name: 'Yellowtail Flounder'
+          name: "Морская сельдь"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_gag_grouper'
           item_id: 349
           item_data: 1
-          name: 'Gag Grouper'
+          name: "Смарида"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_red_grouper'
           item_id: 349
           item_data: 2
-          name: 'Red Grouper'
+          name: "Зубарик"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 10.0
-          category: '<lightblue>Fish Tier 2'
+          category: "<lightblue>Рыба T2"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_black_sea_bass'
           item_id: 349
           item_data: 0
-          name: 'Black Sea Bass'
+          name: "Чёрный окунь"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 250.0
-          category: '<lightpurple>Fish Tier 3'
+          category: "<lightpurple>Рыба T3"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_wreckfish'
           item_id: 350
           item_data: 0
-          name: 'Wreckfish'
+          name: "Аргус"
           shaped: true
           craftable: false
           shiny: true
           tradeable: true
           tradeValue: 2500.0
-          category: '<gold>Fish Tier 4'
+          category: "<gold>Рыба T4"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_fish'
           item_id: 349
           item_data: 0
-          name: 'Fish'
+          name: "Рыба"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_salmon'
           item_id: 349
           item_data: 1
-          name: 'Salmon'
+          name: "Лосось"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_clownfish'
           item_id: 349
           item_data: 2
-          name: 'Clownfish'
+          name: "Рыба-клоун"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 
         - id: 'mat_fish_pufferfish'
           item_id: 349
           item_data: 3
-          name: 'Pufferfish'
+          name: "Рыба-Фугу"
           shaped: true
           craftable: false
           shiny: false
           tradeable: true
           tradeValue: 5.0
-          category: '<lightgreen>Fish Tier 1'
+          category: "<lightgreen>Рыба T1"
           components:
               - name: 'NoRightClick'
 

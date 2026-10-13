@@ -69,6 +69,8 @@ public final class FoundationItemListener implements Listener {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
+        if(event.getClickedBlock()!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
+                && civ.trades()!=null && civ.trades().isPublicTradePoint(event.getClickedBlock()))return;
         Player player = event.getPlayer();
         if (pending.containsKey(player.getUniqueId())) {
             PendingFoundation current = pending.get(player.getUniqueId());

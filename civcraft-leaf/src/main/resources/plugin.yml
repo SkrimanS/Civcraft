@@ -19,6 +19,11 @@ softdepend:
   - FancyNpcs
   - ItemsAdder
 commands:
+  resident:
+    aliases: [res]
+    description: CivCraft recipe book.
+    usage: /<command> book
+    permission: civcraft.use
   camp:
     aliases: [c]
     description: Camp mechanics owned by CivCraft.
@@ -44,6 +49,7 @@ commands:
     usage: /<command> [list|start <id>|status|rate]
     permission: civcraft.use
   civadmin:
+    aliases: [ad]
     description: CivCraft admin tools.
     usage: /<command> [reload|integrations|recovery status|npc reload|foundation give <player> <camp|civilization|town> [amount]|funds give <player> <amount>|build <legacyFile> [y] [0|90|180|270]]
     permission: civcraft.admin

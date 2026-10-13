@@ -23,7 +23,7 @@ notre_dame_max_anarchy: 2
 ######################################################################
 governments:
         - id: gov_anarchy
-          displayName: Anarchy
+          displayName: "Анархия"
           require_tech:
           trade_rate: 0.0
           cottage_rate: 0.0
@@ -36,7 +36,7 @@ governments:
           power_type: mayor_all_power
 
         - id: gov_tribalism
-          displayName: Tribalism
+          displayName: "Племенной строй"
           require_tech:
           trade_rate: 0.8
           cottage_rate: 0.8
@@ -51,7 +51,7 @@ governments:
 
           #focus: Stong Mining, Poor everything else.
         - id: gov_despotism
-          displayName: Despotism
+          displayName: "Деспотизм"
           require_tech: 'tech_productivity' 
           trade_rate: 0.8
           upkeep_rate: 1.25
@@ -65,7 +65,7 @@ governments:
 
           # focus: Strong  Taxs, Cottages, Farming
         - id: gov_monarchy
-          displayName: Monarchy
+          displayName: "Монархия"
           require_tech: 'tech_monarchy'
           trade_rate: 0.8
           upkeep_rate: 1.5
@@ -79,7 +79,7 @@ governments:
 
           # focus: Strong  Trade, Negative science, Weak Mining / Cottages
         - id: gov_theocracy
-          displayName: Theocracy
+          displayName: "Теократия"
           require_tech: 'tech_global_trade'
           trade_rate: 2.0
           upkeep_rate: 1.15
@@ -93,7 +93,7 @@ governments:
 
           # focus: Strong  production, medium everything else
         - id: gov_communism
-          displayName: Communism
+          displayName: "Коммунизм"
           require_tech: 'tech_construction'
           good_rate: 1.00
           trade_rate: 1.00
@@ -108,7 +108,7 @@ governments:
 
           # TODO later
         - id: gov_republic
-          displayName: Republic
+          displayName: "Республика"
           require_tech: 'tech_republic'
           trade_rate: 0.8
           upkeep_rate: 1.5

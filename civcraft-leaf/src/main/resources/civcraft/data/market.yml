@@ -16,87 +16,87 @@ rate: 0.15
 # Shelf 1 left side, front 0-4
 items:
     - id: 0
-      name: 'Cobblestone'
+      name: "Булыжник"
       type_id: 4
       data: 0
       value: 1
     
     - id: 1
-      name: 'Clay'
+      name: "Глина"
       type_id: 337
       data: 0
       value: 1
     
     - id: 2
-      name: 'Coal'
+      name: "Палка"
       type_id: 263
       data: 0
       value: 1
     
     - id: 3
-      name: 'Flint'
+      name: "Кремень"
       type_id: 318
       data: 0
       value: 1
     
     - id: 4
-      name: 'CraftedReed'
+      name: "Т1 Тростник"
       custom_id: 'mat_crafted_reeds'
       type_id: 0
       data: 0
       value: 1
 # Shelf 1 right side, front 5-9
     - id: 5
-      name: 'String'
+      name: "Нить"
       type_id: 287
       data: 0
       value: 1
 
     - id: 6
-      name: 'Leather'
+      name: "Кожа"
       type_id: 334
       data: 0
       value: 1
     
     - id: 7
-      name: 'Feather'
+      name: "Перья"
       type_id: 288
       data: 0
       value: 1
     
     - id: 8
-      name: 'Nether Wart'
+      name: "Адский нарост"
       type_id: 372
       data: 0
       value: 1
 
     - id: 9
-      name: 'Bones'
+      name: "Кость"
       type_id: 352
       data: 0
       value: 20
 
 # Shelf 1 right side, back 10-14
     - id: 10
-      name: 'Wood Oak'
+      name: "Дуб"
       type_id: 17
       data: 0
       value: 1
 
     - id: 11
-      name: 'Wood Spruce'
+      name: "Ель"
       type_id: 17
       data: 1
       value: 1
     
     - id: 12
-      name: 'Wood Birch'
+      name: "Берёза"
       type_id: 17 
       data: 2
       value: 1
 
     - id: 13
-      name: 'Wood Jungle'
+      name: "Тропическая древ."
       type_id: 17 
       data: 3
       value: 1
@@ -105,62 +105,62 @@ items:
 
 # Shelf 1 left side, back 15-19
     - id: 15
-      name: 'Tungsten Ore'
+      name: "Вольфрамовая руда"
       type_id: 0
       data: 0
       custom_id: 'mat_tungsten_ore'
       value: 1
     
     - id: 16
-      name: 'Chromium Ore'
+      name: "Хромовая руда"
       type_id: 0
       data: 0
       custom_id: 'mat_chromium_ore'
       value: 1
 
     - id: 17
-      name: 'Gunpowder'
+      name: "Порох"
       type_id: 289
       data: 0
       value: 50
 
     - id: 18
-      name: 'Gravel'
+      name: "Гравий"
       type_id: 13
       data: 0
       value: 1
 
 # Shelf 2 left side, front 20-24
     - id: 20
-      name: 'Pond Scum'
+      name: "Тина"
       type_id: 0
       data: 0
       custom_id: 'mat_pond_scum'
       value: 1
 
     - id: 21
-      name: 'Tangled String'
+      name: "Сеть"
       type_id: 0
       data: 0
       custom_id: 'mat_tangled_string'
       value: 1
 
     - id: 22
-      name: 'Seaweed'
+      name: "Водоросль"
       type_id: 0
       data: 0
       custom_id: 'mat_seaweed'
       value: 1
 
     - id: 23
-      name: 'Minnows'
+      name: "Пескарь"
       type_id: 0
       data: 0
       custom_id: 'mat_minnows'
       value: 1
 
     - id: 24
-      name: 'Tadpole'
+      name: "Головастик"
       type_id: 0
       data: 0
       custom_id: 'mat_tadpole'
@@ -168,69 +168,69 @@ items:
 
 # Shelf 2 right side, front 25-29
     - id: 25
-      name: 'Wood Acacia'
+      name: "Акация"
       type_id: 162
       data: 0
       value: 1
 
     - id: 26
-      name: 'Wood Dark Oak'
+      name: "Тёмный дуб"
       type_id: 162
       data: 1
       value: 1
 
 # Shelf 2 right side, back 30-34
     - id: 30
-      name: 'Stone Brick'
+      name: "Кам. кирпич"
       type_id: 98
       data: 0
       value: 1
 
     - id: 31
-      name: 'Mossy Brick'
+      name: "Замшел. кам. кирпич"
       type_id: 98
       data: 1
       value: 1
 
     - id: 32
-      name: 'Cracked Brick'
+      name: "Потреск. кам. кирпич"
       type_id: 98
       data: 2
       value: 1
 
     - id: 33
-      name: 'Chiseled Brick'
+      name: "Резные кам. кирпич"
       type_id: 98
       data: 3
       value: 1
     
 # Shelf 2 left side, back 35-39
     - id: 35
-      name: 'Sponge'
+      name: "Губка"
       type_id: 19
       data: 0
       value: 3
 
     - id: 36
-      name: 'Prismarine'
+      name: "Призмарин"
       type_id: 168
       data: 0
       value: 1
 
     - id: 37
-      name: 'Prismarine Brick'
+      name: "Призмариновый кирпич"
       type_id: 168
       data: 1
       value: 1
 
     - id: 38
-      name: 'Dark Prismarine'
+      name: "Тёмный призмарин"
       type_id: 168
       data: 2
       value: 1
 
     - id: 39
-      name: 'Sea Lantern'
+      name: "Морской фанарь"
       type_id: 169
       data: 0
       value: 50
@@ -238,25 +238,25 @@ items:
 # Shelf 3 left side, front 40-44
 # Shelf 3 right side, front 45-49
     - id: 45
-      name: 'Polished Granite'
+      name: "Гладкий гранит"
       type_id: 1
       data: 2
       value: 1
 
     - id: 46
-      name: 'Polished Diorite'
+      name: "Гладкий диорит"
       type_id: 1
       data: 4
       value: 1
 
     - id: 47
-      name: 'Polished Andersite'
+      name: "Гладкий андезит"
       type_id: 1
       data: 6
       value: 1
 
     - id: 48
-      name: 'Lapis Block'
+      name: "Блок лазурита"
       type_id: 22
       data: 0
       value: 1
@@ -269,100 +269,100 @@ items:
 
 # Shelf 3 right side, back 50-54
     - id: 50
-      name: 'White Wool'
+      name: "Белая шерсть"
       type_id: 35
       data: 0
       value: 1
 
     - id: 51
-      name: 'Orange Wool'
+      name: "Ораннжевая шерсть"
       type_id: 35
       data: 1
       value: 1
 
     - id: 52
-      name: 'Magenta Wool'
+      name: "Пурпурная шерсть"
       type_id: 35
       data: 2
       value: 1
 
     - id: 53
-      name: 'Light Blue Wool'
+      name: "Голубая шерсть"
       type_id: 35
       data: 3
       value: 1
 
     - id: 54
-      name: 'Yellow Wool'
+      name: "Жёлтая шерсть"
       type_id: 35
       data: 4
       value: 1
 
 # Shelf 3 left side, back 55-59
     - id: 55
-      name: 'Lime Wool'
+      name: "Лаймовая шерсть"
       type_id: 35
       data: 5
       value: 1
 
     - id: 56
-      name: 'Pink Wool'
+      name: "Розовая шерсть"
       type_id: 35
       data: 6
       value: 1
 
     - id: 57
-      name: 'Gray Wool'
+      name: "Серая шерсть"
       type_id: 35
       data: 7
       value: 1
 
     - id: 58
-      name: 'Light Gray Wool'
+      name: "Светло-серая шерсть"
       type_id: 35
       data: 8
       value: 1
 
     - id: 59
-      name: 'Cyan Wool'
+      name: "Бюрюзовая шерсть"
       type_id: 35
       data: 9
       value: 1
 
 # Shelf 4 left side, front 60-64
     - id: 60
-      name: 'Purple Wool'
+      name: "Фиолетовая шерсть"
       type_id: 35
       data: 10
       value: 1
 
     - id: 61
-      name: 'Blue Wool'
+      name: "Синяя шерсть"
       type_id: 35
       data: 11
       value: 1
 
     - id: 62
-      name: 'Brown Wool'
+      name: "Коричневая шерсть"
       type_id: 35
       data: 12
       value: 1
 
     - id: 63
-      name: 'Green Wool'
+      name: "Зелёная шерсть"
       type_id: 35
       data: 13
       value: 1
 
     - id: 64
-      name: 'Red Wool'
+      name: "Красная шерсть"
       type_id: 35
       data: 14
       value: 1
 
 # Shelf 4 right side, front 65-69
     - id: 65
-      name: 'Black Wool'
+      name: "Чёрная шерсть"
       type_id: 35
       data: 15
       value: 1
@@ -379,14 +379,14 @@ items:
 
 # Floor 1 Right side Side-Front Corner 94-97
     - id: 94
-      name: 'Crystal Fragment'
+      name: "Фрагмент мет. кристалла"
       type_id: 0
       data: 0
       custom_id: 'mat_metallic_crystal_fragment_1'
       value: 10
     
     - id: 95
-      name: 'Ionic Fragment'
+      name: "Фрагмент ион. кристалла"
       type_id: 0
       data: 0
       custom_id: 'mat_ionic_crystal_fragment_1'
@@ -394,28 +394,28 @@ items:
 
 # Floor 2 Right side Rear 102-105
     - id: 102
-      name: 'T1 Cow Egg'
+      name: "T1 Яйцо коровы"
       type_id: 0
       data: 0
       custom_id: 'mat_cow_egg'
       value: 10
 
     - id: 103
-      name: 'T1 Chicken Egg'
+      name: "T1 Яйцо курицы"
       type_id: 0
       data: 0
       custom_id: 'mat_chicken_egg'
       value: 10
 
     - id: 104
-      name: 'T1 Pig Egg'
+      name: "T1 Яйцо свиньи"
       type_id: 0
       data: 0
       custom_id: 'mat_pig_egg'
       value: 10
 
     - id: 105
-      name: 'T1 Sheep Egg'
+      name: "T1 Яйцо овцы"
       type_id: 0
       data: 0
       custom_id: 'mat_sheep_egg'
@@ -423,49 +423,49 @@ items:
 
 # Floor 2 Right side Middle 106-109
     - id: 106
-      name: 'T1 Rabbit Egg'
+      name: "T1 Яйцо кролика"
       type_id: 0
       data: 0
       custom_id: 'mat_rabbit_egg'
       value: 10
 
     - id: 107
-      name: 'T1 Creeper Egg'
+      name: "T1 Яйцо крипера"
       type_id: 0
       data: 0
       custom_id: 'mat_creeper_egg'
       value: 10
 
     - id: 108
-      name: 'T1 Enderman Egg'
+      name: "T1 Яйцо эндермена"
       type_id: 0
       data: 0
       custom_id: 'mat_enderman_egg'
       value: 10
 
     - id: 109
-      name: 'T1 Zombie Egg'
+      name: "T1 Яйцо зомби"
       type_id: 0
       data: 0
       custom_id: 'mat_zombie_egg'
       value: 10
 # Floor 2 Right side Forward 110-113
     - id: 110
-      name: 'T1 Skeleton Egg'
+      name: "T1 Яйцо скелета"
       type_id: 0
       data: 0
       custom_id: 'mat_skeleton_egg'
       value: 10
 
     - id: 111
-      name: 'T1 Spider Egg'
+      name: "T1 Яйцо паука"
       type_id: 0
       data: 0
       custom_id: 'mat_spider_egg'
       value: 10
 
     - id: 112
-      name: 'T1 Slime Egg'
+      name: "T1 Яйцо слизня"
       type_id: 0
       data: 0
       custom_id: 'mat_slime_egg'
@@ -479,38 +479,38 @@ items:
 
 # Floor 2 Right side Wall-Front Corner 114-117
     - id: 114
-      name: 'Oak Sapling'
+      name: "Дубоый заженец"
       type_id: 6
       data: 0
       value: 1
 
     - id: 115
-      name: 'Spruce Sapling'
+      name: "Еловый саженец"
       type_id: 6
       data: 1
       value: 1
 
     - id: 116
-      name: 'Birch Sapling'
+      name: "Берёзовый саженец"
       type_id: 6
       data: 2
       value: 1
 
     - id: 117
-      name: 'Jungle Sapling'
+      name: "Саженец троп. дерева"
       type_id: 6
       data: 3
       value: 1
 
 # Floor 2 Right side Front Corner 118-121
     - id: 118
-      name: 'Acacia Sapling'
+      name: "Саженец акации"
       type_id: 6
       data: 4
       value: 1
 
     - id: 119
-      name: 'Dark Oak Sapling'
+      name: "Саженец тёмного дуба"
       type_id: 6
       data: 5
       value: 1
@@ -518,74 +518,74 @@ items:
 
 # Floor 2 Left side Front Corner 122-125
     - id: 122
-      name: 'Bread'
+      name: "Хлеб"
       type_id: 297
       data: 0
       value: 12
 
     - id: 123
-      name: 'Carrots'
+      name: "Морковь"
       type_id: 391
       data: 0
       value: 8
  
     - id: 124
-      name: 'Potato'
+      name: "Картошка"
       type_id: 392
       data: 0
       value: 8
  
     - id: 125
-      name: 'Pumpkin'
+      name: "Тыква"
       type_id: 86
       data: 0
       value: 4
 # Floor 2 Left side Wall-Front Corner 126-129
     - id: 126
-      name: 'Melon'
+      name: "Арбуз"
       type_id: 103
       data: 0
       value: 3
  
     - id: 127
-      name: 'Raw Mutton'
+      name: "Сырая баранина"
       type_id: 423
       data: 0
       value: 5
 
     - id: 128
-      name: 'Raw Fish'
+      name: "Сырая треска"
       type_id: 349
       data: 0
       value: 5
 
     - id: 129
-      name: 'Raw Salmon'
+      name: "Сырой лосось"
       type_id: 349
       data: 1
       value: 5
 
 # Floor 2 Left side Forward 130-133
     - id: 130
-      name: 'Raw Beef'
+      name: "Сырая говядина"
       type_id: 363
       data: 0
       value: 5
  
     - id: 131
-      name: 'Raw Porkchop'
+      name: "Сырая свинина"
       type_id: 319
       data: 0
       value: 5
  
     - id: 132
-      name: 'Raw Chicken'
+      name: "Сырая курятина"
       type_id: 365
       data: 0
       value: 5
  
     - id: 133
-      name: 'Raw Rabbit'
+      name: "Сырая крольчатина"
       type_id: 411
       data: 0
       value: 5

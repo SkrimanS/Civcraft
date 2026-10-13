@@ -16,4 +16,11 @@ public record StructureDefinition(
         int maxPerTown,
         boolean strategic
 ) {
+    public boolean wonder() {
+        return id.startsWith("w_");
+    }
+
+    public String templateKind() {
+        return wonder() ? "wonders" : "structures";
+    }
 }

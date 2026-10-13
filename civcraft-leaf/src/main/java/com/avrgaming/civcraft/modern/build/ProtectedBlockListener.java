@@ -34,6 +34,7 @@ public final class ProtectedBlockListener implements Listener {
                 event.getPlayer().sendMessage(lang.component("protected-block.break", "&cЭтот блок является структурным блоком CivCraft-постройки."));
             }
         } catch (SQLException exception) {
+            event.setCancelled(true);
             plugin.getLogger().warning("Unable to check protected block: " + exception.getMessage());
         }
     }

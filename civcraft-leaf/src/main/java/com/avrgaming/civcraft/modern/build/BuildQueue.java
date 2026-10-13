@@ -68,6 +68,16 @@ public final class BuildQueue {
         return true;
     }
 
+    private final Map<Long,Long> updatedDurations=new LinkedHashMap<>();
+    public void retimeBuild(long buildId,long duration) {
+        var build=activeBuilds.get(buildId);
+        if(build!=null)build.retime(duration);
+        else updatedDurations.put(buildId,duration);
+    }
+    private long consumeDuration(long buildId,long original) {
+        Long updated=updatedDurations.remove(buildId);return updated==null?original:updated;
+    }
+
     public int paste(Location origin, LegacyDefTemplate template, boolean includeAir, java.util.function.Consumer<List<BlockPlacement>> onComplete) {
         return pasteChunked(0L, origin, template, includeAir, CHUNKED_INSTANT_BUILD_DURATION, false, true, (placements, backups) -> onComplete.accept(placements));
     }
@@ -90,7 +100,7 @@ public final class BuildQueue {
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             PreparedBuild prepared = PreparedBuild.prepare(worldName, originX, originY, originZ, template, includeAir, showBedrockPreview, clearChunks);
-            plugin.getServer().getScheduler().runTask(plugin, () -> new BuildSession(buildId, origin, prepared, duration, showBedrockPreview, onComplete).start());
+            plugin.getServer().getScheduler().runTask(plugin, () -> new BuildSession(buildId, origin, prepared, consumeDuration(buildId,duration), showBedrockPreview, onComplete).start());
         });
         return queuedBlocks;
     }
@@ -109,7 +119,7 @@ public final class BuildQueue {
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             PreparedBuild prepared = PreparedBuild.prepareSchematic(worldName, originX, originY, originZ, template, includeAir, showBedrockPreview, clearChunks);
-            plugin.getServer().getScheduler().runTask(plugin, () -> new SchematicBuildSession(buildId, origin, prepared, template, includeAir, duration, showBedrockPreview, onComplete).start());
+            plugin.getServer().getScheduler().runTask(plugin, () -> new SchematicBuildSession(buildId, origin, prepared, template, includeAir, consumeDuration(buildId,duration), showBedrockPreview, onComplete).start());
         });
         return queuedBlocks;
     }
@@ -169,13 +179,14 @@ public final class BuildQueue {
 
     private interface CancellableBuild {
         void requestCancel();
+        void retime(long duration);
     }
 
     private final class BuildSession implements CancellableBuild {
         private final long buildId;
         private final Location origin;
         private final PreparedBuild prepared;
-        private final long buildDurationMillis;
+        private long buildDurationMillis;
         private final boolean showBedrockPreview;
         private final BuildCompleteHandler onComplete;
         private final List<BlockPlacement> placements;
@@ -391,6 +402,12 @@ public final class BuildQueue {
             this.cancelRequested = true;
         }
 
+        public void retime(long duration) {
+            double progress=startedBuilding && buildDurationMillis>0?Math.max(0,Math.min(1,(System.currentTimeMillis()-startedAtMillis)/(double)buildDurationMillis)):0;
+            buildDurationMillis=Math.max(0,duration);
+            startedAtMillis=System.currentTimeMillis()-(long)(progress*buildDurationMillis);
+        }
+
         private int targetPlacedBlocks() {
             if (prepared.orderedBlocks.isEmpty()) {
                 return 0;
@@ -483,7 +500,7 @@ public final class BuildQueue {
             this.placements = new ArrayList<>(schematic.nonAirBlocks());
         }
 
-        private final long buildDurationMillis;
+        private long buildDurationMillis;
 
         private void start() {
             if (buildId > 0L && canceledBeforeStart.remove(buildId)) {
@@ -660,6 +677,12 @@ public final class BuildQueue {
         @Override
         public void requestCancel() {
             this.cancelRequested = true;
+        }
+
+        public void retime(long duration) {
+            double progress=startedBuilding && buildDurationMillis>0?Math.max(0,Math.min(1,(System.currentTimeMillis()-startedAtMillis)/(double)buildDurationMillis)):0;
+            buildDurationMillis=Math.max(0,duration);
+            startedAtMillis=System.currentTimeMillis()-(long)(progress*buildDurationMillis);
         }
 
         private int targetPlacedBlocks() {
@@ -916,7 +939,7 @@ public final class BuildQueue {
         if (material.isAir()) {
             return null;
         }
-        return new BlockPlacement(block.getWorld().getName(), block.getX(), block.getY(), block.getZ(), material.name());
+        return new BlockPlacement(block.getWorld().getName(), block.getX(), block.getY(), block.getZ(), material.name(),legacyBlock.signLines());
     }
 
     private static long chunkKey(int chunkX, int chunkZ) {

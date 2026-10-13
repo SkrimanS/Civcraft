@@ -55,6 +55,7 @@ public final class TownClaimProtectionListener implements Listener {
                 || event.getClickedBlock() == null) {
             return;
         }
+        if(plugin.trades()!=null && plugin.trades().isPublicTradePoint(event.getClickedBlock()))return;
         if (plugin.getConfig().getBoolean("claim-protection.prevent-foreign-interactions", true)) {
             protect(event.getClickedBlock().getLocation(), event.getPlayer(),
                     () -> event.setCancelled(true));

@@ -173,6 +173,10 @@ public final class GameplayRestrictionService implements Listener {
         Iterator<Recipe> iterator = Bukkit.recipeIterator();
         while (iterator.hasNext()) {
             Recipe recipe = iterator.next();
+            if (recipe != null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
+                    && civ.nativeItems() != null && civ.nativeItems().id(recipe.getResult()) != null) {
+                continue;
+            }
             if (recipe != null && recipe.getResult() != null && isBlockedRecipeResult(recipe.getResult().getType())) {
                 iterator.remove();
             }
@@ -181,6 +185,11 @@ public final class GameplayRestrictionService implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
+        if (plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
+                && civ.nativeItems() != null
+                && civ.nativeItems().match(event.getInventory().getMatrix()).isPresent()) {
+            return;
+        }
         if (!restrictions.getBoolean("recipes.enabled", true) || event.getRecipe() == null || event.getRecipe().getResult() == null) {
             return;
         }
@@ -191,6 +200,12 @@ public final class GameplayRestrictionService implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
+        if (plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
+                && civ.nativeItems() != null
+                && civ.nativeItems().id(event.getCurrentItem()) != null
+                && civ.nativeItems().match(event.getInventory().getMatrix()).isPresent()) {
+            return;
+        }
         if (!restrictions.getBoolean("recipes.enabled", true) || event.getRecipe() == null || event.getRecipe().getResult() == null) {
             return;
         }
