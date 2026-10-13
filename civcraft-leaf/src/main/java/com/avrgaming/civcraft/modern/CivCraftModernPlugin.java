@@ -145,6 +145,10 @@ public final class CivCraftModernPlugin extends JavaPlugin {
                 boolean found=false;try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info(towns)")){while(r.next())if(r.getString("name").equals("base_unhappiness"))found=true;}
                 if(!found)try(var s=db.createStatement()){s.executeUpdate("ALTER TABLE towns ADD COLUMN base_unhappiness REAL NOT NULL DEFAULT 0");}return null;
             });
+            storage.transaction(db->{
+                boolean found=false;try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info(towns)")){while(r.next())if(r.getString("name").equals("base_growth"))found=true;}
+                if(!found)try(var s=db.createStatement()){s.executeUpdate("ALTER TABLE towns ADD COLUMN base_growth REAL NOT NULL DEFAULT 0");}return null;
+            });
             storage.setHappinessRules(new com.avrgaming.civcraft.modern.town.HappinessRules(new java.io.File(getDataFolder(),"civcraft/data/happiness.yml")));
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);

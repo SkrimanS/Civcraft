@@ -213,6 +213,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("growth")) {
+            var resident=game.resident(player);var town=game.town(resident).orElseThrow(()->new IllegalArgumentException("Вы не состоите в городе."));
+            send(player,"&6Рост города &e"+town.name()+"&6: &e"+formatNumber(town.growth()));return;
+        }
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("culture")){plugin.culture().info(player);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
@@ -228,6 +232,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&e/town upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             send(player,"&e/town set flattax [монеты], set taxrate [процент] &7- налоги жителей");
             send(player,"&e/res taxes, /res paydebt &7- ваш налоговый долг и его погашение");
+            send(player,"&e/town info culture / info growth &7- культурная территория и рост");
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {

@@ -21,6 +21,7 @@ public record TownRecord(
         double productionMultiplier,
         double unhappiness,
         double happinessPercentage,
-        double cultureMultiplier
+        double cultureMultiplier,
+        double growth
 ) {
 }

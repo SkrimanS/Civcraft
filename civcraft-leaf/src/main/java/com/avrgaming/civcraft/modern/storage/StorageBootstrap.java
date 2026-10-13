@@ -1876,7 +1876,7 @@ public final class StorageBootstrap implements AutoCloseable {
         double beakers = 0.0;
         double money = 0.0;
         double structureHappiness = 0,structureUnhappiness=0,biomeHappiness=0;
-        double education=0;
+        double education=0,growth=0;
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT
                     COALESCE(SUM(production_hammers_per_hour), 0) AS hammers,
@@ -1918,6 +1918,7 @@ public final class StorageBootstrap implements AutoCloseable {
                             structureHappiness+=(attributes.get("HAPPINESS")+Math.max(0,scalar))*count;
                             structureUnhappiness+=(attributes.get("UNHAPPINESS")+Math.max(0,-scalar))*count;
                             education+=structureDefinitions.attributes(id).education(id,residents)*count;
+                            growth+=structureDefinitions.attributes(id).get("GROWTH")*count;
                         } else {
                             structureHammers+=rows.getDouble(3);beakers+=rows.getDouble(4);money+=rows.getDouble(5);structureHappiness+=Math.max(0,rows.getDouble(6));structureUnhappiness+=Math.max(0,-rows.getDouble(6));
                         }
@@ -1926,32 +1927,38 @@ public final class StorageBootstrap implements AutoCloseable {
             }
         }
         if(cultureBiomes!=null)try(var query=connection.prepareStatement("SELECT b.biome,COUNT(*) FROM culture_regions cr JOIN culture_biome_cache b ON b.world=cr.world AND b.chunk_x=cr.chunk_x AND b.chunk_z=cr.chunk_z WHERE cr.town_id=? GROUP BY b.biome")) {
-            query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;biomeHappiness+=yield.happiness()*count;}}
+            query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;biomeHappiness+=yield.happiness()*count;growth+=yield.growth()*count;}}
         }
         double happiness = Math.max(0,baseHappiness + structureHappiness + biomeHappiness);
         var mood=happinessRules==null?null:townMood(townId,baseHappiness+structureHappiness+biomeHappiness,structureUnhappiness);
         double multiplier=mood==null?1:mood.state().hammers();
         double scienceMultiplier=mood==null?multiplier:mood.state().science(),coinMultiplier=mood==null?multiplier:mood.state().coins();
         if(mood!=null)multiplier=mood.state().hammers();
-        double hammerRate=1,beakerRate=1;
+        double hammerRate=1,beakerRate=1,growthRate=1;
         if(governments!=null) {
             try(var query=connection.prepareStatement("SELECT c.government FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")) {
                 query.setLong(1,townId);
                 try(var result=query.executeQuery()) {
                     if(result.next()) {
                         var government=governments.require(result.getString(1));
-                        hammerRate=government.hammers();beakerRate=government.beakers();
+                        hammerRate=government.hammers();beakerRate=government.beakers();growthRate=government.growth();
                     }
                 }
             }
         }
+        boolean fertilizer=false;
+        // The additional growth column is installed with the full happiness data.
+        if(happinessRules!=null)try(var query=connection.prepareStatement("SELECT t.base_growth,EXISTS(SELECT 1 FROM civ_technologies ct WHERE ct.civ_id=t.civ_id AND ct.tech_id='tech_fertilizer') FROM towns t WHERE t.id=?")) {
+            query.setLong(1,townId);try(var row=query.executeQuery()){if(row.next()){growth+=row.getDouble(1);fertilizer=row.getBoolean(2);}}
+        }
+        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,0);
         return new TownProduction(
                 Math.max(Math.max(0.0,baseHammersPerHour),(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate),
                 (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate,
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * coinMultiplier,
                 mood==null?happiness:mood.happy(),
                 mood==null?"Инициализация":mood.state().name(),
-                multiplier,mood==null?0:mood.unhappy(),mood==null?0:mood.percentage(),mood==null?multiplier:mood.state().culture()
+                multiplier,mood==null?0:mood.unhappy(),mood==null?0:mood.percentage(),mood==null?multiplier:mood.state().culture(),growth
         );
     }
 
@@ -1997,7 +2004,7 @@ public final class StorageBootstrap implements AutoCloseable {
     private record TownBaseProduction(long id, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, double baseHappiness) {
     }
 
-    private record TownProduction(double hammersPerHour, double beakersPerHour, double moneyPerHour, double happiness, String state, double multiplier,double unhappiness,double percentage,double cultureMultiplier) {
+    private record TownProduction(double hammersPerHour, double beakersPerHour, double moneyPerHour, double happiness, String state, double multiplier,double unhappiness,double percentage,double cultureMultiplier,double growth) {
     }
 
     public synchronized int townCount(long civId) throws SQLException {
@@ -2315,7 +2322,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 production.moneyPerHour(),
                 production.happiness(),
                 production.state(),
-                production.multiplier(),production.unhappiness(),production.percentage(),production.cultureMultiplier()
+                production.multiplier(),production.unhappiness(),production.percentage(),production.cultureMultiplier(),production.growth()
         );
     }
 
