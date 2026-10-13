@@ -68,6 +68,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public com.avrgaming.civcraft.modern.town.TaxService taxes(){return taxes;}
     private com.avrgaming.civcraft.modern.culture.BiomeSurveyService biomeSurvey;
     public com.avrgaming.civcraft.modern.culture.BiomeSurveyService biomeSurvey(){return biomeSurvey;}
+    private com.avrgaming.civcraft.modern.culture.CultureService culture;
+    public com.avrgaming.civcraft.modern.culture.CultureService culture(){return culture;}
     public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
     public LegacyStructureService legacyStructures(){return legacyStructures;}
 
@@ -137,11 +139,14 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.taxes=new com.avrgaming.civcraft.modern.town.TaxService(this,storage);
             new com.avrgaming.civcraft.modern.town.PlotService(this,storage,economy);
             this.biomeSurvey=new com.avrgaming.civcraft.modern.culture.BiomeSurveyService(this,storage);
+            this.culture=new com.avrgaming.civcraft.modern.culture.CultureService(this,storage);
+            storage.setCultureBiomes(biomeSurvey.catalog());
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
         getServer().getScheduler().runTaskTimer(this,townUpgrades::tick,20L*60L,20L*60L);
+        getServer().getScheduler().runTaskTimer(this,culture::tick,40L,20L);
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {
                 return;

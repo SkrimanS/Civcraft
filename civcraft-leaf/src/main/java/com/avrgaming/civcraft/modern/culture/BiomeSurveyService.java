@@ -14,6 +14,7 @@ import org.bukkit.entity.Player;
 public final class BiomeSurveyService {
     private final StorageBootstrap storage;
     private final BiomePotential catalog;
+    public BiomePotential catalog(){return catalog;}
     public BiomeSurveyService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.storage=storage;
         catalog=new BiomePotential(YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getMapList("culture_biomes"));

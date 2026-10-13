@@ -213,6 +213,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("culture")){plugin.culture().info(player);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}
@@ -296,7 +297,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         ResidentProfile resident = game.resident(player);
         game.town(resident).ifPresentOrElse(
-                town -> send(player, msg("commands.town.info", "&6Город: &e{name} &7level={level}, coins={coins}, hammers={hammers}/hour, beakers={beakers}/hour, money={money}/hour, happiness={happiness} ({state}, x{multiplier})", "name", town.name(), "level", town.level(), "coins", town.coins(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "money", formatNumber(town.moneyPerHour()), "happiness", town.happiness(), "state", town.happinessState(), "multiplier", formatNumber(town.productionMultiplier()))),
+                town -> send(player, msg("commands.town.info", "&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness} ({state}, ×{multiplier})", "name", town.name(), "level", town.level(), "coins", town.coins(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "money", formatNumber(town.moneyPerHour()), "happiness", town.happiness(), "state", town.happinessState(), "multiplier", formatNumber(town.productionMultiplier()))),
                 () -> error(player, msg("commands.town.none", "У вас нет города. Используйте /town create <название>."))
         );
     }

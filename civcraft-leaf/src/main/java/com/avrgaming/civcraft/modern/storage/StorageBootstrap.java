@@ -32,6 +32,11 @@ import org.bukkit.Location;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class StorageBootstrap implements AutoCloseable {
+    private com.avrgaming.civcraft.modern.culture.BiomePotential cultureBiomes;
+    private Double legacyTownBaseHammers;
+    public synchronized void setLegacyTownBaseHammers(double rate){legacyTownBaseHammers=rate;}
+    public synchronized double townBaseHammers(double fallback){return legacyTownBaseHammers==null?fallback:legacyTownBaseHammers;}
+    public synchronized void setCultureBiomes(com.avrgaming.civcraft.modern.culture.BiomePotential catalog){cultureBiomes=catalog;}
     private long joinCooldownMillis=12L*3600000;
     public synchronized void setJoinCooldownMillis(long duration){joinCooldownMillis=duration;}
     private final JavaPlugin plugin;
@@ -1906,6 +1911,9 @@ public final class StorageBootstrap implements AutoCloseable {
                     }
                 }
             }
+        }
+        if(cultureBiomes!=null)try(var query=connection.prepareStatement("SELECT b.biome,COUNT(*) FROM culture_regions cr JOIN culture_biome_cache b ON b.world=cr.world AND b.chunk_x=cr.chunk_x AND b.chunk_z=cr.chunk_z WHERE cr.town_id=? GROUP BY b.biome")) {
+            query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;}}
         }
         int happiness = clampHappiness(baseHappiness + structureHappiness);
         double multiplier = happinessMultiplier(happiness);

@@ -219,7 +219,7 @@ public final class CivCraftGameService {
         }
         economy.withdraw(player, cost, "town create");
         try {
-            return storage.createTown(player.getUniqueId(), resident.civId(), name, location, 0.0, settings.townHammersPerHour());
+            return storage.createTown(player.getUniqueId(), resident.civId(), name, location, 0.0, storage.townBaseHammers(settings.townHammersPerHour()));
         } catch (SQLException | RuntimeException exception) {
             economy.deposit(player, cost, "town create refund");
             throw exception;
