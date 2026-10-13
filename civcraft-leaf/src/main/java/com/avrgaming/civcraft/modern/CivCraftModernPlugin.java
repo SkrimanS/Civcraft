@@ -60,6 +60,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     public com.avrgaming.civcraft.modern.trade.NativeTradeService trades(){return trades;}
+    private com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades;
+    public com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades(){return townUpgrades;}
     public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
     public LegacyStructureService legacyStructures(){return legacyStructures;}
 
@@ -123,10 +125,13 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.memberships = new SettlementMembershipService(this, game, storage);
         try {
             this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
+            this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
+            townClaims.useLevels(townUpgrades.catalog());
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }
         getServer().getScheduler().runTaskTimer(this, research::tick, 20L * 60L, 20L * 60L);
+        getServer().getScheduler().runTaskTimer(this,townUpgrades::tick,20L*60L,20L*60L);
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (!storage.isReady() || !getConfig().getBoolean("economy.production.enabled", true)) {
                 return;

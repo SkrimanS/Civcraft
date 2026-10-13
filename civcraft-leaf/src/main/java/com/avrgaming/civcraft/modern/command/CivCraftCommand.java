@@ -67,7 +67,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         String alias = label.toLowerCase(Locale.ROOT);
         String[] effectiveArgs = args;
 
-        if (List.of("camp", "c", "civ", "town", "t", "build", "b", "research", "tech", "civadmin").contains(alias)) {
+        if (List.of("camp", "c", "civ", "town", "t", "build", "b", "research", "tech", "civadmin", "ad").contains(alias)) {
             String category = switch (alias) {
                 case "c" -> "camp";
                 case "t" -> "town";
@@ -209,6 +209,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}
         if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
             for (String line : lang.list("commands.help.town", List.of(
                     "&6Город: /town info, members, invite <ник>, join, leave",
@@ -662,6 +663,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
         String primary = alias.toLowerCase(Locale.ROOT);
+        if(primary.equals("ad"))primary="civadmin";
+        if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {
+            if(args.length==2)return List.of("list","purchased","buy");
+            if(args.length==3 && args[1].equalsIgnoreCase("buy"))return plugin.townUpgrades().ids();
+        }
         if(primary.equals("civ") && args.length>=2 && (args[0].equalsIgnoreCase("gov") || args[0].equalsIgnoreCase("government"))) {
             if(args.length==2)return List.of("info","list","change");
             if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
@@ -679,7 +685,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return List.of("help", "create", "info", "gov", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("help", "create", "info", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("help", "create", "info", "upgrade", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {

@@ -17,6 +17,8 @@ public final class TownClaimService {
     private final CivCraftGameService game;
     private final CivCraftEconomyService economy;
     private ModernCivCraftSettings settings;
+    private com.avrgaming.civcraft.modern.town.TownCatalog townLevels;
+    public void useLevels(com.avrgaming.civcraft.modern.town.TownCatalog levels){this.townLevels=levels;}
 
     public TownClaimService(StorageBootstrap storage, CivCraftGameService game, ModernCivCraftSettings settings, CivCraftEconomyService economy) {
         this.storage = storage;
@@ -41,8 +43,9 @@ public final class TownClaimService {
             throw new IllegalArgumentException("Этот чанк уже приватизирован.");
         }
         int count = storage.townClaimCount(town.id());
-        if (count >= settings.maxTownClaims()) {
-            throw new IllegalArgumentException("Город достиг лимита клаймов: " + settings.maxTownClaims());
+        int maximum=townLevels==null?settings.maxTownClaims():townLevels.level(town.level()).plots();
+        if (count >= maximum) {
+            throw new IllegalArgumentException("Город достиг лимита клаймов: " + maximum);
         }
         economy.withdraw(player, settings.townClaimCost(), "town claim");
         try {
