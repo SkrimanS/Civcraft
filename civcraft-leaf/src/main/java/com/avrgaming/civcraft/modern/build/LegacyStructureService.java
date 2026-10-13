@@ -225,7 +225,15 @@ public final class LegacyStructureService {
         return storage.interruptedStructureBuilds();
     }
     public void retimeBuild(long buildId,long duration) {
-        buildQueue.retimeBuild(buildId,duration);
+        try {
+            synchronizeStoredClock(buildId);
+        }catch(SQLException failure){plugin.getLogger().warning("Unable to synchronize build clock #"+buildId+": "+failure.getMessage());}
+    }
+    private void synchronizeStoredClock(long buildId)throws SQLException {
+        var clock=storage.query(db->{try(var s=db.prepareStatement("SELECT started_at,finish_at FROM structure_builds WHERE id=? AND status IN ('QUEUED','BUILDING')")) {
+            s.setLong(1,buildId);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing active construction clock");return new long[]{r.getLong(1),r.getLong(2)};}
+        }});
+        buildQueue.synchronizeClock(buildId,clock[0],clock[1]);
     }
 
     public void recoverInterruptedBuilds() {
@@ -292,6 +300,7 @@ public final class LegacyStructureService {
             LegacyDefTemplate template = loadTemplate(actualPath);
             requeue = () -> {
                 long duration = Math.max(20_000L, build.finishAt() - System.currentTimeMillis());
+                try{synchronizeStoredClock(build.id());}catch(SQLException failure){plugin.getLogger().severe("Unable to resume build clock: "+failure.getMessage());return;}
                 buildQueue.pasteChunked(build.id(), origin, template, settings.legacyIncludeAir(),
                         duration, true, true,
                         (placements, backups) -> persistProtectedBlocksAsync(build.id(), placements, backups));
@@ -305,6 +314,7 @@ public final class LegacyStructureService {
             WorldEditSchematicTemplate template = loadSchematic(actualPath);
             requeue = () -> {
                 long duration = Math.max(20_000L, build.finishAt() - System.currentTimeMillis());
+                try{synchronizeStoredClock(build.id());}catch(SQLException failure){plugin.getLogger().severe("Unable to resume build clock: "+failure.getMessage());return;}
                 buildQueue.pasteSchematic(build.id(), origin, template, settings.legacyIncludeAir(),
                         duration, true, true,
                         (placements, backups) -> persistProtectedBlocksAsync(build.id(), placements, backups));
@@ -543,6 +553,7 @@ public final class LegacyStructureService {
             structureRecorded = true;
             storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
+            buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
             int queuedBlocks = buildQueue.pasteChunked(finalBuildId, origin, template, settings.legacyIncludeAir(), durationMillis, showPreview, true, (placements, backups) -> persistProtectedBlocksAsync(finalBuildId, placements, backups));
             long townId = town == null ? 0L : town.id();
             return new QueuedLegacyBuild(buildId, templatePath, queuedBlocks, template.sizeX(), template.sizeY(), template.sizeZ(), townId, totalHammers, hammersPerHour, durationMillis);
@@ -620,6 +631,7 @@ public final class LegacyStructureService {
             structureRecorded = true;
             storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
+            buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
             int queuedBlocks = buildQueue.pasteSchematic(finalBuildId, origin, template, settings.legacyIncludeAir(), durationMillis, showPreview, true, (placements, backups) -> persistProtectedBlocksAsync(finalBuildId, placements, backups));
             long townId = town == null ? 0L : town.id();
             return new QueuedLegacyBuild(buildId, templatePath, queuedBlocks, template.sizeX(), template.sizeY(), template.sizeZ(), townId, totalHammers, hammersPerHour, durationMillis);

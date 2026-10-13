@@ -69,6 +69,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.culture.BiomeSurveyService biomeSurvey;
     public com.avrgaming.civcraft.modern.culture.BiomeSurveyService biomeSurvey(){return biomeSurvey;}
     private com.avrgaming.civcraft.modern.culture.CultureService culture;
+    private boolean constructionClockReady;
     public com.avrgaming.civcraft.modern.culture.CultureService culture(){return culture;}
     public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
     public LegacyStructureService legacyStructures(){return legacyStructures;}
@@ -99,6 +100,17 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             return;
         }
         storage.warmupAsync();
+        getServer().getScheduler().runTaskTimer(this,()->{
+            try {
+                if(!constructionClockReady) {
+                    storage.transaction(db->{com.avrgaming.civcraft.modern.build.ConstructionClockStore.resume(db,System.currentTimeMillis());return null;});
+                    governments.refreshQueuedProduction();constructionClockReady=true;
+                }else storage.query(db->{com.avrgaming.civcraft.modern.build.ConstructionClockStore.checkpoint(db,System.currentTimeMillis());return null;});
+            }catch(java.sql.SQLException failure){
+                getLogger().severe("Unable to checkpoint construction clocks: "+failure.getMessage());
+                if(!constructionClockReady)getServer().shutdown();
+            }
+        },1L,20L);
 
         this.economy = new CivCraftEconomyService(this, storage, settings);
         try {
@@ -221,6 +233,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             campNpcMenus.shutdown();
         }
         if (storage != null) {
+            if(constructionClockReady && storage.isReady())try{storage.query(db->{com.avrgaming.civcraft.modern.build.ConstructionClockStore.checkpoint(db,System.currentTimeMillis());return null;});}
+            catch(java.sql.SQLException failure){getLogger().warning("Unable to save construction shutdown checkpoint: "+failure.getMessage());}
             storage.close();
         }
     }

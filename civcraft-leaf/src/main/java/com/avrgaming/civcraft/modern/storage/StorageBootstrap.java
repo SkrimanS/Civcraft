@@ -1522,14 +1522,14 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     public record InterruptedBuild(long id, String status, String world, int x, int y, int z,
-                                   String templatePath, long finishAt, boolean journalStarted,
+                                   String templatePath, long startedAt,long finishAt, boolean journalStarted,
                                    boolean snapshotReady) {
     }
 
     public synchronized List<InterruptedBuild> interruptedStructureBuilds() throws SQLException {
         List<InterruptedBuild> interrupted = new ArrayList<>();
         try (PreparedStatement query = connection.prepareStatement("""
-                SELECT id, status, world, x, y, z, template_path, finish_at,
+                SELECT id, status, world, x, y, z, template_path, started_at,finish_at,
                        journal_started, snapshot_ready
                 FROM structure_builds
                 WHERE status IN ('QUEUED', 'BUILDING', 'ROLLBACK_PENDING', 'DEMOLISH_PENDING')
@@ -1540,7 +1540,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 interrupted.add(new InterruptedBuild(
                         rs.getLong("id"), rs.getString("status"), rs.getString("world"),
                         rs.getInt("x"), rs.getInt("y"), rs.getInt("z"),
-                        rs.getString("template_path"), rs.getLong("finish_at"),
+                        rs.getString("template_path"), rs.getLong("started_at"),rs.getLong("finish_at"),
                         rs.getInt("journal_started") != 0,
                         rs.getInt("snapshot_ready") != 0));
             }

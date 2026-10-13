@@ -69,6 +69,13 @@ public final class BuildQueue {
     }
 
     private final Map<Long,Long> updatedDurations=new LinkedHashMap<>();
+    private record Timeline(long start,long finish) {}
+    private final Map<Long,Timeline> updatedClocks=new LinkedHashMap<>();
+    public void synchronizeClock(long id,long start,long finish) {
+        if(finish<start)throw new IllegalArgumentException("Invalid build clock");
+        var active=activeBuilds.get(id);if(active!=null)active.synchronizeClock(start,finish);else updatedClocks.put(id,new Timeline(start,finish));
+    }
+    private void applyClock(long id,CancellableBuild session){var clock=updatedClocks.remove(id);if(clock!=null)session.synchronizeClock(clock.start(),clock.finish());}
     public void retimeBuild(long buildId,long duration) {
         var build=activeBuilds.get(buildId);
         if(build!=null)build.retime(duration);
@@ -100,7 +107,7 @@ public final class BuildQueue {
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             PreparedBuild prepared = PreparedBuild.prepare(worldName, originX, originY, originZ, template, includeAir, showBedrockPreview, clearChunks);
-            plugin.getServer().getScheduler().runTask(plugin, () -> new BuildSession(buildId, origin, prepared, consumeDuration(buildId,duration), showBedrockPreview, onComplete).start());
+            plugin.getServer().getScheduler().runTask(plugin, () -> {var session=new BuildSession(buildId, origin, prepared, consumeDuration(buildId,duration), showBedrockPreview, onComplete);applyClock(buildId,session);session.start();});
         });
         return queuedBlocks;
     }
@@ -119,7 +126,7 @@ public final class BuildQueue {
 
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             PreparedBuild prepared = PreparedBuild.prepareSchematic(worldName, originX, originY, originZ, template, includeAir, showBedrockPreview, clearChunks);
-            plugin.getServer().getScheduler().runTask(plugin, () -> new SchematicBuildSession(buildId, origin, prepared, template, includeAir, consumeDuration(buildId,duration), showBedrockPreview, onComplete).start());
+            plugin.getServer().getScheduler().runTask(plugin, () -> {var session=new SchematicBuildSession(buildId, origin, prepared, template, includeAir, consumeDuration(buildId,duration), showBedrockPreview, onComplete);applyClock(buildId,session);session.start();});
         });
         return queuedBlocks;
     }
@@ -180,6 +187,7 @@ public final class BuildQueue {
     private interface CancellableBuild {
         void requestCancel();
         void retime(long duration);
+        void synchronizeClock(long start,long finish);
     }
 
     private final class BuildSession implements CancellableBuild {
@@ -202,6 +210,7 @@ public final class BuildQueue {
         private int placedBlockCursor;
         private long startedAtMillis;
         private boolean startedBuilding;
+        private boolean synchronizedClock;
         private volatile boolean cancelRequested;
 
         private BuildSession(long buildId, Location origin, PreparedBuild prepared, long buildDurationMillis, boolean showBedrockPreview, BuildCompleteHandler onComplete) {
@@ -221,7 +230,7 @@ public final class BuildQueue {
             if (buildId > 0L) {
                 activeBuilds.put(buildId, this);
             }
-            this.startedAtMillis = System.currentTimeMillis();
+            if(!synchronizedClock)this.startedAtMillis = System.currentTimeMillis();
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -248,7 +257,7 @@ public final class BuildQueue {
                     tickBudget = placeBedrockPreviewFast(tickBudget);
                     if (!startedBuilding) {
                         startedBuilding = true;
-                        startedAtMillis = System.currentTimeMillis();
+                        if(!synchronizedClock)startedAtMillis = System.currentTimeMillis();
                     }
                     tickBudget = placeDueStructureBlocks(tickBudget);
                     removeBedrockByProgress(tickBudget);
@@ -407,6 +416,7 @@ public final class BuildQueue {
             buildDurationMillis=Math.max(0,duration);
             startedAtMillis=System.currentTimeMillis()-(long)(progress*buildDurationMillis);
         }
+        public void synchronizeClock(long start,long finish){startedAtMillis=start;buildDurationMillis=Math.max(0,finish-start);synchronizedClock=true;}
 
         private int targetPlacedBlocks() {
             if (prepared.orderedBlocks.isEmpty()) {
@@ -481,6 +491,7 @@ public final class BuildQueue {
         private int placedBlockCursor;
         private long startedAtMillis;
         private boolean startedBuilding;
+        private boolean synchronizedClock;
         private volatile boolean cancelRequested;
 
         private SchematicBuildSession(long buildId, Location origin, PreparedBuild prepared, WorldEditSchematicTemplate schematic, boolean includeAir, long buildDurationMillis, boolean showBedrockPreview, BuildCompleteHandler onComplete) {
@@ -509,7 +520,7 @@ public final class BuildQueue {
             if (buildId > 0L) {
                 activeBuilds.put(buildId, this);
             }
-            this.startedAtMillis = System.currentTimeMillis();
+            if(!synchronizedClock)this.startedAtMillis = System.currentTimeMillis();
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -536,7 +547,7 @@ public final class BuildQueue {
                     tickBudget = placeBedrockPreviewFast(tickBudget);
                     if (!startedBuilding) {
                         startedBuilding = true;
-                        startedAtMillis = System.currentTimeMillis();
+                        if(!synchronizedClock)startedAtMillis = System.currentTimeMillis();
                     }
 
                     tickBudget = placeDueSchematicBlocks(tickBudget);
@@ -684,6 +695,7 @@ public final class BuildQueue {
             buildDurationMillis=Math.max(0,duration);
             startedAtMillis=System.currentTimeMillis()-(long)(progress*buildDurationMillis);
         }
+        public void synchronizeClock(long start,long finish){startedAtMillis=start;buildDurationMillis=Math.max(0,finish-start);synchronizedClock=true;}
 
         private int targetPlacedBlocks() {
             if (orderedBlocks.isEmpty()) {

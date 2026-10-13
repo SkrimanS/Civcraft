@@ -17,19 +17,17 @@ public final class GovernmentService {
         definitions=new GovernmentDefinitions(new File(plugin.getDataFolder(),"civcraft/data/governments.yml"));
         storage.query(db->{GovernmentStore.install(db);return null;});
         storage.setGovernments(definitions);
-        // Repair persisted timing before the world's queued builds are recovered.
-        var active=storage.query(db->{
-            List<Long> ids=new ArrayList<>();
-            try(var result=db.createStatement().executeQuery("SELECT DISTINCT t.civ_id FROM structure_builds sb JOIN towns t ON t.id=sb.town_id WHERE sb.status='QUEUED'")){while(result.next())ids.add(result.getLong(1));}
-            return ids;
-        });
-        for(long id:active)storage.transaction(db->retimeData(db,id));
+        // Startup repair runs on the first live tick after offline time is excluded.
     }
     public String name(String stored){return definitions.require(stored).name();}
     public double upkeepRate(String stored){return definitions.require(stored).upkeep();}
     public double maximumTax(String stored){return definitions.require(stored).maximumTax();}
     public double cultureRate(String stored){return definitions.require(stored).culture();}
     public void refreshProduction(long civId)throws SQLException {applyTiming(storage.transaction(db->retimeData(db,civId)));}
+    public void refreshQueuedProduction()throws SQLException {
+        var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
+        for(long id:queued)refreshProduction(id);
+    }
     public List<String> ids(){return definitions.list().stream().map(GovernmentDefinition::id).filter(id->!id.equals("gov_anarchy")).toList();}
     public void command(Player player,String[] args)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();
@@ -100,8 +98,7 @@ public final class GovernmentService {
                     plugin.getServer().broadcast(Component.text("Анархия в цивилизации "+civ.name()+" завершилась. Правительство: "+name(civ.government())+"."));
                 }
             }
-            var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
-            for(long id:queued)refreshProduction(id);
+            refreshQueuedProduction();
         } catch(SQLException exception){plugin.getLogger().warning("Government tick failed: "+exception.getMessage());}
     }
     private Map<Long,Long> retimeData(Connection db,long civId)throws SQLException {
