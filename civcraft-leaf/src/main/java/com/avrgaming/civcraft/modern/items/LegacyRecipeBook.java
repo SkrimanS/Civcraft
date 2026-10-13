@@ -37,15 +37,15 @@ public final class LegacyRecipeBook implements Listener {
         plugin.getCommand("resident").setExecutor((sender,command,label,args) -> {
             if (sender instanceof Player player) {
                 if(args.length==0 || args[0].equalsIgnoreCase("book")) open(player,0);
-                else if(args.length==1 && (args[0].equalsIgnoreCase("taxes") || args[0].equalsIgnoreCase("paydebt"))) {
-                    try{plugin.taxes().resident(player,args[0].equalsIgnoreCase("paydebt"));}
-                    catch(java.sql.SQLException failure){plugin.getLogger().warning("Resident tax command failed: "+failure.getMessage());player.sendMessage(Component.text("Не удалось выполнить налоговую операцию."));}
+                else if(args.length==1 && (args[0].equalsIgnoreCase("biome") || args[0].equalsIgnoreCase("taxes") || args[0].equalsIgnoreCase("paydebt"))) {
+                    try{if(args[0].equalsIgnoreCase("biome"))plugin.biomeSurvey().show(player);else plugin.taxes().resident(player,args[0].equalsIgnoreCase("paydebt"));}
+                    catch(java.sql.SQLException failure){plugin.getLogger().warning("Resident command failed: "+failure.getMessage());player.sendMessage(Component.text("Не удалось выполнить команду жителя."));}
                     catch(IllegalArgumentException failure){player.sendMessage(Component.text(failure.getMessage()));}
-                } else player.sendMessage(Component.text("Команды: /res book, /res taxes, /res paydebt"));
+                } else player.sendMessage(Component.text("Команды: /res book, /res biome, /res taxes, /res paydebt"));
             } else sender.sendMessage("Эта команда доступна в игре.");
             return true;
         });
-        plugin.getCommand("resident").setTabCompleter((sender,command,label,args)->args.length==1?List.of("book","taxes","paydebt"):List.of());
+        plugin.getCommand("resident").setTabCompleter((sender,command,label,args)->args.length==1?List.of("book","biome","taxes","paydebt"):List.of());
     }
 
     public void open(Player player,int number) {
