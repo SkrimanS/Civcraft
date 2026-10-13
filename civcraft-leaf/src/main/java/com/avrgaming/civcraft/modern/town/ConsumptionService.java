@@ -49,6 +49,22 @@ public final class ConsumptionService implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
     private long hour(){return System.currentTimeMillis()/period;}
+    public void requireUnlocked(long build)throws SQLException {
+        for(var pending:storage.query(ConsumptionStore::pending))if(pending.before().build()==build)
+            throw new IllegalArgumentException("Питание здания ещё сохраняется. Дождитесь восстановления операции.");
+        boolean affected=storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=?")) {
+            s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())if(locked.contains(new ConsumptionContainers.Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4))))return true;}
+        }return false;});
+        if(affected)throw new IllegalArgumentException("Сундуки здания участвуют в незавершённом питании. Дождитесь восстановления операции.");
+    }
+    public Optional<String> description(long build,String type)throws SQLException {
+        if(!List.of("ti_cottage","s_temple").contains(type))return Optional.empty();
+        var state=storage.query(db->ConsumptionStore.state(db,build));
+        if(state==null)return Optional.empty();
+        var level=catalog.levels(type).get(state.level());
+        String source=type.equals("ti_cottage")?"амбары города":"сундуки храма";
+        return Optional.of("Уровень: "+state.level()+" | Питание: "+state.count()+"/"+(level==null?"?":level.count())+" | Источник еды: "+source+".");
+    }
     public void tick() {
         if(testingPaused)return;
         try {
@@ -83,13 +99,9 @@ public final class ConsumptionService implements Listener {
         long hour=hour();
         var state=storage.transaction(db->ConsumptionStore.initialize(db,building.id(),period,hour));
         if(state.hour()>=hour)return;
-        var positions=storage.query(db->{
-            var result=new ArrayList<ConsumptionContainers.Position>();
-            try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=? AND chest_id=1 ORDER BY world,x,y,z")) {
-                s.setLong(1,building.id());try(var r=s.executeQuery()){while(r.next())result.add(new ConsumptionContainers.Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}
-            }return result;
-        });
-        if(positions.isEmpty())return;
+        var positions=storage.query(db->ConsumptionSources.positions(db,building.id(),building.town(),building.type()));
+        if(positions.stream().anyMatch(locked::contains))return;
+        if(positions.isEmpty() && building.type().equals("s_temple"))return;
         var before=ConsumptionContainers.capture(positions);
         var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),1,List.of());
         var after=ConsumptionContainers.after(before,cycle.remaining(),materials);
@@ -97,15 +109,19 @@ public final class ConsumptionService implements Listener {
         var civ=storage.findCiv(town.civId()).orElseThrow();
         // Original Temple.templeCulture also uses cottage rate, including coin happiness.
         double rate=plugin.governments().cottageRate(civ.government())*happiness.evaluate(town.happiness(),town.unhappiness()).state().coins();
+        double bonus=1;
         if(building.type().equals("ti_cottage")) {
             boolean taxation=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM civ_technologies WHERE civ_id=? AND tech_id='tech_taxation'")) {
                 s.setLong(1,civ.id());try(var r=s.executeQuery()){return r.next();}
             }});
-            if(taxation)rate*=taxationBonus;
+            if(taxation)bonus=taxationBonus;
         }
         double raw=cycle.rawOutput()*rate;
         if(!Double.isFinite(raw) || raw<0 || raw>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production");
-        long output=Math.round(raw),townCoins=0,civCoins=0,culture=0;
+        double multiplied=Math.round(raw)*bonus;
+        if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production bonus");
+        // Original compound integer multiplication applies taxation after rounding.
+        long output=(long)multiplied,townCoins=0,civCoins=0,culture=0;
         if(building.type().equals("s_temple"))culture=output;
         else {
             double tax=storage.query(db->{try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")) {

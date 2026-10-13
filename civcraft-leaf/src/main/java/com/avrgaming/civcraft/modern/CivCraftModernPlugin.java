@@ -59,6 +59,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private NativeLegacyItems nativeItems;
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
+    private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
+    public com.avrgaming.civcraft.modern.town.ConsumptionService consumption(){return consumption;}
     public com.avrgaming.civcraft.modern.trade.NativeTradeService trades(){return trades;}
     private com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades;
     public com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades(){return townUpgrades;}
@@ -173,7 +175,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             if(scienceSeconds<1 || scienceSeconds>60)throw new IllegalArgumentException("Invalid science test interval");
             getServer().getScheduler().runTaskTimer(this,cultureClock::minute,20L*scienceSeconds,20L*scienceSeconds);
             getServer().getScheduler().runTaskTimer(this,cultureClock::tick,40L,20L);
-            var consumption=new com.avrgaming.civcraft.modern.town.ConsumptionService(this,storage);
+            consumption=new com.avrgaming.civcraft.modern.town.ConsumptionService(this,storage);
             getServer().getScheduler().runTaskTimer(this,consumption::tick,80L,20L);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.

@@ -73,7 +73,7 @@ public final class ConsumptionContainers {
         return List.copyOf(result);
     }
     public static byte[] encode(List<Image> images)throws IOException {
-        if(images.isEmpty() || images.size()>4096)throw new IOException("Invalid consumption container count");
+        if(images.size()>4096)throw new IOException("Invalid consumption container count");
         var bytes=new ByteArrayOutputStream();
         try(var out=new DataOutputStream(bytes)) {
             out.writeInt(1);out.writeInt(images.size());
@@ -89,7 +89,7 @@ public final class ConsumptionContainers {
         var images=new ArrayList<Image>();var seen=new HashSet<Position>();
         try(var in=new DataInputStream(new ByteArrayInputStream(bytes))) {
             if(in.readInt()!=1)throw new IOException("Unknown consumption inventory version");
-            int count=in.readInt();if(count<1 || count>4096)throw new IOException("Invalid consumption container count");
+            int count=in.readInt();if(count<0 || count>4096)throw new IOException("Invalid consumption container count");
             for(int i=0;i<count;i++) {
                 var position=new Position(in.readUTF(),in.readInt(),in.readInt(),in.readInt());
                 if(!seen.add(position))throw new IOException("Duplicate consumption container");

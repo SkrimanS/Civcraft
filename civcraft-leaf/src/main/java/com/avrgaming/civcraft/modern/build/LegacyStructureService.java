@@ -742,6 +742,8 @@ public final class LegacyStructureService {
         if (storage.isFirstCompletedStructureInTown(build.id(), town.id())) {
             throw new IllegalArgumentException("Первое здание города нельзя разрушить.");
         }
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern && modern.consumption()!=null)
+            modern.consumption().requireUnlocked(build.id());
         long refund = Math.max(0L, Math.round(Math.floor(build.cost() * 0.50)));
         // Never remove a building with missing backups: BlockData-only
         // demolition would otherwise irreversibly destroy the old terrain.

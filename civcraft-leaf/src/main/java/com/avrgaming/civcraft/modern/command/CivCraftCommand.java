@@ -326,7 +326,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("time")) {
-            legacyStructures.activeBuildInfo(player).ifPresentOrElse(
+            var selection=legacyStructures.activeBuildInfo(player);
+            if(selection.isEmpty())selection=legacyStructures.structureInfoAt(player.getLocation());
+            selection.ifPresentOrElse(
                     info -> sendStructureTime(player, info),
                     () -> error(player, msg("commands.build.no-active", "В вашем городе нет активной стройки."))
             );
@@ -525,13 +527,25 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         );
     }
 
+    private void sendConsumptionInfo(Player player,StorageBootstrap.StructureBuildView info) {
+        if(!info.status().equals("COMPLETE") || plugin.consumption()==null)return;
+        try{plugin.consumption().description(info.id(),info.structureId()).ifPresent(text->send(player,text));}
+        catch(SQLException failure){plugin.getLogger().warning("Building meal information failed: "+failure.getMessage());}
+    }
+
     private void sendStructureInfo(Player player, StorageBootstrap.StructureBuildView info) {
+        sendConsumptionInfo(player,info);
         send(player, msg("commands.build.info.line1", "&6Постройка: &e{name} &7#{id}", "name", info.displayName(), "id", info.id()));
-        send(player, msg("commands.build.info.line2", "&7Город: {town}, status={status}, cost={cost}, chunk={chunk_x},{chunk_z}", "town", info.townName() == null ? "-" : info.townName(), "status", info.status(), "cost", info.cost(), "chunk_x", info.chunkX(), "chunk_z", info.chunkZ()));
-        send(player, msg("commands.build.info.line3", "&7Origin: {world} {x} {y} {z}, hammers={hammers}, production={production}/hour", "world", info.world(), "x", info.x(), "y", info.y(), "z", info.z(), "hammers", formatNumber(info.totalHammers()), "production", formatNumber(info.hammersPerHour())));
+        String status=switch(info.status()) {
+            case "COMPLETE"->"готово";case "QUEUED"->"в очереди";case "BUILDING"->"строится";
+            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";default->info.status();
+        };
+        send(player, msg("commands.build.info.line2", "&7Город: {town}, состояние: {status}, стоимость: {cost}, чанк: {chunk_x},{chunk_z}", "town", info.townName() == null ? "-" : info.townName(), "status", status, "cost", info.cost(), "chunk_x", info.chunkX(), "chunk_z", info.chunkZ()));
+        send(player, msg("commands.build.info.line3", "&7Положение: {world} {x} {y} {z}, нужно молотков: {hammers}, производство: {production}/час", "world", info.world(), "x", info.x(), "y", info.y(), "z", info.z(), "hammers", formatNumber(info.totalHammers()), "production", formatNumber(info.hammersPerHour())));
     }
 
     private void sendStructureTime(Player player, StorageBootstrap.StructureBuildView info) {
+        sendConsumptionInfo(player,info);
         long now = System.currentTimeMillis();
         send(player, msg("commands.build.time.line1", "&6Стройка: &e{name} &7#{id}", "name", info.displayName(), "id", info.id()));
         send(player, msg("commands.build.time.line2", "&7Готово: {percent}% | осталось: {remaining}", "percent", String.format(Locale.ROOT, "%.1f", info.progressPercent(now)), "remaining", formatDuration(info.remainingMillis(now))));

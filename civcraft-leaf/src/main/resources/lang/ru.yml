@@ -38,8 +38,8 @@ commands:
     usage: 'Использование: /build <постройка> [y] [0|90|180|270]'
     info:
       line1: '&6Постройка: &e{name} &7#{id}'
-      line2: '&7Город: {town}, status={status}, cost={cost}, chunk={chunk_x},{chunk_z}'
-      line3: '&7Origin: {world} {x} {y} {z}, hammers={hammers}, production={production}/hour'
+      line2: '&7Город: {town}, состояние: {status}, стоимость: {cost}, чанк: {chunk_x},{chunk_z}'
+      line3: '&7Положение: {world} {x} {y} {z}, нужно молотков: {hammers}, производство: {production}/час'
     time:
       line1: '&6Стройка: &e{name} &7#{id}'
       line2: '&7Готово: {percent}% | осталось: {remaining}'
