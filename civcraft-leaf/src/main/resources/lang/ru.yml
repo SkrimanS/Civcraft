@@ -25,7 +25,7 @@ commands:
     claimed: 'Чанк {chunk_x},{chunk_z} заклаймлен городом #{town_id}.'
     unclaimed: 'Текущий чанк отклаймлен.'
     claims: '&6Клаймы города: &e{count}/{max}'
-    info: '&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness} ({state}, ×{multiplier})'
+    info: '&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness}, недовольство={unhappiness}, доля={percentage}% ({state}, ×{multiplier})'
     none: 'У вас нет города. Используйте /town create <название>.'
   build:
     cancelled: 'Стройка #{id} отменена. В казну города возвращено {refund} монет.'

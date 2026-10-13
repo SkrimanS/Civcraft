@@ -34,6 +34,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class StorageBootstrap implements AutoCloseable {
     private com.avrgaming.civcraft.modern.culture.BiomePotential cultureBiomes;
     private Double legacyTownBaseHammers;
+    private com.avrgaming.civcraft.modern.town.HappinessRules happinessRules;
+    public synchronized void setHappinessRules(com.avrgaming.civcraft.modern.town.HappinessRules rules){happinessRules=rules;}
     public synchronized void setLegacyTownBaseHammers(double rate){legacyTownBaseHammers=rate;}
     public synchronized double townBaseHammers(double fallback){return legacyTownBaseHammers==null?fallback:legacyTownBaseHammers;}
     public synchronized double staticTownCulture(long town)throws SQLException {
@@ -1797,7 +1799,7 @@ public final class StorageBootstrap implements AutoCloseable {
      * There is no offline catch-up; the service only accrues while the server runs.
      */
     public synchronized long distributeTownIncomeMinute() throws SQLException {
-        record IncomeBase(long id, double hammers, double beakers, double money, int happiness,
+        record IncomeBase(long id, double hammers, double beakers, double money, double happiness,
                           double remainder) {
         }
         List<IncomeBase> towns = new ArrayList<>();
@@ -1810,7 +1812,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 towns.add(new IncomeBase(
                         rs.getLong("id"), rs.getDouble("hammers_per_hour"),
                         rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"),
-                        rs.getInt("base_happiness"), rs.getDouble("income_remainder")));
+                        rs.getDouble("base_happiness"), rs.getDouble("income_remainder")));
             }
         }
 
@@ -1862,18 +1864,18 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
-                    towns.add(new TownBaseProduction(rs.getLong("id"), rs.getDouble("hammers_per_hour"), rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"), rs.getInt("base_happiness")));
+                    towns.add(new TownBaseProduction(rs.getLong("id"), rs.getDouble("hammers_per_hour"), rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"), rs.getDouble("base_happiness")));
                 }
             }
         }
         return towns;
     }
 
-    private TownProduction townProduction(long townId, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, int baseHappiness) throws SQLException {
+    private TownProduction townProduction(long townId, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, double baseHappiness) throws SQLException {
         double structureHammers = 0.0;
         double beakers = 0.0;
         double money = 0.0;
-        int structureHappiness = 0;
+        double structureHappiness = 0,structureUnhappiness=0,biomeHappiness=0;
         double education=0;
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT
@@ -1910,20 +1912,27 @@ public final class StorageBootstrap implements AutoCloseable {
                         var definition=structureDefinitions.find(id).orElse(null);
                         if(definition!=null) {
                             structureHammers+=definition.hammersPerHourBonus()*count;beakers+=definition.beakersPerHour()*count;
-                            money+=definition.moneyPerHour()*count;structureHappiness+=definition.happiness()*count;
+                            money+=definition.moneyPerHour()*count;
+                            var attributes=structureDefinitions.attributes(id);
+                            double scalar=definition.happiness()-attributes.happiness();
+                            structureHappiness+=(attributes.get("HAPPINESS")+Math.max(0,scalar))*count;
+                            structureUnhappiness+=(attributes.get("UNHAPPINESS")+Math.max(0,-scalar))*count;
                             education+=structureDefinitions.attributes(id).education(id,residents)*count;
                         } else {
-                            structureHammers+=rows.getDouble(3);beakers+=rows.getDouble(4);money+=rows.getDouble(5);structureHappiness+=rows.getInt(6);
+                            structureHammers+=rows.getDouble(3);beakers+=rows.getDouble(4);money+=rows.getDouble(5);structureHappiness+=Math.max(0,rows.getDouble(6));structureUnhappiness+=Math.max(0,-rows.getDouble(6));
                         }
                     }
                 }
             }
         }
         if(cultureBiomes!=null)try(var query=connection.prepareStatement("SELECT b.biome,COUNT(*) FROM culture_regions cr JOIN culture_biome_cache b ON b.world=cr.world AND b.chunk_x=cr.chunk_x AND b.chunk_z=cr.chunk_z WHERE cr.town_id=? GROUP BY b.biome")) {
-            query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;}}
+            query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;biomeHappiness+=yield.happiness()*count;}}
         }
-        int happiness = clampHappiness(baseHappiness + structureHappiness);
-        double multiplier = happinessMultiplier(happiness);
+        double happiness = Math.max(0,baseHappiness + structureHappiness + biomeHappiness);
+        var mood=happinessRules==null?null:townMood(townId,baseHappiness+structureHappiness+biomeHappiness,structureUnhappiness);
+        double multiplier=mood==null?1:mood.state().hammers();
+        double scienceMultiplier=mood==null?multiplier:mood.state().science(),coinMultiplier=mood==null?multiplier:mood.state().coins();
+        if(mood!=null)multiplier=mood.state().hammers();
         double hammerRate=1,beakerRate=1;
         if(governments!=null) {
             try(var query=connection.prepareStatement("SELECT c.government FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")) {
@@ -1937,67 +1946,58 @@ public final class StorageBootstrap implements AutoCloseable {
             }
         }
         return new TownProduction(
-                (Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate,
-                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * multiplier * beakerRate,
-                (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * multiplier,
-                happiness,
-                happinessState(happiness),
-                multiplier
+                Math.max(Math.max(0.0,baseHammersPerHour),(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate),
+                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate,
+                (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * coinMultiplier,
+                mood==null?happiness:mood.happy(),
+                mood==null?"Инициализация":mood.state().name(),
+                multiplier,mood==null?0:mood.unhappy(),mood==null?0:mood.percentage(),mood==null?multiplier:mood.state().culture()
         );
     }
 
-    private int clampHappiness(int value) {
-        return Math.max(-5, Math.min(5, value));
+    private com.avrgaming.civcraft.modern.town.HappinessRules.Result townMood(long town,double happy,double unhappy)throws SQLException {
+        long civ,capital;int level,residents,count;
+        try(var s=connection.prepareStatement("""
+            SELECT t.civ_id,t.level,COALESCE(c.capital_town_id,(SELECT MIN(id) FROM towns WHERE civ_id=c.id)),
+              (SELECT COUNT(*) FROM residents WHERE town_id=t.id),(SELECT COUNT(*) FROM towns WHERE civ_id=t.civ_id),t.base_unhappiness
+            FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?
+            """)) {
+            s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing happiness town");civ=r.getLong(1);level=r.getInt(2);capital=r.getLong(3);residents=r.getInt(4);count=r.getInt(5);unhappy+=r.getDouble(6);}
+        }
+        happy+=happinessRules.base(level);unhappy+=happinessRules.population(residents,0,0)+happinessRules.empire(Math.max(0,count-1),0);
+        if(town!=capital) {
+            record Hall(String world,int x,int y,int z) {}
+            java.util.Map<Long,Hall> halls=new java.util.HashMap<>();
+            try(var s=connection.prepareStatement("SELECT town_id,world,x,y,z FROM structure_builds WHERE town_id IN (?,?) AND structure_id IN ('s_capitol','s_townhall') AND status IN ('QUEUED','BUILDING','COMPLETE') ORDER BY id")) {
+                s.setLong(1,town);s.setLong(2,capital);try(var r=s.executeQuery()){while(r.next())halls.putIfAbsent(r.getLong(1),new Hall(r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5)));}
+            }
+            var a=halls.get(town);var b=halls.get(capital);
+            if(a!=null && b!=null && a.world().equals(b.world())) {
+                double distance=Math.sqrt(Math.pow((double)a.x()-b.x(),2)+Math.pow((double)a.y()-b.y(),2)+Math.pow((double)a.z()-b.z(),2));
+                unhappy+=happinessRules.distance(distance,touchesCapital(civ,town,capital));
+            }
+        }
+        return happinessRules.evaluate(happy,unhappy);
+    }
+    private boolean touchesCapital(long civ,long town,long capital)throws SQLException {
+        java.util.Map<Long,java.util.Set<Long>> links=new java.util.HashMap<>();
+        try(var s=connection.prepareStatement("""
+            SELECT DISTINCT a.town_id,b.town_id FROM culture_regions a JOIN towns ta ON ta.id=a.town_id
+            JOIN culture_regions b ON b.world=a.world AND ((b.chunk_x=a.chunk_x+1 AND b.chunk_z=a.chunk_z)
+              OR (b.chunk_x=a.chunk_x AND b.chunk_z=a.chunk_z+1)) JOIN towns tb ON tb.id=b.town_id
+            WHERE ta.civ_id=? AND tb.civ_id=? AND a.town_id<>b.town_id
+            """)) {
+            s.setLong(1,civ);s.setLong(2,civ);try(var r=s.executeQuery()){while(r.next()){long a=r.getLong(1),b=r.getLong(2);links.computeIfAbsent(a,id->new java.util.HashSet<>()).add(b);links.computeIfAbsent(b,id->new java.util.HashSet<>()).add(a);}}
+        }
+        var seen=new java.util.HashSet<Long>();var queue=new java.util.ArrayDeque<Long>();queue.add(town);
+        while(!queue.isEmpty()){long id=queue.removeFirst();if(id==capital)return true;if(seen.add(id))queue.addAll(links.getOrDefault(id,java.util.Set.of()));}
+        return false;
     }
 
-    private double happinessMultiplier(int happiness) {
-        if (happiness <= -5) {
-            return 0.50;
-        }
-        if (happiness <= -3) {
-            return 0.65;
-        }
-        if (happiness <= -1) {
-            return 0.85;
-        }
-        if (happiness == 0) {
-            return 1.00;
-        }
-        if (happiness <= 2) {
-            return 1.15;
-        }
-        if (happiness <= 4) {
-            return 1.35;
-        }
-        return 1.60;
+    private record TownBaseProduction(long id, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, double baseHappiness) {
     }
 
-    private String happinessState(int happiness) {
-        if (happiness <= -5) {
-            return "Бунт";
-        }
-        if (happiness <= -3) {
-            return "Недовольство";
-        }
-        if (happiness <= -1) {
-            return "Несчастье";
-        }
-        if (happiness == 0) {
-            return "Обычное состояние";
-        }
-        if (happiness <= 2) {
-            return "Счастливые";
-        }
-        if (happiness <= 4) {
-            return "Ликование";
-        }
-        return "Экстаз";
-    }
-
-    private record TownBaseProduction(long id, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, int baseHappiness) {
-    }
-
-    private record TownProduction(double hammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, String state, double multiplier) {
+    private record TownProduction(double hammersPerHour, double beakersPerHour, double moneyPerHour, double happiness, String state, double multiplier,double unhappiness,double percentage,double cultureMultiplier) {
     }
 
     public synchronized int townCount(long civId) throws SQLException {
@@ -2298,7 +2298,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     private TownRecord mapTown(ResultSet rs) throws SQLException {
         long townId = rs.getLong("id");
-        TownProduction production = townProduction(townId, rs.getDouble("hammers_per_hour"), rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"), rs.getInt("base_happiness"));
+        TownProduction production = townProduction(townId, rs.getDouble("hammers_per_hour"), rs.getDouble("beakers_per_hour"), rs.getDouble("money_per_hour"), rs.getDouble("base_happiness"));
         return new TownRecord(
                 townId,
                 rs.getString("name"),
@@ -2315,7 +2315,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 production.moneyPerHour(),
                 production.happiness(),
                 production.state(),
-                production.multiplier()
+                production.multiplier(),production.unhappiness(),production.percentage(),production.cultureMultiplier()
         );
     }
 

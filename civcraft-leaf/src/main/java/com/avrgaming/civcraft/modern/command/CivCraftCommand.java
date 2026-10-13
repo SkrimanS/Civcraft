@@ -297,7 +297,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         ResidentProfile resident = game.resident(player);
         game.town(resident).ifPresentOrElse(
-                town -> send(player, msg("commands.town.info", "&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness} ({state}, ×{multiplier})", "name", town.name(), "level", town.level(), "coins", town.coins(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "money", formatNumber(town.moneyPerHour()), "happiness", town.happiness(), "state", town.happinessState(), "multiplier", formatNumber(town.productionMultiplier()))),
+                town -> send(player, msg("commands.town.info", "&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness}, недовольство={unhappiness}, доля={percentage}% ({state}, ×{multiplier})", "name", town.name(), "level", town.level(), "coins", town.coins(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "money", formatNumber(town.moneyPerHour()), "happiness", formatNumber(town.happiness()), "unhappiness",formatNumber(town.unhappiness()),"percentage",formatNumber(town.happinessPercentage()*100),"state", town.happinessState(), "multiplier", formatNumber(town.productionMultiplier()))),
                 () -> error(player, msg("commands.town.none", "У вас нет города. Используйте /town create <название>."))
         );
     }

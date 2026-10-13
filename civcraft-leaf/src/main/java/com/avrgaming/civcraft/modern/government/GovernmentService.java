@@ -100,6 +100,8 @@ public final class GovernmentService {
                     plugin.getServer().broadcast(Component.text("Анархия в цивилизации "+civ.name()+" завершилась. Правительство: "+name(civ.government())+"."));
                 }
             }
+            var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
+            for(long id:queued)refreshProduction(id);
         } catch(SQLException exception){plugin.getLogger().warning("Government tick failed: "+exception.getMessage());}
     }
     private Map<Long,Long> retimeData(Connection db,long civId)throws SQLException {
@@ -112,9 +114,10 @@ public final class GovernmentService {
             long now=System.currentTimeMillis();
             for(var build:builds) {
                 var town=storage.findTown(build[1]).orElseThrow();
-                try(var query=db.prepareStatement("SELECT total_hammers,started_at,finish_at FROM structure_builds WHERE id=?")) {
+                try(var query=db.prepareStatement("SELECT total_hammers,started_at,finish_at,hammers_per_hour FROM structure_builds WHERE id=?")) {
                     query.setLong(1,build[0]);try(var result=query.executeQuery()) {
                         if(!result.next())continue;
+                        if(Math.abs(result.getDouble(4)-town.hammersPerHour())<1e-9)continue;
                         if(town.hammersPerHour()<=0)throw new SQLException("Government change would stop construction without production");
                         long previousStart=result.getLong(2),previousFinish=result.getLong(3);
                         double progress=previousFinish<=previousStart?1:Math.max(0,Math.min(1,(now-previousStart)/(double)(previousFinish-previousStart)));

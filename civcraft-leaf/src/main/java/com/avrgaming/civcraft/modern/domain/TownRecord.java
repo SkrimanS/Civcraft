@@ -16,8 +16,11 @@ public record TownRecord(
         double hammersPerHour,
         double beakersPerHour,
         double moneyPerHour,
-        int happiness,
+        double happiness,
         String happinessState,
-        double productionMultiplier
+        double productionMultiplier,
+        double unhappiness,
+        double happinessPercentage,
+        double cultureMultiplier
 ) {
 }
