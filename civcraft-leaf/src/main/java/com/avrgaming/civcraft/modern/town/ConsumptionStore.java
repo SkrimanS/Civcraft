@@ -8,11 +8,12 @@ public final class ConsumptionStore {
     private ConsumptionStore() {}
     public record State(long build,int level,int count,String result,long period,long hour) {}
     public record Pending(String id,State before,ConsumptionRules.State after,long hour,
-                          long town,long civ,long townCoins,long civCoins,long culture,byte[] containers) {
+                          long town,long civ,long townCoins,long civCoins,long culture,boolean poisoned,byte[] containers) {
         public Pending {containers=containers.clone();}
         @Override public byte[] containers(){return containers.clone();}
     }
     public static void install(Connection db)throws SQLException {
+        GranaryPoisonStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS building_consumption(
@@ -33,6 +34,8 @@ public final class ConsumptionStore {
                 UNIQUE(build_id,period,hour))
                 """);
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_consumption ON consumption_receipts(build_id) WHERE status='PREPARED'");
+            boolean poisoned=false;try(var r=s.executeQuery("PRAGMA table_info(consumption_receipts)")){while(r.next())if(r.getString("name").equals("poisoned"))poisoned=true;}
+            if(!poisoned)s.executeUpdate("ALTER TABLE consumption_receipts ADD COLUMN poisoned INTEGER NOT NULL DEFAULT 0");
         }
     }
     public static State state(Connection db,long build)throws SQLException {
@@ -60,10 +63,16 @@ public final class ConsumptionStore {
     }
     public static Pending prepare(Connection db,String id,State before,ConsumptionRules.State after,long hour,
                                   long townCoins,long civCoins,long culture,byte[] containers)throws SQLException {
+        return prepare(db,id,before,after,hour,townCoins,civCoins,culture,false,containers);
+    }
+    public static Pending prepare(Connection db,String id,State before,ConsumptionRules.State after,long hour,
+                                  long townCoins,long civCoins,long culture,boolean poisoned,byte[] containers)throws SQLException {
         if(id==null || id.isBlank() || before.period()<1000 || hour<=before.hour() || after.level()<1 || after.count()<0
                 || townCoins<0 || civCoins<0 || culture<0 || containers==null || containers.length==0
                 || (!after.consumed() && (townCoins!=0 || civCoins!=0 || culture!=0)))
             throw new IllegalArgumentException("Invalid consumption intent");
+        if(poisoned && (!after.consumed() || townCoins!=0 || civCoins!=0 || culture!=0))
+            throw new IllegalArgumentException("Poisoned meals must consume food and cannot earn production");
         if(!before.equals(state(db,before.build())))throw new SQLException("Consumption state changed before prepare");
         long town,civ;
         try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.status='COMPLETE'")) {
@@ -74,15 +83,16 @@ public final class ConsumptionStore {
         }
         try(var s=db.prepareStatement("""
             INSERT INTO consumption_receipts(id,build_id,town_id,civ_id,period,hour,before_hour,before_level,
-            before_count,before_result,after_level,after_count,after_result,consumed,town_coins,civ_coins,culture,containers)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            before_count,before_result,after_level,after_count,after_result,consumed,town_coins,civ_coins,culture,containers,poisoned)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """)) {
             s.setString(1,id);s.setLong(2,before.build());s.setLong(3,town);s.setLong(4,civ);s.setLong(5,before.period());s.setLong(6,hour);
             s.setLong(7,before.hour());s.setInt(8,before.level());s.setInt(9,before.count());s.setString(10,before.result());
             s.setInt(11,after.level());s.setInt(12,after.count());s.setString(13,after.result().name());s.setBoolean(14,after.consumed());
-            s.setLong(15,townCoins);s.setLong(16,civCoins);s.setLong(17,culture);s.setBytes(18,containers);s.executeUpdate();
+            s.setLong(15,townCoins);s.setLong(16,civCoins);s.setLong(17,culture);s.setBytes(18,containers);s.setBoolean(19,poisoned);s.executeUpdate();
         }
-        return new Pending(id,before,after,hour,town,civ,townCoins,civCoins,culture,containers);
+        if(poisoned)GranaryPoisonStore.reserve(db,town);
+        return new Pending(id,before,after,hour,town,civ,townCoins,civCoins,culture,poisoned,containers);
     }
     public static List<Pending> pending(Connection db)throws SQLException {
         var result=new ArrayList<Pending>();
@@ -121,6 +131,6 @@ public final class ConsumptionStore {
     private static Pending read(ResultSet r)throws SQLException {
         var before=new State(r.getLong("build_id"),r.getInt("before_level"),r.getInt("before_count"),r.getString("before_result"),r.getLong("period"),r.getLong("before_hour"));
         var after=new ConsumptionRules.State(r.getInt("after_level"),r.getInt("after_count"),ConsumptionRules.Result.valueOf(r.getString("after_result")),r.getBoolean("consumed"));
-        return new Pending(r.getString("id"),before,after,r.getLong("hour"),r.getLong("town_id"),r.getLong("civ_id"),r.getLong("town_coins"),r.getLong("civ_coins"),r.getLong("culture"),r.getBytes("containers"));
+        return new Pending(r.getString("id"),before,after,r.getLong("hour"),r.getLong("town_id"),r.getLong("civ_id"),r.getLong("town_coins"),r.getLong("civ_coins"),r.getLong("culture"),r.getBoolean("poisoned"),r.getBytes("containers"));
     }
 }

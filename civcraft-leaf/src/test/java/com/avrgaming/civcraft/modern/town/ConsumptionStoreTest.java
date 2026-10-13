@@ -80,6 +80,54 @@ class ConsumptionStoreTest {
                 new ConsumptionRules.State(1,0,ConsumptionRules.Result.STARVE,false),12,1,0,0,new byte[]{1}));
         }
     }
+    @Test void overlappingPoisonRetainsLongestDurationAndRecoveryDoesNotSpendAnotherTick()throws Exception {
+        try(var db=database()) {
+            GranaryPoisonStore.apply(db,1,3);GranaryPoisonStore.apply(db,1,2);db.commit();
+            assertEquals(3,GranaryPoisonStore.remaining(db,1));
+            var intent=ConsumptionStore.prepare(db,"poison",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,1,ConsumptionRules.Result.GROW,true),11,0,0,0,true,new byte[]{1,2});db.commit();
+            assertTrue(intent.poisoned());assertTrue(ConsumptionStore.pending(db).getFirst().poisoned());
+            assertEquals(2,GranaryPoisonStore.remaining(db,1));
+            ConsumptionStore.complete(db,"poison");db.commit();assertFalse(ConsumptionStore.complete(db,"poison"));db.commit();
+            assertEquals(2,GranaryPoisonStore.remaining(db,1));assertEquals(1,ConsumptionStore.state(db,1).count());
+            assertEquals(100,number(db,"SELECT coins FROM towns"));assertEquals(100,number(db,"SELECT coins FROM civilizations"));
+            assertEquals(0,number(db,"SELECT accumulated_culture FROM towns"));
+        }
+    }
+    @Test void poisonReservationRollsBackWithReceiptAndMealFailure()throws Exception {
+        try(var db=database()) {
+            GranaryPoisonStore.apply(db,1,2);db.commit();
+            ConsumptionStore.prepare(db,"poison",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,1,ConsumptionRules.Result.GROW,true),11,0,0,0,true,new byte[]{1});
+            db.rollback();assertEquals(2,GranaryPoisonStore.remaining(db,1));assertTrue(ConsumptionStore.pending(db).isEmpty());
+            assertThrows(IllegalArgumentException.class,()->ConsumptionStore.prepare(db,"paid-poison",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,1,ConsumptionRules.Result.GROW,true),11,1,0,0,true,new byte[]{1}));db.rollback();
+            assertEquals(2,GranaryPoisonStore.remaining(db,1));
+        }
+    }
+    @Test void hungryCottageDoesNotUsePoisonAndLastSuccessfulMealExhaustsIt()throws Exception {
+        try(var db=database()) {
+            GranaryPoisonStore.apply(db,1,1);db.commit();
+            ConsumptionStore.prepare(db,"hungry",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,0,ConsumptionRules.Result.STAGNATE,false),11,0,0,0,false,new byte[]{1});db.commit();
+            ConsumptionStore.complete(db,"hungry");db.commit();assertEquals(1,GranaryPoisonStore.remaining(db,1));
+            ConsumptionStore.prepare(db,"poison",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,1,ConsumptionRules.Result.GROW,true),12,0,0,0,true,new byte[]{1});db.commit();
+            ConsumptionStore.complete(db,"poison");db.commit();assertEquals(0,GranaryPoisonStore.remaining(db,1));
+            assertThrows(SQLException.class,()->ConsumptionStore.prepare(db,"expired",ConsumptionStore.state(db,1),
+                new ConsumptionRules.State(1,2,ConsumptionRules.Result.GROW,true),13,0,0,0,true,new byte[]{1}));db.rollback();
+            assertTrue(ConsumptionStore.pending(db).isEmpty());
+        }
+    }
+    @Test void poisonSchemaUpgradeAndReinstallationPreserveEarlierReceipts()throws Exception {
+        try(var db=database()) {
+            prepare(db,"old",11);db.commit();ConsumptionStore.complete(db,"old");db.commit();
+            db.createStatement().execute("ALTER TABLE consumption_receipts DROP COLUMN poisoned");db.commit();
+            ConsumptionStore.install(db);db.commit();assertFalse(ConsumptionStore.complete(db,"old"));
+            assertEquals(180,number(db,"SELECT coins FROM towns"));assertEquals(1,ConsumptionStore.state(db,1).count());
+            assertThrows(IllegalArgumentException.class,()->GranaryPoisonStore.apply(db,1,0));
+        }
+    }
     @Test void cancelledBuildingCannotPrepareAndPendingDeletionDoesNotLoseInventoryIntent()throws Exception {
         try(var db=database()) {
             db.createStatement().execute("UPDATE structure_builds SET status='CANCELLED'");db.commit();

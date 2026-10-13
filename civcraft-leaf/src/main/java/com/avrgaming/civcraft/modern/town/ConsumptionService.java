@@ -105,6 +105,9 @@ public final class ConsumptionService implements Listener {
         var before=ConsumptionContainers.capture(positions);
         var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),1,List.of());
         var after=ConsumptionContainers.after(before,cycle.remaining(),materials);
+        boolean poisoned=building.type().equals("ti_cottage") && cycle.state().consumed()
+            && storage.query(db->GranaryPoisonStore.remaining(db,building.town()))>0;
+        if(poisoned)after=ConsumptionContainers.addBestEffort(after,new org.bukkit.inventory.ItemStack(Material.ROTTEN_FLESH,4));
         var town=storage.findTown(building.town()).orElseThrow();
         var civ=storage.findCiv(town.civId()).orElseThrow();
         // Original Temple.templeCulture also uses cottage rate, including coin happiness.
@@ -121,7 +124,7 @@ public final class ConsumptionService implements Listener {
         double multiplied=Math.round(raw)*bonus;
         if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production bonus");
         // Original compound integer multiplication applies taxation after rounding.
-        long output=(long)multiplied,townCoins=0,civCoins=0,culture=0;
+        long output=poisoned?0:(long)multiplied,townCoins=0,civCoins=0,culture=0;
         if(building.type().equals("s_temple"))culture=output;
         else {
             double tax=storage.query(db->{try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")) {
@@ -132,7 +135,11 @@ public final class ConsumptionService implements Listener {
         }
         long creditTown=townCoins,creditCiv=civCoins,creditCulture=culture;
         var payload=ConsumptionContainers.encode(after);
-        var intent=storage.transaction(db->ConsumptionStore.prepare(db,UUID.randomUUID().toString(),state,cycle.state(),hour,creditTown,creditCiv,creditCulture,payload));
+        var intent=storage.transaction(db->{
+            boolean currentPoison=building.type().equals("ti_cottage") && cycle.state().consumed() && GranaryPoisonStore.remaining(db,building.town())>0;
+            if(currentPoison!=poisoned)throw new SQLException("Granary poison changed during meal planning");
+            return ConsumptionStore.prepare(db,UUID.randomUUID().toString(),state,cycle.state(),hour,creditTown,creditCiv,creditCulture,poisoned,payload);
+        });
         lock(intent);if(intent.after().consumed())interrupt("prepared",building.id());finish(intent);
     }
     private void lock(ConsumptionStore.Pending pending)throws IOException {
@@ -154,6 +161,7 @@ public final class ConsumptionService implements Listener {
                 case GROW->"прогресс вырос";case LEVELUP->"уровень повышен";case MAXED->"предел уровня";
                 case STARVE->"не хватает еды";case LEVELDOWN->"уровень понижен";case STAGNATE->"нет питания";case UNKNOWN->"неизвестный уровень";
             };
+            if(pending.poisoned())status="амбар отравлен, дохода нет";
             for(var player:plugin.getServer().getOnlinePlayers()) {
                 var resident=storage.findResident(player.getUniqueId()).orElse(null);
                 if(resident!=null && resident.townId()!=null && resident.townId()==pending.town())

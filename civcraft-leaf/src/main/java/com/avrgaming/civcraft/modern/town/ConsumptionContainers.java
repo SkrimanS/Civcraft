@@ -72,6 +72,24 @@ public final class ConsumptionContainers {
         var result=new ArrayList<Image>();for(int i=0;i<before.size();i++)result.add(new Image(before.get(i).position(),changed.get(i)));
         return List.copyOf(result);
     }
+    /** Match old MultiInventory.addItem: fill available space and discard excess. */
+    public static List<Image> addBestEffort(List<Image> images,ItemStack items) {
+        long amount=items.getAmount();var inventories=new ArrayList<ItemStack[]>();
+        for(var image:images)inventories.add(image.contents());
+        for(var inventory:inventories)for(var stack:inventory) {
+            if(amount==0)break;
+            if(stack==null || !stack.isSimilar(items))continue;
+            int added=(int)Math.min(amount,Math.max(0,stack.getMaxStackSize()-stack.getAmount()));
+            stack.setAmount(stack.getAmount()+added);amount-=added;
+        }
+        for(var inventory:inventories)for(int slot=0;slot<inventory.length && amount>0;slot++) {
+            if(inventory[slot]!=null && !inventory[slot].getType().isAir())continue;
+            var added=items.clone();int count=(int)Math.min(amount,items.getMaxStackSize());added.setAmount(count);
+            inventory[slot]=added;amount-=count;
+        }
+        var result=new ArrayList<Image>();for(int i=0;i<images.size();i++)result.add(new Image(images.get(i).position(),inventories.get(i)));
+        return List.copyOf(result);
+    }
     public static byte[] encode(List<Image> images)throws IOException {
         if(images.size()>4096)throw new IOException("Invalid consumption container count");
         var bytes=new ByteArrayOutputStream();
