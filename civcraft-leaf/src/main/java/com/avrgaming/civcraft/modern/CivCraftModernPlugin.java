@@ -173,7 +173,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             if(scienceSeconds<1 || scienceSeconds>60)throw new IllegalArgumentException("Invalid science test interval");
             getServer().getScheduler().runTaskTimer(this,cultureClock::minute,20L*scienceSeconds,20L*scienceSeconds);
             getServer().getScheduler().runTaskTimer(this,cultureClock::tick,40L,20L);
-        }catch(java.sql.SQLException failure){throw new IllegalStateException("Unable to initialize culture clock",failure);}
+            var consumption=new com.avrgaming.civcraft.modern.town.ConsumptionService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,consumption::tick,80L,20L);
+        }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
         getServer().getScheduler().runTaskTimer(this,research::tick,20L*60L,20L*60L);
         getServer().getScheduler().runTaskTimer(this, () -> {

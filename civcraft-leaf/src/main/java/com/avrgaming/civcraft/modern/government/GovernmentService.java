@@ -23,6 +23,7 @@ public final class GovernmentService {
     public double upkeepRate(String stored){return definitions.require(stored).upkeep();}
     public double maximumTax(String stored){return definitions.require(stored).maximumTax();}
     public double cultureRate(String stored){return definitions.require(stored).culture();}
+    public double cottageRate(String stored){return definitions.require(stored).cottages();}
     public void refreshProduction(long civId)throws SQLException {applyTiming(storage.transaction(db->retimeData(db,civId)));}
     public void refreshQueuedProduction()throws SQLException {
         var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
