@@ -54,7 +54,8 @@ public final class BuildingRepairStore {
     public static Long complete(Connection db,long job)throws SQLException {
         long build;try(var s=db.prepareStatement("SELECT build_id,state FROM building_repair_jobs WHERE id=?")){s.setLong(1,job);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing repair job");if(r.getString(2).equals("COMPLETE"))return null;build=r.getLong(1);}}
         try(var s=db.prepareStatement("UPDATE structure_builds SET status='COMPLETE' WHERE id=? AND status='WAR_REPAIR_PENDING'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Repair target changed");}
-        try(var s=db.prepareStatement("UPDATE building_combat_health SET hitpoints=maximum,phase='DAMAGED' WHERE build_id=? AND phase='DESTROYED'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Repair health changed");}
+        int maximum=BuildingDamageStore.health(db,build).maximum();
+        try(var s=db.prepareStatement("UPDATE building_combat_health SET hitpoints=?,maximum=?,phase='DAMAGED' WHERE build_id=? AND phase='DESTROYED'")){s.setInt(1,maximum);s.setInt(2,maximum);s.setLong(3,build);if(s.executeUpdate()!=1)throw new SQLException("Repair health changed");}
         try(var s=db.prepareStatement("DELETE FROM building_ruin_jobs WHERE build_id=?")){s.setLong(1,build);s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE building_repair_jobs SET state='COMPLETE' WHERE id=?")){s.setLong(1,job);s.executeUpdate();}return build;
     }

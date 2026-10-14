@@ -13,7 +13,10 @@ public final class BuildingDamageService implements Listener {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;
     private static final Set<String> SOFT=Set.of("GLASS","GLASS_PANE","GRASS_BLOCK","SHORT_GRASS","TALL_GRASS","FERN","LARGE_FERN","DEAD_BUSH","WHEAT","CARROTS","POTATOES","NETHER_WART","REDSTONE_WIRE","REDSTONE_TORCH","REDSTONE_WALL_TORCH","TORCH","WALL_TORCH","REPEATER","LEVER","TRIPWIRE","TRIPWIRE_HOOK","SNOW","VINE","LILY_PAD","DANDELION","BROWN_MUSHROOM","MELON_STEM","PUMPKIN_STEM","FIRE","TNT");
     public BuildingDamageService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
-        this.plugin=plugin;this.storage=storage;storage.transaction(db->{BuildingDamageStore.install(db);return null;});plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        this.plugin=plugin;this.storage=storage;
+        var buffs=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile());
+        double towerRate=buffs.getMapList("buffs").stream().filter(raw->"buff_chichen_itza_tower_hp".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Chichen Itza tower health buff"));
+        storage.transaction(db->{BuildingDamageStore.install(db);TowerHealthStore.preserveExisting(db);TowerHealthStore.configure(db,towerRate);return null;});plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true)
     public void breakBlock(BlockBreakEvent event) {

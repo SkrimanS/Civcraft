@@ -1082,7 +1082,9 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.setLong(23, finishAt);
             statement.setLong(24, now);
             statement.executeUpdate();
-            return generatedId(statement);
+            long buildId=generatedId(statement);
+            com.avrgaming.civcraft.modern.war.TowerHealthStore.initialize(connection,buildId);
+            return buildId;
         }
     }
 

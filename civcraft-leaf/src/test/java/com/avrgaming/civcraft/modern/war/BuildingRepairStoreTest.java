@@ -44,6 +44,14 @@ class BuildingRepairStoreTest {
             assertEquals(1000,coins(db));assertNull(BuildingRepairStore.next(db));assertEquals("DESTROYED",BuildingDamageStore.health(db,1).phase());
         }
     }
+    @Test void towerRepairUsesCurrentWonderCapacityRatherThanDestroyedCapacity()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("UPDATE structure_builds SET structure_id='s_arrowtower',max_hitpoints=4000 WHERE id=1");
+            db.createStatement().execute("INSERT INTO structure_builds(id,town_id,structure_id,status,max_hitpoints,display_name) VALUES(2,2,'w_chichen_itza','COMPLETE',1,'Itza')");TowerHealthStore.configure(db,.15);
+            long job=BuildingRepairStore.prepare(db,1,fixture.owner,"tech_test",plan(),250);BuildingRepairStore.complete(db,job);
+            assertEquals(4600,BuildingDamageStore.health(db,1).hitpoints());assertEquals(4600,BuildingDamageStore.health(db,1).maximum());
+        }
+    }
     @Test void aRepairedBuildingCanBeDestroyedAndRepairedInTheNextWar()throws Exception {
         try(var db=database()) {
             long first=BuildingRepairStore.prepare(db,1,fixture.owner,"tech_test",plan(),250);BuildingRepairStore.complete(db,first);db.commit();
