@@ -45,8 +45,11 @@ public final class TradeShipChestService {
     public void tick() {
         try {
             var active=new HashSet<Long>();
+            var pending=new HashSet<Long>();
+            for(var operation:storage.query(TradeShipOperations::pending))pending.add(operation.before().build());
             for(var ship:ships()) {
                 active.add(ship.id());
+                if(pending.contains(ship.id()))continue;
                 int upgrade=storage.query(db->TradeShipStore.upgrade(db,ship.town()));
                 int level=storage.query(db->TradeShipStore.progress(db,ship.id())).level();
                 String signature=ship+":"+upgrade+":"+level;

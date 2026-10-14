@@ -64,6 +64,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
+    private com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips;
+    public com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips(){return tradeShips;}
     private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
     private com.avrgaming.civcraft.modern.war.WarClockService warClock;
     private com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage;
@@ -198,7 +200,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,warClock::tick,20L,20L);
             getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
-            new com.avrgaming.civcraft.modern.trade.TradeShipChestService(this,storage);
+            var tradeShipChests=new com.avrgaming.civcraft.modern.trade.TradeShipChestService(this,storage);
+            try {tradeShips=new com.avrgaming.civcraft.modern.trade.TradeShipService(this,storage,tradeShipChests);}
+            catch(java.io.IOException failure){throw new IllegalStateException("Unable to initialize trade ships",failure);}
             townClaims.useLevels(townUpgrades.catalog(),org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(),"civcraft/data/civ.yml")).getInt("civ.min_distance",15));
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);
             getServer().getScheduler().runTaskTimer(this,upkeep::reconcileWonders,20L,20L);

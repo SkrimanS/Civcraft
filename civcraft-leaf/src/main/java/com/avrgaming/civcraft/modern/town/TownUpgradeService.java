@@ -36,6 +36,8 @@ public final class TownUpgradeService {
         if(action.equals("buy")) {
             if(args.length<4)throw new IllegalArgumentException("Использование: /town upgrade buy <улучшение>");
             var upgrade=catalog.require(String.join(" ",Arrays.copyOfRange(args,3,args.length)));
+            if(upgrade.action().equals("set_tradeship_upgrade_level") && plugin.tradeShips()!=null)
+                plugin.tradeShips().requireTownUnlocked(town.id());
             storage.transaction(db->{UpgradeStore.buy(db,town.id(),player.getUniqueId(),upgrade,System.currentTimeMillis());return null;});
             player.sendMessage(Component.text("Улучшение куплено: "+upgrade.name()+". Из казны списано "+upgrade.cost()+" монет."));
             refreshBanks(town.id());
