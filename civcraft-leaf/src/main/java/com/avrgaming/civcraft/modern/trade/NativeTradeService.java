@@ -27,6 +27,7 @@ public final class NativeTradeService implements Listener {
     private final NativeLegacyItems items;
     private final CivCraftEconomyService economy;
     private final MarketCatalog market;
+    private final GrocerCatalog grocer;
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
     private final Map<UUID,Long> lastClick=new HashMap<>();
@@ -36,6 +37,7 @@ public final class NativeTradeService implements Listener {
         this.plugin=plugin;this.storage=storage;this.items=items;this.economy=economy;
         applied=new NamespacedKey(plugin,"last-applied-trade");
         market=new MarketCatalog(new File(plugin.getDataFolder(),"civcraft/data/market.yml"),items);
+        grocer=new GrocerCatalog(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -53,7 +55,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND sb.structure_id IN ('s_bank','s_market')
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id='s_grocer' AND tp.action='grocer'))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -78,6 +80,7 @@ public final class NativeTradeService implements Listener {
             if(!player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Закройте инвентарь перед обменом.");
             recover(player);
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
+            else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
             render(event.getClickedBlock(),point);
         } catch(IllegalArgumentException exception){player.sendMessage(Component.text(exception.getMessage()));}
@@ -135,6 +138,17 @@ public final class NativeTradeService implements Listener {
         apply(player,receipt);
         player.sendMessage(Component.text((buying?"Куплено: ":"Продано: ")+amount+" × "+entry.name()+", "+(buying?receipt.debit():receipt.credit())+" монет."));
         refreshMarket(entry.id());
+    }
+    private void grocer(Player player,Point point)throws SQLException {
+        var entry=grocer.require(Integer.parseInt(point.argument())+1);
+        var settings=storage.query(db->GrocerStore.settings(db,point.town()));
+        if(entry.level()>settings.level())throw new IllegalArgumentException("Для этого товара нужно улучшение бакалеи.");
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        boolean member=resident.townId()!=null && resident.townId()==point.town();
+        long fee=GrocerCatalog.fee(entry.price(),settings.fee(),member),total=Math.addExact(entry.price(),fee);
+        ItemStack[] after=copy(player.getInventory().getContents());add(after,items.vanilla(entry.item(),entry.data(),1),entry.amount());
+        var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
+        apply(player,receipt);player.sendMessage(Component.text("Куплено: "+entry.amount()+" × "+entry.name()+", "+total+" монет. Комиссия городу: "+fee+"."));
     }
     private static ItemStack[] copy(ItemStack[] contents) {
         ItemStack[] result=new ItemStack[contents.length];for(int i=0;i<contents.length;i++)result[i]=contents[i]==null?null:contents[i].clone();return result;
@@ -237,6 +251,10 @@ public final class NativeTradeService implements Listener {
         if(point.structure().equals("s_bank") && point.action().equals("bank")) {
             var resource=bankItem(point.argument());var settings=bankSettings(point.town());
             lines=List.of(resource.name(),"Курс: "+Math.round(exchange((int)settings[0])*100)+"%","1 = "+(long)(resource.base()*exchange((int)settings[0]))+" монет","Комиссия: "+Math.round(settings[1]*100)+"%");
+        } else if(point.structure().equals("s_grocer") && point.action().equals("grocer")) {
+            var entry=grocer.require(Integer.parseInt(point.argument())+1);var settings=storage.query(db->GrocerStore.settings(db,point.town()));
+            lines=entry.level()>settings.level()?List.of("Нужно улучшение","Бакалея "+entry.level(),"",""):
+                List.of("Купить "+entry.amount()+" шт.",entry.name(),entry.price()+" монет","Гостям: +"+Math.round(settings.fee()*100)+"%");
         } else if(point.structure().equals("s_market") && !point.action().equals("bank")) {
             var entry=market.find(Integer.parseInt(point.argument())).orElse(null);
             if(entry==null)lines=List.of("Нет товара","","","");

@@ -6,6 +6,7 @@ import java.util.*;
 public final class UpgradeStore {
     private UpgradeStore() {}
     public static void install(Connection db)throws SQLException {
+        com.avrgaming.civcraft.modern.trade.GrocerStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS town_upgrades(
@@ -71,6 +72,7 @@ public final class UpgradeStore {
                 double rate=Double.parseDouble(upgrade.value());if(!Double.isFinite(rate) || rate<0 || rate>1)throw new IllegalArgumentException("Invalid interest rate");
                 try(var update=db.prepareStatement("INSERT INTO bank_interest_accounts(town_id,interest_rate,principal) SELECT id,?,coins FROM towns WHERE id=? ON CONFLICT(town_id) DO UPDATE SET interest_rate=MAX(interest_rate,excluded.interest_rate)")){update.setDouble(1,rate);update.setLong(2,town);update.executeUpdate();}
             }
+            case "set_grocer_level" -> com.avrgaming.civcraft.modern.trade.GrocerStore.level(db,town,Integer.parseInt(upgrade.value()));
             default -> throw new IllegalArgumentException("Unknown upgrade action");
         }
         try(var insert=db.prepareStatement("INSERT INTO town_upgrades VALUES(?,?,?)")){insert.setLong(1,town);insert.setString(2,upgrade.id());insert.setLong(3,now);insert.executeUpdate();}

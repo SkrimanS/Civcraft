@@ -76,7 +76,7 @@ public final class TownUpgradeService {
     private void refreshBanks(long town)throws SQLException {
         var ids=storage.query(db->{
             List<Long> result=new ArrayList<>();
-            try(var query=db.prepareStatement("SELECT id FROM structure_builds WHERE town_id=? AND structure_id='s_bank' AND status='COMPLETE'")) {
+            try(var query=db.prepareStatement("SELECT id FROM structure_builds WHERE town_id=? AND structure_id IN ('s_bank','s_grocer') AND status='COMPLETE'")) {
                 query.setLong(1,town);try(var rows=query.executeQuery()){while(rows.next())result.add(rows.getLong(1));}
             }
             return result;

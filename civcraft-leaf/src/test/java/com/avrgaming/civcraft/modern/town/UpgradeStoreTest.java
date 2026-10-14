@@ -20,6 +20,16 @@ class UpgradeStoreTest {
         db.createStatement().executeUpdate("INSERT INTO towns VALUES(1,1,'"+mayor+"',20000,1)");
         UpgradeStore.install(db);BankDailyStore.install(db);
     }
+    @Test void grocerUpgradeUsesNormalAuthorityAndResearchGuardsAndPersistsLevel()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);var upgrade=new UpgradeDefinition("grocer2","Бакалея II",2500,"set_grocer_level","2","","trade","s_grocer","Бакалея");
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,upgrade,0));
+            db.createStatement().execute("INSERT INTO civ_technologies VALUES(1,'trade')");db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'s_grocer','COMPLETE')");
+            db.setAutoCommit(false);UpgradeStore.buy(db,1,mayor,upgrade,0);db.commit();
+            assertEquals(17500,coins(db));assertEquals(2,com.avrgaming.civcraft.modern.trade.GrocerStore.settings(db,1).level());
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,upgrade,0));db.rollback();assertEquals(17500,coins(db));
+        }
+    }
     @Test void validatesAuthorityTechnologyAndCompletedBuildingBeforeDebiting()throws Exception {
         try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
             schema(db);

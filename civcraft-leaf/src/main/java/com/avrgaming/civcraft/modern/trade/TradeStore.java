@@ -10,6 +10,7 @@ public final class TradeStore {
     public record Pending(String id,String player,byte[] inventory,long debit,long credit,Long town,long fee) {}
     public record Checkpoint(String id,byte[] inventory) {}
     public static void install(Connection db)throws SQLException {
+        GrocerStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS structure_trade_points(
