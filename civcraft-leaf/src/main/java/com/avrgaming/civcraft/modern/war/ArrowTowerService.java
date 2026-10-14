@@ -13,14 +13,17 @@ import org.bukkit.configuration.file.YamlConfiguration;
 public final class ArrowTowerService implements Listener {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;private final NamespacedKey identity;
     private final double range,minimum,power,stop,lighthouse;private final int damage;private final long period;
+    private final double teslaRange,teslaMinimum;private final TeslaFireClock teslaClock;
     private record Geometry(double x,double y,double z,List<org.bukkit.util.Vector> turrets) {}
-    private record Tower(long id,long town,String world,String path,int x,int y,int z,boolean admin) {}
+    private record Tower(long id,long town,String type,String world,String path,int x,int y,int z,boolean admin) {}
     private static final class Flight {final Arrow arrow;final Player target;final long town,expires;Location aim;Flight(Arrow arrow,Player target,long town,long now){this.arrow=arrow;this.target=target;this.town=town;expires=now+5000;aim=target.getLocation().clone();}}
     private final Map<String,Geometry> templates=new HashMap<>();private final Map<UUID,Flight> flights=new HashMap<>();
     public ArrowTowerService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws java.sql.SQLException {
         this.plugin=plugin;this.storage=storage;identity=new NamespacedKey(plugin,"arrow-tower");
         var config=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
         range=config.getDouble("arrow_tower.range",100);minimum=config.getDouble("arrow_tower.min_range",5);power=config.getDouble("arrow_tower.power",2.8);stop=config.getDouble("arrow_tower.homing_stop_distance",10);damage=config.getInt("arrow_tower.damage",7);period=(long)(config.getDouble("arrow_tower.fire_rate",1)*20);
+        teslaRange=config.getDouble("tesla_tower.range",150);teslaMinimum=config.getDouble("tesla_tower.min_range",10);teslaClock=new TeslaFireClock(config.getInt("tesla_tower.fire_rate",6));
+        if(!Double.isFinite(teslaRange)||!Double.isFinite(teslaMinimum)||teslaMinimum<0||teslaRange<=teslaMinimum)throw new IllegalArgumentException("Invalid Tesla range");
         lighthouse=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()).getMapList("buffs").stream().filter(raw->"buff_great_lighthouse_tower_range".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing lighthouse tower range buff"));
         if(!Double.isFinite(lighthouse)||lighthouse<=0)throw new IllegalArgumentException("Invalid lighthouse range multiplier");
         if(!Double.isFinite(range)||!Double.isFinite(minimum)||!Double.isFinite(power)||!Double.isFinite(stop)||range<=minimum||minimum<0||power<=0||stop<0||damage<1||period<1)throw new IllegalArgumentException("Invalid arrow tower settings");
@@ -37,22 +40,25 @@ public final class ArrowTowerService implements Listener {
     }
     private void fire() {
         try {
-            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id='s_arrowtower' AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
+            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id IN ('s_arrowtower','s_teslatower') AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("structure_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
             for(var tower:towers) {
                 if(storage.query(db->BuildingDamageStore.health(db,tower.id()).hitpoints())==0||(!tower.admin()&&!storage.query(db->HallValidationStore.state(db,tower.id()).valid())))continue;
                 var world=Bukkit.getWorld(tower.world());if(world==null)continue;var shape=geometry(tower.path());var center=new Location(world,tower.x()+shape.x(),tower.y()+shape.y(),tower.z()+shape.z());
-                double firingRange=storage.query(db->TowerTargetStore.range(db,tower.town(),range,lighthouse));
+                boolean tesla=tower.type().equals("s_teslatower");
+                double firingRange=storage.query(db->TowerTargetStore.range(db,tower.town(),tesla?teslaRange:range,lighthouse));
                 Player target=null;Location turret=null;double nearest=Double.MAX_VALUE;long now=System.currentTimeMillis();
                 for(var player:world.getPlayers()) {
                     if(player.isDead()||player.getGameMode()!=GameMode.SURVIVAL)continue;double distance=center.distanceSquared(player.getLocation());
-                    if(distance>=nearest||!TowerTargetStore.range(distance,minimum,firingRange)||!storage.query(db->TowerTargetStore.eligible(db,tower.town(),player.getUniqueId(),now)))continue;
+                    if(distance>=nearest||!TowerTargetStore.range(distance,tesla?teslaMinimum:minimum,firingRange)||!storage.query(db->TowerTargetStore.eligible(db,tower.town(),player.getUniqueId(),now)))continue;
                     Location firing=null;double closest=Double.MAX_VALUE;
                     for(var offset:shape.turrets()){var location=new Location(world,tower.x()+offset.getX(),tower.y()+offset.getY(),tower.z()+offset.getZ());double d=location.distanceSquared(player.getLocation());if(d<closest){closest=d;firing=location;}}
                     var eye=player.getEyeLocation();var direction=firing.toVector().subtract(eye.toVector());double length=direction.length();
-                    if(length==0||world.rayTraceBlocks(eye,direction.normalize(),length,FluidCollisionMode.NEVER,false)!=null)continue;
+                    if(tesla){if(player.getLocation().getBlock().getLightFromSky()<15)continue;}
+                    else if(length==0||world.rayTraceBlocks(eye,direction.normalize(),length,FluidCollisionMode.NEVER,false)!=null)continue;
                     target=player;turret=firing;nearest=distance;
                 }
                 if(target==null)continue;
+                if(tesla){if(teslaClock.ready(tower.id()))world.strikeLightning(target.getLocation());continue;}
                 var targetLocation=target.getLocation().add(0,1,0);turret.add(2*Integer.compare(targetLocation.getBlockX(),turret.getBlockX()),0,2*Integer.compare(targetLocation.getBlockZ(),turret.getBlockZ()));
                 var direction=targetLocation.toVector().subtract(turret.toVector());if(direction.lengthSquared()==0)continue;direction.normalize();
                 var arrow=world.spawnArrow(turret,direction,(float)power,0);arrow.setVelocity(direction.multiply(power));arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);arrow.getPersistentDataContainer().set(identity,PersistentDataType.LONG,tower.id());flights.put(arrow.getUniqueId(),new Flight(arrow,target,tower.town(),now));
