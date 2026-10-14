@@ -1,0 +1,18 @@
+package com.avrgaming.civcraft.modern.war;
+import java.sql.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class WarUpkeepRulesTest {
+    final WarUpkeepRules rules=WarUpkeepRules.load(new java.io.File("src/main/resources/civcraft/data/war.yml"));
+    Connection database()throws Exception {var db=DriverManager.getConnection("jdbc:sqlite::memory:");try(var s=db.createStatement()) {
+        s.execute("CREATE TABLE civilizations(id INTEGER PRIMARY KEY)");s.execute("INSERT INTO civilizations VALUES(1),(2),(3),(4)");s.execute("CREATE TABLE towns(id INTEGER,civ_id INTEGER)");s.execute("INSERT INTO towns VALUES(1,1),(2,2),(3,3),(4,4)");
+        s.execute("CREATE TABLE administrative_civilizations(civ_id INTEGER)");s.execute("CREATE TABLE diplomacy_relations(first_civ INTEGER,second_civ INTEGER,status TEXT,aggressor INTEGER)");s.execute("INSERT INTO diplomacy_relations VALUES(1,2,'WAR',1)");
+        s.execute("CREATE TABLE structure_builds(town_id INTEGER,structure_id TEXT,status TEXT)");
+    }WarUpkeepRules.install(db);db.createStatement().execute("INSERT INTO legacy_civ_scores VALUES(1,100000,1,0),(2,50000,1,0),(3,200000,1,0),(4,500000,1,0)");return db;}
+    @Test void onlyAggressorPaysBaseAndPositiveScoreDifferenceWithoutAnActiveBattle()throws Exception {try(var db=database()){var costs=rules.plan(db);assertEquals(1,costs.size());assertEquals(1,costs.get(0).civ());assertEquals(3250,costs.get(0).coins());db.createStatement().execute("UPDATE diplomacy_relations SET aggressor=2");assertEquals(3000,rules.plan(db).get(0).coins());db.createStatement().execute("UPDATE diplomacy_relations SET status='HOSTILE'");assertTrue(rules.plan(db).isEmpty());}}
+    @Test void completedEnemyCathedralDoublesButIncompleteDoesNot()throws Exception {try(var db=database()){db.createStatement().execute("INSERT INTO structure_builds VALUES(2,'w_notre_dame','BUILDING')");assertEquals(3250,rules.plan(db).get(0).coins());db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE'");assertEquals(6500,rules.plan(db).get(0).coins());}}
+    @Test void directAllyCathedralProtectsEnemyAndAdministrativeAggressorIsExempt()throws Exception {try(var db=database()){db.createStatement().execute("INSERT INTO structure_builds VALUES(3,'w_notre_dame','COMPLETE')");db.createStatement().execute("INSERT INTO diplomacy_relations VALUES(2,3,'ALLY',NULL)");assertEquals(6500,rules.plan(db).get(0).coins());db.createStatement().execute("INSERT INTO administrative_civilizations VALUES(1)");assertTrue(rules.plan(db).isEmpty());}}
+    @Test void originalDoublePenaltyFlagCarriesToLaterWarsOfTheSameAggressor()throws Exception {try(var db=database()){db.createStatement().execute("INSERT INTO structure_builds VALUES(3,'w_notre_dame','COMPLETE')");db.createStatement().execute("INSERT INTO diplomacy_relations VALUES(1,3,'WAR',1),(1,4,'WAR',1)");var costs=rules.plan(db);assertEquals(3250,costs.get(0).coins());assertEquals(6000,costs.get(1).coins());assertEquals(6000,costs.get(2).coins());}}
+    @Test void absentRankedScoreUsesLegacyZeroAndAuditRollsBackWithCaller()throws Exception {try(var db=database()){db.createStatement().execute("UPDATE legacy_civ_scores SET ranked=0 WHERE civ_id=2");assertEquals(3500,rules.plan(db).get(0).coins());db.setAutoCommit(false);WarUpkeepRules.audit(db,"day",rules.plan(db));db.rollback();try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_upkeep_payments")){r.next();assertEquals(0,r.getInt(1));}}}
+    @Test void invalidAndOverflowingAmountsAreRejected(){assertThrows(IllegalArgumentException.class,()->new WarUpkeepRules(-1,.005));assertThrows(IllegalArgumentException.class,()->WarUpkeepRules.amount(3000,Double.POSITIVE_INFINITY,1,0,false));}
+}

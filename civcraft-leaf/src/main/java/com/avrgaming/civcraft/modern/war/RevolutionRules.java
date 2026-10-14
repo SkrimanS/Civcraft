@@ -31,6 +31,18 @@ public final class RevolutionRules {
         return (long)Math.ceil(fee);
     }
     public record Fee(long coins,long points,int towns) {}
+    public long technologyScore(Connection db,long civ)throws SQLException {
+        long score=0;try(var s=db.prepareStatement("SELECT tech_id FROM civ_technologies WHERE civ_id=?")){s.setLong(1,civ);try(var r=s.executeQuery()){while(r.next())score=Math.addExact(score,technologies.getOrDefault(r.getString(1),0L));}}return score;
+    }
+    public long townScore(Connection db,long town)throws SQLException {
+        long score=0;
+        for(var source:List.of(new String[]{"residents",Long.toString(residentPoints)},new String[]{"town_claims",Long.toString(claimPoints)},new String[]{"culture_regions",Long.toString(culturePoints)}))try(var s=db.prepareStatement("SELECT COUNT(*) FROM "+source[0]+" WHERE town_id=?")){s.setLong(1,town);try(var r=s.executeQuery()){r.next();score=Math.addExact(score,Math.multiplyExact(r.getLong(1),Long.parseLong(source[1])));}}
+        try(var s=db.prepareStatement("SELECT structure_id FROM structure_builds WHERE town_id=? AND status IN ('QUEUED','BUILDING','COMPLETE','WAR_DESTROY_PENDING','WAR_DESTROYED','WAR_REPAIR_PENDING')")){s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())score=Math.addExact(score,buildings.getOrDefault(r.getString(1),0L));}}
+        try(var s=db.prepareStatement("SELECT coins FROM towns WHERE id=?")){s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing score town");score=Math.addExact(score,Math.max(0,r.getLong(1))/coinsPerPoint);}}return score;
+    }
+    public long civilizationScore(Connection db,long civ)throws SQLException {
+        long score=technologyScore(db,civ);var towns=new ArrayList<Long>();try(var s=db.prepareStatement("SELECT id FROM towns WHERE civ_id=? ORDER BY id")){s.setLong(1,civ);try(var r=s.executeQuery()){while(r.next())towns.add(r.getLong(1));}}for(long town:towns)score=Math.addExact(score,townScore(db,town));return score;
+    }
     public Fee fee(Connection db,long mother)throws SQLException {
         long points=0;int towns=0;
         try(var s=db.prepareStatement("SELECT tech_id FROM civ_technologies WHERE civ_id=?")){s.setLong(1,mother);try(var r=s.executeQuery()){while(r.next())points=Math.addExact(points,technologies.getOrDefault(r.getString(1),0L));}}

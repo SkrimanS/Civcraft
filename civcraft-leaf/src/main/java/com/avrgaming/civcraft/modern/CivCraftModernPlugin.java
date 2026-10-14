@@ -194,10 +194,12 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             townClaims.useLevels(townUpgrades.catalog(),org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(),"civcraft/data/civ.yml")).getInt("civ.min_distance",15));
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);
             getServer().getScheduler().runTaskTimer(this,upkeep::reconcileWonders,20L,20L);
+            getServer().getScheduler().runTaskTimer(this,upkeep::refreshScores,20L*60,20L*60);
             this.taxes=new com.avrgaming.civcraft.modern.town.TaxService(this,storage);
             new com.avrgaming.civcraft.modern.town.PlotService(this,storage,economy);
             this.biomeSurvey=new com.avrgaming.civcraft.modern.culture.BiomeSurveyService(this,storage);
             this.culture=new com.avrgaming.civcraft.modern.culture.CultureService(this,storage);
+            upkeep.refreshScores();
             storage.setCultureBiomes(biomeSurvey.catalog());
             storage.transaction(db->{
                 boolean found=false;try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info(towns)")){while(r.next())if(r.getString("name").equals("base_unhappiness"))found=true;}
