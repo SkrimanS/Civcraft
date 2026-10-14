@@ -22,6 +22,15 @@ public final class BuildingDamageService implements Listener {
             if(!storage.isProtectedBlock(block.getWorld().getName(),block.getX(),block.getY(),block.getZ()))return;
             long now=System.currentTimeMillis();if(!storage.query(db->WarClockStore.active(db,now)))return;
             event.setCancelled(true);var material=block.getType();String name=material.name();
+            var control=storage.query(db->ControlPointStore.point(db,block.getWorld().getName(),block.getX(),block.getY(),block.getZ()));
+            if(control!=null) {
+                var hit=storage.transaction(db->ControlPointStore.hit(db,UUID.randomUUID().toString(),event.getPlayer().getUniqueId(),control,1,now));
+                event.getPlayer().sendMessage(Component.text("Контрольный блок: "+hit.health()+"/"+control.maximum()+"."));
+                block.getWorld().playSound(block.getLocation(),hit.health()==0?Sound.BLOCK_ANVIL_BREAK:Sound.BLOCK_ANVIL_USE,.4f,1);
+                if(hit.health()==0)block.getWorld().spawnParticle(Particle.EXPLOSION,block.getLocation().add(.5,.5,.5),3,.2,.2,.2,0);
+                if(hit.townDefeated())plugin.getServer().broadcast(Component.text(hit.civDefeated()?"Все контрольные блоки капитолия разрушены. Цивилизация побеждена в текущем бою.":"Все контрольные блоки ратуши разрушены. Город побеждён в текущем бою."));
+                return;
+            }
             if(block.getState() instanceof TileState || SOFT.contains(name) || name.endsWith("_LEAVES") || name.endsWith("_BED") || name.endsWith("_SAPLING") || name.endsWith("_HEAD") || name.endsWith("_SKULL"))throw new IllegalArgumentException("Этот блок не подходит для повреждения здания.");
             var health=storage.transaction(db->BuildingDamageStore.hit(db,UUID.randomUUID().toString(),event.getPlayer().getUniqueId(),block.getWorld().getName(),block.getX(),block.getY(),block.getZ(),1,now));
             event.getPlayer().sendMessage(Component.text(health.name()+": здоровье "+health.hitpoints()+"/"+health.maximum()+"."));

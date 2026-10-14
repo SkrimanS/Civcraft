@@ -17,6 +17,7 @@ public final class BuildingDamageStore {
             }
             BuildingRuinStore.install(db);
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_defeated_towns(war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),town_id INTEGER NOT NULL REFERENCES towns(id),conqueror INTEGER NOT NULL REFERENCES civilizations(id),PRIMARY KEY(war_start,town_id))");
+            s.executeUpdate("CREATE TABLE IF NOT EXISTS war_inactive_towns(war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),town_id INTEGER NOT NULL REFERENCES towns(id),PRIMARY KEY(war_start,town_id))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS building_damage_hits(id TEXT PRIMARY KEY,build_id INTEGER NOT NULL,war_start INTEGER NOT NULL,actor_uuid TEXT NOT NULL,before_hp INTEGER NOT NULL,after_hp INTEGER NOT NULL,at INTEGER NOT NULL)");
         }
     }
@@ -38,8 +39,8 @@ public final class BuildingDamageStore {
         try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM residents r JOIN towns t ON t.id=r.town_id AND t.civ_id=r.civ_id WHERE r.uuid=?")) {
             s.setString(1,actor.toString());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Для участия в осаде нужно состоять в городе.");town=r.getLong(1);civ=r.getLong(2);}
         }
-        try(var s=db.prepareStatement("SELECT 1 FROM war_defeated_towns WHERE war_start=? AND town_id=?")) {
-            s.setLong(1,session);s.setLong(2,town);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Жители побеждённого города не могут атаковать здания.");}
+        try(var s=db.prepareStatement("SELECT 1 FROM war_defeated_towns WHERE war_start=? AND town_id=? UNION ALL SELECT 1 FROM war_inactive_towns WHERE war_start=? AND town_id=?")) {
+            s.setLong(1,session);s.setLong(2,town);s.setLong(3,session);s.setLong(4,town);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Жители побеждённого города не могут атаковать здания.");}
         }
         long build,defender;String type,status;
         try(var s=db.prepareStatement("SELECT b.id,t.civ_id,b.structure_id,b.status FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id JOIN towns t ON t.id=b.town_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=?")) {
