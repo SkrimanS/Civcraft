@@ -74,8 +74,8 @@ public final class WarRespawnService implements Listener {
         if(!(world.getBlockAt(point.x(),point.y(),point.z()).getState() instanceof Sign sign))return;
         String[] text;
         if(point.action().equals("respawndata")) {
-            String target=storage.query(db->{var options=WarRespawnStore.destinations(db,point.build(),System.currentTimeMillis());int selected=WarRespawnStore.selected(db,point.build());return options.isEmpty()?"нет доступных мест":options.get(selected<options.size()?selected:0).name();});
-            text=new String[]{"Возродиться в",target,"","Нажмите для выхода"};
+            var target=storage.query(db->{var options=WarRespawnStore.destinations(db,point.build(),System.currentTimeMillis());int selected=WarRespawnStore.selected(db,point.build());return options.isEmpty()?null:options.get(selected<options.size()?selected:0);});
+            text=target==null?new String[]{"Возродиться в","нет доступных мест","",""}:target.camp()==null?new String[]{"Возродиться в",target.name(),"","Нажмите для выхода"}:new String[]{"Возродиться в","Военный лагерь","("+target.x()+","+target.y()+","+target.z()+")","Нажмите для выхода"};
         }else text=new String[]{"",point.action().equals("next")?"Следующее место":"Предыдущее место","",""};
         boolean changed=false;for(int i=0;i<4;i++){var line=Component.text(text[i]);if(!sign.line(i).equals(line)){sign.line(i,line);changed=true;}}if(changed)sign.update(true,false);
     }
@@ -105,8 +105,8 @@ public final class WarRespawnService implements Listener {
             return options.get(selected);
         });
         if(target==null){player.sendMessage(Component.text("Список мест изменился. Выбор сброшен; нажмите снова."));return;}
-        var points=storage.query(db->WarRespawnStore.revivePoints(db,target.build()));
-        var point=points.isEmpty()?new WarRespawnStore.Point(target.build(),"revive",target.world(),target.x(),target.y(),target.z()):points.get(ThreadLocalRandom.current().nextInt(points.size()));
+        var points=storage.query(db->WarRespawnStore.destinationPoints(db,build,target,System.currentTimeMillis()));
+        var point=points.isEmpty()?new WarRespawnStore.Point(target.build()==null?0:target.build(),"revive",target.world(),target.x(),target.y(),target.z()):points.get(ThreadLocalRandom.current().nextInt(points.size()));
         var world=Bukkit.getWorld(point.world());if(world==null)throw new IllegalArgumentException("Мир места возрождения недоступен.");
         player.sendMessage(Component.text("Возрождение: "+target.name()+"."));
         player.teleport(new Location(world,point.x(),point.y(),point.z()));

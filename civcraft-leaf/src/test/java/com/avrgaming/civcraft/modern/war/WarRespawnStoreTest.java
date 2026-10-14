@@ -24,6 +24,28 @@ class WarRespawnStoreTest {
         WarRespawnStore.register(db,new WarRespawnStore.Point(1,"revive","world",10,80,12));
         db.commit();return db;
     }
+    WarCampStore.Camp camp(java.sql.Connection db,String request)throws Exception {
+        var camp=WarCampStore.prepare(db,request,fixture.owner,"world",40,80,0,java.util.List.of(new WarCampStore.Block("world",40,80,0,"minecraft:stone","minecraft:air")),3,0,150);
+        WarCampStore.point(db,camp.id(),"respawn","world",50,91,8,0);db.commit();return camp;
+    }
+    @org.junit.jupiter.api.Test void onlyActiveOwnCampsAreAppendedAfterTownsAndUseTheirOwnPoints()throws Exception {
+        try(var db=database()) {
+            var camp=camp(db,"one");assertEquals(1,WarRespawnStore.destinations(db,1,155).size());WarCampStore.activate(db,camp.id(),155);db.commit();var destinations=WarRespawnStore.destinations(db,1,155);assertEquals(2,destinations.size());var target=destinations.get(1);assertNull(target.build());assertEquals(camp.id(),target.camp());assertTrue(target.name().startsWith("Военный лагерь"));
+            var points=WarRespawnStore.destinationPoints(db,1,target,155);assertEquals(1,points.size());assertEquals(50,points.getFirst().x());assertEquals(91,points.getFirst().y());
+            db.createStatement().execute("UPDATE civilizations SET leader_uuid='"+fixture.attacker+"' WHERE id=1");var foreign=WarCampStore.prepare(db,"foreign",fixture.attacker,"world",80,80,0,java.util.List.of(new WarCampStore.Block("world",80,80,0,"minecraft:stone","minecraft:air")),3,0,150);WarCampStore.activate(db,foreign.id(),155);db.commit();assertEquals(2,WarRespawnStore.destinations(db,1,155).size());
+        }
+    }
+    @org.junit.jupiter.api.Test void destroyedOrExpiredCampCannotBeUsedByAStaleSelection()throws Exception {
+        try(var db=database()) {
+            var camp=camp(db,"one");WarCampStore.activate(db,camp.id(),155);db.commit();var target=WarRespawnStore.destinations(db,1,155).get(1);assertEquals(1,WarRespawnStore.cycle(db,1,fixture.owner,1,155));db.commit();WarCampStore.destroyed(db,camp.id(),160);db.commit();assertEquals(1,WarRespawnStore.destinations(db,1,160).size());assertThrows(IllegalArgumentException.class,()->WarRespawnStore.destinationPoints(db,1,target,160));db.rollback();assertEquals(0,WarRespawnStore.cycle(db,1,fixture.owner,1,160));db.commit();
+            var other=camp(db,"second");WarCampStore.activate(db,other.id(),165);db.commit();var old=WarRespawnStore.destinations(db,1,165).get(1);assertEquals(1,WarRespawnStore.destinations(db,1,200).size());assertThrows(IllegalArgumentException.class,()->WarRespawnStore.destinationPoints(db,1,old,200));db.rollback();db.createStatement().execute("UPDATE war_sessions SET state='CLOSED'");db.createStatement().execute("INSERT INTO war_sessions VALUES(300,400,'ACTIVE')");db.commit();assertEquals(1,WarRespawnStore.destinations(db,1,350).size());assertThrows(IllegalArgumentException.class,()->WarRespawnStore.destinationPoints(db,1,old,350));
+        }
+    }
+    @org.junit.jupiter.api.Test void transferringTheFoundersTownDoesNotGiveTheCaptorItsCamp()throws Exception {
+        try(var db=database()) {
+            var camp=camp(db,"one");WarCampStore.activate(db,camp.id(),155);db.commit();var target=WarRespawnStore.destinations(db,1,155).get(1);db.createStatement().execute("UPDATE towns SET civ_id=1 WHERE id=2");db.commit();assertTrue(WarRespawnStore.destinations(db,1,155).stream().noneMatch(d->d.camp()!=null));assertThrows(IllegalArgumentException.class,()->WarRespawnStore.destinationPoints(db,1,target,155));
+        }
+    }
     @Test void selectionIsSharedAndOnlyMayorLeaderOrAdvisorCanChangeIt()throws Exception {
         try(var db=database()) {
             db.createStatement().execute("INSERT INTO towns(id,civ_id,name) VALUES(3,2,'Second')");

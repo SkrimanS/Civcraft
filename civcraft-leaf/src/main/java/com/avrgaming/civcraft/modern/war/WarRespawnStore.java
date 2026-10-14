@@ -7,8 +7,11 @@ public final class WarRespawnStore {
     private WarRespawnStore() {}
     public record Point(long build,String kind,String world,int x,int y,int z) {}
     public record SignPoint(long build,String action,String world,int x,int y,int z) {}
-    public record Destination(long build,long town,String name,String world,int x,int y,int z) {}
+    public record Destination(Long build,long town,String name,String world,int x,int y,int z,Long camp) {
+        public Destination(long build,long town,String name,String world,int x,int y,int z){this(build,town,name,world,x,y,z,null);}
+    }
     public static void install(Connection db)throws SQLException {
+        WarCampStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_respawn_points(build_id INTEGER NOT NULL REFERENCES structure_builds(id) ON DELETE CASCADE,kind TEXT NOT NULL CHECK(kind IN ('respawn','revive')),world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,PRIMARY KEY(build_id,kind,world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_resident_respawns(uuid TEXT PRIMARY KEY REFERENCES residents(uuid) ON DELETE CASCADE,last_killed_at INTEGER NOT NULL)");
@@ -64,7 +67,11 @@ public final class WarRespawnStore {
         long civ=owner(db,build);var out=new ArrayList<Destination>();
         try(var s=db.prepareStatement("SELECT b.id,b.town_id,t.name,b.world,b.x,b.y,b.z FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE c.id=? AND b.status='COMPLETE' AND b.structure_id IN ('s_capitol','s_townhall') AND (c.capital_town_id=t.id OR NOT EXISTS(SELECT 1 FROM war_inactive_towns d JOIN war_sessions w ON w.start_at=d.war_start WHERE d.town_id=t.id AND w.state='ACTIVE' AND w.start_at<=? AND w.end_at>?)) ORDER BY t.id,b.id")){
             s.setLong(1,civ);s.setLong(2,now);s.setLong(3,now);try(var r=s.executeQuery()){while(r.next())out.add(new Destination(r.getLong(1),r.getLong(2),r.getString(3),r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7)));}
-        }return List.copyOf(out);
+        }
+        try(var s=db.prepareStatement("SELECT c.* FROM war_camps c JOIN war_sessions w ON w.start_at=c.war_start WHERE c.civ_id=? AND c.state='ACTIVE' AND w.state='ACTIVE' AND w.start_at<=? AND w.end_at>? ORDER BY c.id")) {
+            s.setLong(1,civ);s.setLong(2,now);s.setLong(3,now);try(var r=s.executeQuery()){while(r.next())out.add(new Destination(null,r.getLong("town_id"),"Военный лагерь ("+r.getInt("x")+","+r.getInt("y")+","+r.getInt("z")+")",r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getLong("id")));}
+        }
+        return List.copyOf(out);
     }
     public static int selected(Connection db,long build)throws SQLException {
         try(var s=db.prepareStatement("SELECT selected_index FROM war_respawn_selection WHERE build_id=?")){s.setLong(1,build);try(var r=s.executeQuery()){return r.next()?r.getInt(1):0;}}
@@ -89,5 +96,12 @@ public final class WarRespawnStore {
     }
     public static List<Point> revivePoints(Connection db,long build)throws SQLException {
         var out=new ArrayList<Point>();try(var s=db.prepareStatement("SELECT * FROM war_respawn_points WHERE build_id=? AND kind='revive' ORDER BY world,x,y,z")){s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())out.add(new Point(build,"revive",r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")));}}return out;
+    }
+    public static List<Point> destinationPoints(Connection db,long capitol,Destination destination,long now)throws SQLException {
+        if(destination.camp()==null)return revivePoints(db,destination.build());
+        long civ=owner(db,capitol);var camp=WarCampStore.camp(db,destination.camp());
+        if(camp.civilization()!=civ||!camp.state().equals("ACTIVE"))throw new IllegalArgumentException("Военный лагерь больше недоступен для выхода.");
+        try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE start_at=? AND state='ACTIVE' AND start_at<=? AND end_at>?")){s.setLong(1,camp.war());s.setLong(2,now);s.setLong(3,now);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Боевой период военного лагеря завершён.");}}
+        var out=new ArrayList<Point>();try(var s=db.prepareStatement("SELECT * FROM war_camp_points WHERE camp_id=? AND kind='respawn' ORDER BY world,x,y,z")){s.setLong(1,camp.id());try(var r=s.executeQuery()){while(r.next())out.add(new Point(0,"revive",r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")));}}return List.copyOf(out);
     }
 }
