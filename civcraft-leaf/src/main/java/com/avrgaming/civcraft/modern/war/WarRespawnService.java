@@ -98,8 +98,8 @@ public final class WarRespawnService implements Listener {
             var options=WarRespawnStore.destinations(db,build,now);int selected=WarRespawnStore.selected(db,build);
             if(options.isEmpty())throw new IllegalArgumentException("Нет доступных мест возрождения.");
             if(selected>=options.size()){WarRespawnStore.select(db,build,0);return null;}
-            // Validity and Medicine are wired when their owning systems are ported.
-            int seconds=WarRespawnStore.delaySeconds(baseDelay,controlDelay,WarRespawnStore.destroyedControls(db,build,now),false,invalidMinutes,0);
+            var validity=HallValidationStore.state(db,build);
+            int seconds=WarRespawnStore.delaySeconds(baseDelay,controlDelay,WarRespawnStore.destroyedControls(db,build,now),validity.validated()&&!validity.valid(),invalidMinutes,0);
             long remaining=WarRespawnStore.remainingMillis(WarRespawnStore.lastKilled(db,player.getUniqueId()),seconds,now);
             if(remaining>0)throw new IllegalArgumentException("До выхода из военной комнаты: "+remaining/1000+" сек.");
             return options.get(selected);

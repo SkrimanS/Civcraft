@@ -8,6 +8,7 @@ public final class ControlPointStore {
     public record Hit(long war,Point point,int health,boolean townDefeated,boolean civDefeated) {}
     public static void install(Connection db)throws SQLException {
         ConquestStore.install(db);
+        HallValidationStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_control_points(build_id INTEGER NOT NULL REFERENCES structure_builds(id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,maximum INTEGER NOT NULL CHECK(maximum>0),base TEXT NOT NULL,PRIMARY KEY(world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_control_health(war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,hitpoints INTEGER NOT NULL CHECK(hitpoints>=0),PRIMARY KEY(war_start,world,x,y,z),FOREIGN KEY(world,x,y,z) REFERENCES war_control_points(world,x,y,z) ON DELETE CASCADE)");
@@ -45,6 +46,7 @@ public final class ControlPointStore {
         try(var s=db.prepareStatement("SELECT start_at FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>? ORDER BY start_at LIMIT 1")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Контрольные блоки атакуют только во время боя.");war=r.getLong(1);}}
         long town,civ;
         try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM residents r JOIN towns t ON t.id=r.town_id AND t.civ_id=r.civ_id WHERE r.uuid=?")){s.setString(1,actor.toString());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Для осады нужно состоять в городе.");town=r.getLong(1);civ=r.getLong(2);}}
+        if(!HallValidationStore.capitalValid(db,civ))throw new IllegalArgumentException("Невалидный капитолий вашей цивилизации не позволяет атаковать контрольные блоки.");
         try(var s=db.prepareStatement("SELECT 1 FROM war_defeated_towns WHERE war_start=? AND town_id=? UNION ALL SELECT 1 FROM war_inactive_towns WHERE war_start=? AND town_id=?")){s.setLong(1,war);s.setLong(2,town);s.setLong(3,war);s.setLong(4,town);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Ваш город уже побеждён в этой войне.");}}
         long defenderTown,defender;boolean capitol;
         try(var s=db.prepareStatement("SELECT b.town_id,t.civ_id,b.status,c.capital_town_id FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.id=?")){s.setLong(1,point.build());try(var r=s.executeQuery()){if(!r.next() || !r.getString(3).equals("COMPLETE"))throw new IllegalArgumentException("Ратуша неактивна.");defenderTown=r.getLong(1);defender=r.getLong(2);capitol=r.getObject(4)!=null && defenderTown==r.getLong(4);}}
