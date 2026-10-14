@@ -89,6 +89,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public com.avrgaming.civcraft.modern.war.WarRespawnService warRespawns(){return warRespawns;}
     private com.avrgaming.civcraft.modern.war.HallValidationService hallValidation;
     public com.avrgaming.civcraft.modern.war.HallValidationService hallValidation(){return hallValidation;}
+    private com.avrgaming.civcraft.modern.war.WarCampPlacement warCampPlacement;
+    public com.avrgaming.civcraft.modern.war.WarCampPlacement warCampPlacement(){return warCampPlacement;}
 
 
     @Override
@@ -170,6 +172,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             hallValidation=new com.avrgaming.civcraft.modern.war.HallValidationService(this,storage);
             getServer().getScheduler().runTaskTimer(this,hallValidation::tick,100L,1L);
             warRespawns=new com.avrgaming.civcraft.modern.war.WarRespawnService(this,storage);
+            warCampPlacement=new com.avrgaming.civcraft.modern.war.WarCampPlacement(this,storage);
             getServer().getScheduler().runTaskTimer(this,warRespawns::tick,100L,20L);
             var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);
             getServer().getScheduler().runTaskTimer(this,ruins::tick,100L,1L);

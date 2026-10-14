@@ -388,6 +388,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("civcraft.admin")) {
             throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только администратору."));
         }
+        if(args.length>=2&&args[1].equalsIgnoreCase("warcampcheck")) {
+            if(!(sender instanceof Player player))throw new IllegalArgumentException("Проверку места выполняет игрок.");
+            var plan=plugin.warCampPlacement().plan(player);var origin=plan.origin();
+            send(sender,"Место военного лагеря проверено: "+origin.x()+" "+origin.y()+" "+origin.z()+", направление "+origin.direction()+". Блоков: "+plan.blocks().size()+", контрольных точек: "+plan.markers().stream().filter(m->m.kind().equals("control")).count()+", респаун-точек: "+plan.markers().stream().filter(m->m.kind().equals("respawn")).count()+", блоков с NBT: "+plan.blocks().stream().filter(b->b.beforeNbt()!=null).count()+".");return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("item")) {
             if (args.length < 5 || !args[2].equalsIgnoreCase("give")) {
                 send(sender, "&e/civadmin item give <ник> <ID предмета> [количество]");

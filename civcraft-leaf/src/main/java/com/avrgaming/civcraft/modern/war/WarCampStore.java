@@ -8,7 +8,9 @@ public final class WarCampStore {
     private WarCampStore() {}
     public record Authority(long town,long civilization,long war) {}
     public record Camp(long id,long war,long civilization,long town,String world,int x,int y,int z,String state) {}
-    public record Block(String world,int x,int y,int z,String before,String after) {}
+    public record Block(String world,int x,int y,int z,String before,String after,String beforeNbt) {
+        public Block(String world,int x,int y,int z,String before,String after){this(world,x,y,z,before,after,null);}
+    }
     public static void install(Connection db)throws SQLException {
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camps(id INTEGER PRIMARY KEY AUTOINCREMENT,request_id TEXT NOT NULL UNIQUE,war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),civ_id INTEGER NOT NULL,town_id INTEGER NOT NULL,actor TEXT NOT NULL,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('PREPARED','ACTIVE','DESTROYED','RESTORING','RESTORED')),created_at INTEGER NOT NULL,changed_at INTEGER NOT NULL)");
@@ -16,6 +18,7 @@ public final class WarCampStore {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_cooldowns(civ_id INTEGER PRIMARY KEY REFERENCES civilizations(id) ON DELETE CASCADE,built_at INTEGER NOT NULL)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_points(camp_id INTEGER NOT NULL REFERENCES war_camps(id) ON DELETE CASCADE,kind TEXT NOT NULL CHECK(kind IN ('respawn','control')),world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,maximum INTEGER NOT NULL,hitpoints INTEGER NOT NULL,PRIMARY KEY(camp_id,kind,world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_hits(id TEXT PRIMARY KEY,camp_id INTEGER NOT NULL REFERENCES war_camps(id),actor TEXT NOT NULL,before_hp INTEGER NOT NULL,after_hp INTEGER NOT NULL,at INTEGER NOT NULL)");
+            boolean nbt=false;try(var r=s.executeQuery("PRAGMA table_info(war_camp_blocks)")){while(r.next())if(r.getString("name").equals("before_nbt"))nbt=true;}if(!nbt)s.executeUpdate("ALTER TABLE war_camp_blocks ADD COLUMN before_nbt TEXT");
         }
     }
     public static Authority authority(Connection db,UUID actor,long now)throws SQLException {
@@ -44,7 +47,7 @@ public final class WarCampStore {
         long id;try(var s=db.prepareStatement("INSERT INTO war_camps(request_id,war_start,civ_id,town_id,actor,world,x,y,z,state,created_at,changed_at) VALUES(?,?,?,?,?,?,?,?,?,'PREPARED',?,?)",Statement.RETURN_GENERATED_KEYS)) {
             s.setString(1,request);s.setLong(2,authority.war());s.setLong(3,authority.civilization());s.setLong(4,authority.town());s.setString(5,actor.toString());s.setString(6,world);s.setInt(7,x);s.setInt(8,y);s.setInt(9,z);s.setLong(10,now);s.setLong(11,now);s.executeUpdate();try(var r=s.getGeneratedKeys()){r.next();id=r.getLong(1);}
         }
-        try(var s=db.prepareStatement("INSERT INTO war_camp_blocks VALUES(?,?,?,?,?,?,?)")){for(var block:blocks){s.setLong(1,id);s.setString(2,block.world());s.setInt(3,block.x());s.setInt(4,block.y());s.setInt(5,block.z());s.setString(6,block.before());s.setString(7,block.after());s.addBatch();}s.executeBatch();}
+        try(var s=db.prepareStatement("INSERT INTO war_camp_blocks(camp_id,world,x,y,z,before_data,after_data,before_nbt) VALUES(?,?,?,?,?,?,?,?)")){for(var block:blocks){s.setLong(1,id);s.setString(2,block.world());s.setInt(3,block.x());s.setInt(4,block.y());s.setInt(5,block.z());s.setString(6,block.before());s.setString(7,block.after());s.setString(8,block.beforeNbt());s.addBatch();}s.executeBatch();}
         return camp(db,id);
     }
     public static Camp camp(Connection db,long id)throws SQLException {
@@ -73,7 +76,7 @@ public final class WarCampStore {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM war_camps WHERE state='RESTORING' ORDER BY id DESC LIMIT 1")){return r.next()?r.getLong(1):null;}
     }
     public static List<Block> blocks(Connection db,long id)throws SQLException {
-        var out=new ArrayList<Block>();try(var s=db.prepareStatement("SELECT * FROM war_camp_blocks WHERE camp_id=? ORDER BY world,x,y,z")){s.setLong(1,id);try(var r=s.executeQuery()){while(r.next())out.add(new Block(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("before_data"),r.getString("after_data")));}}return List.copyOf(out);
+        var out=new ArrayList<Block>();try(var s=db.prepareStatement("SELECT * FROM war_camp_blocks WHERE camp_id=? ORDER BY world,x,y,z")){s.setLong(1,id);try(var r=s.executeQuery()){while(r.next())out.add(new Block(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("before_data"),r.getString("after_data"),r.getString("before_nbt")));}}return List.copyOf(out);
     }
     public static void restored(Connection db,long id,long now)throws SQLException {
         var camp=camp(db,id);if(camp.state().equals("RESTORED"))return;if(!camp.state().equals("RESTORING"))throw new IllegalArgumentException("Лагерь не ожидает восстановления территории.");

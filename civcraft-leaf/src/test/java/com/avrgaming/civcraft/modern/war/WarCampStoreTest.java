@@ -81,4 +81,16 @@ class WarCampStoreTest {
             WarCampStore.scheduleRestoration(db,200);assertEquals(id,WarCampStore.nextRestoration(db));
         }
     }
+    @Test void fullBlockEntityNbtIsPreservedAlongsideBlockData()throws Exception {
+        try(var db=database()) {
+            String nbt="{id:\"minecraft:furnace\",Items:[{Slot:0b,id:\"minecraft:diamond\",count:3}],CookTime:12s}";
+            var block=new WarCampStore.Block("world",0,80,0,"minecraft:furnace[facing=north]","minecraft:air",nbt);
+            var camp=WarCampStore.prepare(db,"nbt",f.owner,"world",0,80,0,List.of(block),3,0,150);db.commit();assertEquals(List.of(block),WarCampStore.blocks(db,camp.id()));
+        }
+    }
+    @Test void oldBlockJournalsAreMigratedWithoutLosingTheirBeforeImages()throws Exception {
+        try(var db=database()) {
+            var camp=prepare(db,"old",0);db.commit();db.createStatement().execute("ALTER TABLE war_camp_blocks DROP COLUMN before_nbt");db.commit();WarCampStore.install(db);db.commit();assertEquals(blocks(0),WarCampStore.blocks(db,camp.id()));
+        }
+    }
 }
