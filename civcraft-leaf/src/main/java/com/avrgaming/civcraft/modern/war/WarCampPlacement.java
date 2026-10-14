@@ -12,16 +12,18 @@ import org.bukkit.entity.Player;
 
 /** Build a complete before/after journal without changing terrain or consuming the item. */
 public final class WarCampPlacement {
-    private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;private final String template;private final int minimum;
+    private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;private final String template;private final int minimum;private final boolean foundationEnabled;private final double administrativeDistance;
     public record Marker(String kind,int x,int y,int z) {}
-    public record Plan(WarCampStore.Authority authority,WarCampPlacementRules.Origin origin,List<WarCampStore.Block> blocks,List<Marker> markers) {}
+    public record Plan(WarCampStore.Authority authority,WarCampPlacementRules.Origin origin,List<WarCampStore.Block> blocks,List<Marker> markers,List<FoundationSnapshotValidator.Column> foundation) {}
     private record Position(int x,int y,int z) {}
     public WarCampPlacement(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());template=config.getString("warcamp.template","warcamp");
         if(!template.matches("[A-Za-z0-9_-]+"))throw new IllegalArgumentException("Invalid war camp template name");
         var civ=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/civ.yml").toFile());minimum=civ.getInt("global.min_build_height",1);
-        storage.transaction(db->{WarCampStore.install(db);return null;});
+        foundationEnabled=Boolean.parseBoolean(civ.getString("global.structure_validation","true"));
+        administrativeDistance=civ.getDouble("global.distance_from_spawn",1000);
+        storage.transaction(db->{WarCampStore.install(db);AdminCivilizationStore.install(db);return null;});
     }
     public Plan plan(Player player)throws java.io.IOException,SQLException {
         long now=System.currentTimeMillis();var authority=storage.query(db->WarCampStore.authority(db,player.getUniqueId(),now));
@@ -29,6 +31,7 @@ public final class WarCampPlacement {
         Path file=plugin.getDataFolder().toPath().resolve("legacy-templates/themes/default/structures/"+template+"/"+template+"_"+direction+".def");
         var definition=new LegacyDefTemplateLoader().load(file);var origin=WarCampPlacementRules.origin(location.getX(),location.getY(),location.getZ(),location.getYaw(),definition.sizeX(),definition.sizeZ());
         WarCampPlacementRules.height(location.getY(),origin.y(),definition.sizeY(),minimum,world.getMaxHeight());
+        storage.query(db->{AdminCivilizationStore.checkDistance(db,world.getName(),origin.x(),origin.y(),origin.z(),administrativeDistance,player.isOp());return null;});
         verifyRegion(storage,player.getUniqueId(),world.getName(),origin,definition.sizeX(),definition.sizeY(),definition.sizeZ());
         double total=0;for(int x=0;x<definition.sizeX();x++)for(int z=0;z<definition.sizeZ();z++)total+=world.getHighestBlockYAt(origin.x()+x,origin.z()+z);
         WarCampPlacementRules.terrain(origin.y(),total/(definition.sizeX()*(double)definition.sizeZ()));
@@ -49,8 +52,10 @@ public final class WarCampPlacement {
         }
         if(markers.stream().noneMatch(m->m.kind().equals("control"))||markers.stream().noneMatch(m->m.kind().equals("respawn")))throw new IllegalArgumentException("В шаблоне лагеря нет необходимых контрольных/респаун-точек.");
         var blocks=new ArrayList<WarCampStore.Block>();after.forEach((p,data)->blocks.add(new WarCampStore.Block(world.getName(),p.x(),p.y(),p.z(),before.get(p),data,nbt.get(p))));
-        return new Plan(authority,origin,List.copyOf(blocks),List.copyOf(markers));
+        var foundation=definition.blocks().stream().filter(block->block.y()==0&&block.legacyId()!=0).map(block->new FoundationSnapshotValidator.Column(origin.x()+block.x(),origin.z()+block.z())).toList();
+        return new Plan(authority,origin,List.copyOf(blocks),List.copyOf(markers),foundation);
     }
+    public boolean foundationEnabled(){return foundationEnabled;}
     public static void verifyRegion(StorageBootstrap storage,UUID actor,String world,WarCampPlacementRules.Origin origin,int width,int height,int depth)throws SQLException {
         storage.query(db->{verifyRegion(db,actor,world,origin,width,height,depth);return null;});
     }

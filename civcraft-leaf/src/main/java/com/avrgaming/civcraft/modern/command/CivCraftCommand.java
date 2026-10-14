@@ -388,6 +388,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("civcraft.admin")) {
             throw new IllegalArgumentException(msg("commands.admin.op-only", "Эта команда доступна только администратору."));
         }
+        if(args.length>=2&&args[1].equalsIgnoreCase("adminciv")) {
+            if(args.length!=4||!List.of("true","false").contains(args[3].toLowerCase(Locale.ROOT)))throw new IllegalArgumentException("Использование: /civadmin adminciv <цивилизация> <true|false>");
+            plugin.storage().transaction(db->{com.avrgaming.civcraft.modern.war.AdminCivilizationStore.set(db,args[2],Boolean.parseBoolean(args[3]));return null;});
+            send(sender,"Административная цивилизация "+args[2]+": "+args[3]+".");return;
+        }
         if(args.length>=2&&args[1].equalsIgnoreCase("warcampcheck")) {
             if(!(sender instanceof Player player))throw new IllegalArgumentException("Проверку места выполняет игрок.");
             var plan=plugin.warCampPlacement().plan(player);var origin=plan.origin();
@@ -758,7 +763,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 return List.of();
             }
             if (args.length == 1) {
-                return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds", "item", "warcampcheck", "warcampprepare");
+                return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds", "item", "warcampcheck", "warcampprepare", "adminciv");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("recovery")) {
                 return List.of("status");
