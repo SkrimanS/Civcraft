@@ -9,7 +9,9 @@ public final class UpkeepStore {
     public record Charge(long town,long civ,boolean capital,long amount) {}
     public record Payment(String kind,long id,long cost,long paid,long debt) {}
     @FunctionalInterface public interface BeforeCivilizationCharges {void pay()throws SQLException;}
+    @FunctionalInterface public interface BeforeTownCharge {void pay(Charge charge)throws SQLException;}
     public static void install(Connection db)throws SQLException {
+        com.avrgaming.civcraft.modern.war.AdminCivilizationStore.install(db);
         column(db,"towns","debt","INTEGER NOT NULL DEFAULT 0");
         column(db,"towns","days_in_debt","INTEGER NOT NULL DEFAULT 0");
         column(db,"civilizations","debt","INTEGER NOT NULL DEFAULT 0");
@@ -35,12 +37,16 @@ public final class UpkeepStore {
         return daily(db,day,now,towns,civCharges,()->{});
     }
     public static List<Payment> daily(Connection db,String day,long now,List<Charge> towns,Map<Long,Long> civCharges,BeforeCivilizationCharges bonuses)throws SQLException {
+        return daily(db,day,now,towns,civCharges,charge->{},bonuses);
+    }
+    public static List<Payment> daily(Connection db,String day,long now,List<Charge> towns,Map<Long,Long> civCharges,BeforeTownCharge leech,BeforeCivilizationCharges bonuses)throws SQLException {
         try(var insert=db.prepareStatement("INSERT OR IGNORE INTO daily_economy_events VALUES('upkeep',?,?)")) {
             insert.setString(1,day);insert.setLong(2,now);if(insert.executeUpdate()==0)return List.of();
         }
         List<Payment> result=new ArrayList<>();
         for(var charge:towns) {
             if(charge.amount()<0)throw new SQLException("Negative upkeep");
+            leech.pay(charge);
             long paid=withdrawAvailable(db,"towns",charge.town(),charge.amount());
             long shortage=charge.amount()-paid;
             if(shortage>0 && charge.capital()) {
@@ -57,7 +63,7 @@ public final class UpkeepStore {
             Payment payment=new Payment("civ",charge.getKey(),charge.getValue(),paid,shortage);audit(db,day,payment);result.add(payment);
         }
         for(String table:List.of("towns","civilizations"))try(var statement=db.createStatement()) {
-            statement.executeUpdate("UPDATE "+table+" SET days_in_debt=CASE WHEN debt>0 THEN days_in_debt+1 ELSE 0 END");
+            statement.executeUpdate("UPDATE "+table+" SET days_in_debt=CASE WHEN debt>0 THEN days_in_debt+1 ELSE 0 END"+(table.equals("civilizations")?" WHERE NOT EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=civilizations.id)":""));
         }
         return result;
     }

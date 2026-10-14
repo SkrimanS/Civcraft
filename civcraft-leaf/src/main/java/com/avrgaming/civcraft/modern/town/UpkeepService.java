@@ -19,22 +19,25 @@ public final class UpkeepService {
         this.plugin=plugin;this.storage=storage;
         extraTownCost=(long)YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getDouble("civ.town_upkeep",500);
         wonders=com.avrgaming.civcraft.modern.wonder.WonderEconomy.load(new File(plugin.getDataFolder(),"civcraft/data/buffs.yml"));
-        storage.query(db->{UpkeepStore.install(db);com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.install(db);return null;});
+        storage.transaction(db->{UpkeepStore.install(db);com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.install(db);com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.install(db);com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.reconcile(db,true);return null;});
     }
+    public void reconcileWonders(){try{storage.transaction(db->{com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.reconcile(db,false);return null;});}catch(SQLException failure){plugin.getLogger().warning("Colossus target update failed: "+failure.getMessage());}}
     private List<UpkeepStore.Charge> plan(Connection db)throws SQLException {
         Map<String,Double> costs=new HashMap<>();
         for(var definition:plugin.legacyStructures().listDefinitions(Integer.MAX_VALUE))costs.put(definition.id(),definition.upkeep());
         List<UpkeepStore.Charge> charges=new ArrayList<>();
-        record Town(long id,long civ,int level,String government,long capital) {}
+        record Town(long id,long civ,int level,String government,long capital,boolean administrative) {}
         List<Town> towns=new ArrayList<>();
         try(var rows=db.createStatement().executeQuery("""
                 SELECT t.id,t.civ_id,t.level,c.government,
-                COALESCE(c.capital_town_id,(SELECT MIN(first.id) FROM towns first WHERE first.civ_id=c.id))
+                COALESCE(c.capital_town_id,(SELECT MIN(first.id) FROM towns first WHERE first.civ_id=c.id)),
+                EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id)
                 FROM towns t JOIN civilizations c ON c.id=t.civ_id
                 """)) {
-            while(rows.next())towns.add(new Town(rows.getLong(1),rows.getLong(2),rows.getInt(3),rows.getString(4),rows.getLong(5)));
+            while(rows.next())towns.add(new Town(rows.getLong(1),rows.getLong(2),rows.getInt(3),rows.getString(4),rows.getLong(5),rows.getBoolean(6)));
         }
         for(var town:towns) {
+            if(town.administrative()){charges.add(new UpkeepStore.Charge(town.id(),town.civ(),town.id()==town.capital(),0));continue;}
             double total=plugin.townUpgrades().level(town.level()).upkeep();
             try(var query=db.prepareStatement("SELECT structure_id,COUNT(*) FROM structure_builds WHERE town_id=? AND status IN ('QUEUED','BUILDING','COMPLETE') GROUP BY structure_id")) {
                 query.setLong(1,town.id());try(var rows=query.executeQuery()){while(rows.next())total+=costs.getOrDefault(rows.getString(1),0.0)*rows.getInt(2);}
@@ -48,11 +51,13 @@ public final class UpkeepService {
     }
     public DailyResult daily(Connection db,String day,long now)throws SQLException {
         var towns=plan(db);Map<Long,Long> civs=new LinkedHashMap<>();
-        for(var town:towns)civs.merge(town.civ(),town.capital()?0:extraTownCost,Math::addExact);
+        for(var town:towns)civs.merge(town.civ(),town.capital()||administrative(db,town.civ())?0:extraTownCost,Math::addExact);
         var bonuses=new ArrayList<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit>();
-        var payments=UpkeepStore.daily(db,day,now,towns,civs,()->bonuses.addAll(com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.pay(db,day,now,wonders)));
+        com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.reconcile(db,false);
+        var payments=UpkeepStore.daily(db,day,now,towns,civs,charge->com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.pay(db,day,charge,wonders.leechRate()),()->bonuses.addAll(com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.pay(db,day,now,wonders)));
         return new DailyResult(payments,List.copyOf(bonuses));
     }
+    private static boolean administrative(Connection db,long civ)throws SQLException {try(var s=db.prepareStatement("SELECT 1 FROM administrative_civilizations WHERE civ_id=?")){s.setLong(1,civ);try(var r=s.executeQuery()){return r.next();}}}
     public void command(Player player,String[] args,boolean civilization)throws SQLException {
         if(args.length>4 || (args.length>2 && !args[2].equalsIgnoreCase("pay")))
             throw new IllegalArgumentException("Команды: upkeep, upkeep pay [сумма]");
@@ -76,7 +81,7 @@ public final class UpkeepService {
             }
             long cost=0;
             if(!civilization)for(var charge:plan(db))if(charge.town()==id)cost=charge.amount();
-            if(civilization)for(var charge:plan(db))if(charge.civ()==id && !charge.capital())cost+=extraTownCost;
+            if(civilization&&!administrative(db,id))for(var charge:plan(db))if(charge.civ()==id && !charge.capital())cost+=extraTownCost;
             return "Содержание: "+cost+" монет/день. Казна: "+balance+". Долг: "+debt+". Дней в долгу: "+days+".";
         });
         player.sendMessage(Component.text(info));

@@ -2,12 +2,12 @@ package com.avrgaming.civcraft.modern.wonder;
 import java.sql.*;
 import java.util.*;
 import org.bukkit.configuration.file.YamlConfiguration;
-public record WonderEconomy(double upkeepReduction,double cultureCoins,double worldTownCoins) {
-    public WonderEconomy {if(!Double.isFinite(upkeepReduction)||upkeepReduction<0||upkeepReduction>1||!Double.isFinite(cultureCoins)||cultureCoins<0||!Double.isFinite(worldTownCoins)||worldTownCoins<0)throw new IllegalArgumentException("Invalid wonder economy coefficients");}
+public record WonderEconomy(double upkeepReduction,double cultureCoins,double worldTownCoins,double leechRate) {
+    public WonderEconomy {if(!Double.isFinite(upkeepReduction)||upkeepReduction<0||upkeepReduction>1||!Double.isFinite(cultureCoins)||cultureCoins<0||!Double.isFinite(worldTownCoins)||worldTownCoins<0||!Double.isFinite(leechRate)||leechRate<0||leechRate>1)throw new IllegalArgumentException("Invalid wonder economy coefficients");}
     public static WonderEconomy load(java.io.File file) {
-        var values=new HashMap<String,Double>();for(var row:YamlConfiguration.loadConfiguration(file).getMapList("buffs"))if(row.get("id")!=null&&row.get("value")!=null){String id=row.get("id").toString();if(Set.of("buff_colossus_reduce_upkeep","buff_colossus_coins_from_culture","buff_colosseum_coins_from_towns").contains(id))values.put(id,Double.parseDouble(row.get("value").toString()));}
-        for(var id:List.of("buff_colossus_reduce_upkeep","buff_colossus_coins_from_culture","buff_colosseum_coins_from_towns"))if(!values.containsKey(id))throw new IllegalArgumentException("Missing wonder coefficient: "+id);
-        return new WonderEconomy(values.get("buff_colossus_reduce_upkeep"),values.get("buff_colossus_coins_from_culture"),values.get("buff_colosseum_coins_from_towns"));
+        var values=new HashMap<String,Double>();for(var row:YamlConfiguration.loadConfiguration(file).getMapList("buffs"))if(row.get("id")!=null&&row.get("value")!=null){String id=row.get("id").toString();if(Set.of("buff_colossus_reduce_upkeep","buff_colossus_coins_from_culture","buff_colosseum_coins_from_towns","debuff_colossus_leech_upkeep").contains(id))values.put(id,Double.parseDouble(row.get("value").toString()));}
+        for(var id:List.of("buff_colossus_reduce_upkeep","buff_colossus_coins_from_culture","buff_colosseum_coins_from_towns","debuff_colossus_leech_upkeep"))if(!values.containsKey(id))throw new IllegalArgumentException("Missing wonder coefficient: "+id);
+        return new WonderEconomy(values.get("buff_colossus_reduce_upkeep"),values.get("buff_colossus_coins_from_culture"),values.get("buff_colosseum_coins_from_towns"),values.get("debuff_colossus_leech_upkeep"));
     }
     public double upkeep(Connection db,long town,double base)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE town_id=? AND structure_id='w_colossus' AND status='COMPLETE' LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*(1-upkeepReduction):base;}}

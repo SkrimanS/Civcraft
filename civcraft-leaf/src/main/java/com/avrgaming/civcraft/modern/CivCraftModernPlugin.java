@@ -193,6 +193,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             townClaims.useLevels(townUpgrades.catalog(),org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(),"civcraft/data/civ.yml")).getInt("civ.min_distance",15));
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,upkeep::reconcileWonders,20L,20L);
             this.taxes=new com.avrgaming.civcraft.modern.town.TaxService(this,storage);
             new com.avrgaming.civcraft.modern.town.PlotService(this,storage,economy);
             this.biomeSurvey=new com.avrgaming.civcraft.modern.culture.BiomeSurveyService(this,storage);

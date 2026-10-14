@@ -6,6 +6,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UpkeepStoreTest {
+    @Test void administrativeCivilizationSkipsItsDebtDayCounterLikeOriginalDailyTimer()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("INSERT INTO administrative_civilizations VALUES(1)");
+            db.createStatement().execute("UPDATE civilizations SET debt=20,days_in_debt=5 WHERE id=1");db.createStatement().execute("UPDATE towns SET debt=20,days_in_debt=5 WHERE id=1");
+            UpkeepStore.daily(db,"day",0,List.of(new UpkeepStore.Charge(1,1,true,0)),Map.of(1L,0L));
+            assertEquals(5,value(db,"civilizations",1,"days_in_debt"));assertEquals(6,value(db,"towns",1,"days_in_debt"));assertEquals(200,value(db,"civilizations",1,"coins"));assertEquals(100,value(db,"towns",1,"coins"));
+        }
+    }
     void schema(Connection db)throws SQLException {
         db.createStatement().executeUpdate("CREATE TABLE towns(id INTEGER PRIMARY KEY,coins INTEGER)");
         db.createStatement().executeUpdate("CREATE TABLE civilizations(id INTEGER PRIMARY KEY,coins INTEGER)");

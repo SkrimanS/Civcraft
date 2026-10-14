@@ -1,0 +1,24 @@
+package com.avrgaming.civcraft.modern.wonder;
+import java.sql.*;
+import java.util.*;
+import com.avrgaming.civcraft.modern.town.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class ColossusLeechStoreTest {
+    Connection database()throws Exception {
+        var db=DriverManager.getConnection("jdbc:sqlite::memory:");try(var s=db.createStatement()) {
+            s.execute("PRAGMA foreign_keys=ON");s.execute("CREATE TABLE civilizations(id INTEGER PRIMARY KEY,coins INTEGER)");s.execute("CREATE TABLE towns(id INTEGER PRIMARY KEY,civ_id INTEGER,coins INTEGER)");s.execute("CREATE TABLE structure_builds(id INTEGER PRIMARY KEY,town_id INTEGER,structure_id TEXT,status TEXT,world TEXT,x INTEGER,y INTEGER,z INTEGER)");
+            for(int id=1;id<=6;id++){s.execute("INSERT INTO civilizations VALUES("+id+",1000)");s.execute("INSERT INTO towns VALUES("+id+","+id+",1000)");s.execute("INSERT INTO structure_builds VALUES("+id+","+id+",'s_townhall','COMPLETE','world',"+((id-1)*10)+",80,0)");}
+            s.execute("INSERT INTO towns VALUES(7,6,1000)");s.execute("INSERT INTO structure_builds VALUES(7,7,'s_townhall','COMPLETE','world',1,80,0)");s.execute("INSERT INTO structure_builds VALUES(100,1,'w_colossus','COMPLETE','world',0,80,0)");
+        }BankDailyStore.install(db);UpkeepStore.install(db);ColossusLeechStore.install(db);return db;
+    }
+    List<Long> targets(Connection db)throws Exception {var result=new ArrayList<Long>();try(var r=db.createStatement().executeQuery("SELECT civ_id FROM colossus_targets ORDER BY distance")){while(r.next())result.add(r.getLong(1));}return result;}
+    long balance(Connection db,long town)throws Exception {try(var r=db.createStatement().executeQuery("SELECT coins FROM towns WHERE id="+town)){r.next();return r.getLong(1);}}
+    @Test void nearestUsesAnyTownHallInEachCivilizationAndSelectsFourForeignOwners()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);assertEquals(List.of(6L,2L,3L,4L),targets(db));}}
+    @Test void neighborhoodIsSnapshottedUntilReloadLikeLegacyBuffInstallation()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);db.createStatement().execute("UPDATE structure_builds SET x=2 WHERE id=5");ColossusLeechStore.reconcile(db,false);assertEquals(List.of(6L,2L,3L,4L),targets(db));ColossusLeechStore.reconcile(db,true);assertEquals(List.of(6L,5L,2L,3L),targets(db));}}
+    @Test void tiesAndMissingOrOtherWorldHallsUseOriginalTreeMapBuckets()throws Exception {try(var db=database()){db.createStatement().execute("UPDATE structure_builds SET x=10 WHERE id=3");assertEquals(3,ColossusLeechStore.nearest(db,1,1).get(100.0));db.createStatement().execute("UPDATE structure_builds SET world='other' WHERE town_id IN (5,6,7)");assertEquals(6,ColossusLeechStore.nearest(db,1,1).get(Double.MAX_VALUE));db.createStatement().execute("DELETE FROM structure_builds WHERE id=1");assertTrue(ColossusLeechStore.nearest(db,1,1).isEmpty());}}
+    @Test void eligibleTownCreditsHostWithoutIncreasingOrDiscountingItsOwnBill()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);var charge=new UpkeepStore.Charge(2,2,false,500);var paid=UpkeepStore.daily(db,"day",0,List.of(charge),Map.of(),c->ColossusLeechStore.pay(db,"day",c,.02),()->{});assertEquals(500,paid.get(0).cost());assertEquals(500,balance(db,2));assertEquals(1010,balance(db,1));assertEquals(0,ColossusLeechStore.pay(db,"day",charge,.02));}}
+    @Test void zeroChargeOrOwnCivilizationDoesNotGenerateIncomeAndHostDebtIsRepaid()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);assertEquals(0,ColossusLeechStore.pay(db,"day",new UpkeepStore.Charge(1,1,false,500),.02));assertEquals(0,ColossusLeechStore.pay(db,"day",new UpkeepStore.Charge(2,2,false,0),.02));db.createStatement().execute("UPDATE towns SET debt=7 WHERE id=1");assertEquals(10,ColossusLeechStore.pay(db,"day",new UpkeepStore.Charge(2,2,false,500),.02));assertEquals(1003,balance(db,1));}}
+    @Test void destructionAndOwnershipTransferRemoveOldTargets()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);db.createStatement().execute("UPDATE towns SET civ_id=2 WHERE id=1");ColossusLeechStore.reconcile(db,false);assertFalse(targets(db).contains(2L));db.createStatement().execute("UPDATE structure_builds SET status='WAR_DESTROYED' WHERE id=100");ColossusLeechStore.reconcile(db,false);assertTrue(targets(db).isEmpty());}}
+    @Test void rollbackDoesNotLeaveMoneyOrHistoricalPayment()throws Exception {try(var db=database()){ColossusLeechStore.reconcile(db,true);db.setAutoCommit(false);var charge=new UpkeepStore.Charge(2,2,false,500);ColossusLeechStore.pay(db,"day",charge,.02);db.rollback();assertEquals(1000,balance(db,1));assertEquals(10,ColossusLeechStore.pay(db,"day",charge,.02));db.commit();}}
+}
