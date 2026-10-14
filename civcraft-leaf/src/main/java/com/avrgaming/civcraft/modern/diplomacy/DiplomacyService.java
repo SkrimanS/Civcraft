@@ -21,7 +21,7 @@ public final class DiplomacyService {
     private CivRecord named(String name)throws SQLException {
         long id=storage.query(db->{try(var s=db.prepareStatement("SELECT id FROM civilizations WHERE name=? COLLATE NOCASE")) {
             s.setString(1,name);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Цивилизация не найдена: "+name);return r.getLong(1);}
-        }});return storage.findCiv(id).orElseThrow();
+        }});return storage.findCiv(id).orElseThrow(()->new IllegalArgumentException("Цивилизация побеждена и не участвует в дипломатии: "+name));
     }
     private void tell(long civ,String text)throws SQLException {
         for(var player:plugin.getServer().getOnlinePlayers()) {

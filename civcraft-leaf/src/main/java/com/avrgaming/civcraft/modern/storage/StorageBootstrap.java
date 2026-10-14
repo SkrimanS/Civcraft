@@ -369,6 +369,11 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     private void migrateBootstrapSchema() throws SQLException {
+        boolean conquestAuto=connection.getAutoCommit();
+        if(conquestAuto)connection.setAutoCommit(false);
+        try{com.avrgaming.civcraft.modern.war.ConquestStore.install(connection);if(conquestAuto)connection.commit();}
+        catch(SQLException|RuntimeException failure){if(conquestAuto)connection.rollback();throw failure;}
+        finally{if(conquestAuto)connection.setAutoCommit(true);}
         addColumnIfMissing("civilizations", "tag", "TEXT NOT NULL DEFAULT ''");
         addColumnIfMissing("towns", "hammers_per_hour", "REAL NOT NULL DEFAULT 100.0");
         addColumnIfMissing("towns", "beakers_per_hour", "REAL NOT NULL DEFAULT 0");
@@ -739,7 +744,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     public synchronized Optional<CivRecord> findCiv(long id) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM civilizations WHERE id = ?")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM civilizations WHERE id = ? AND NOT EXISTS(SELECT 1 FROM civ_conquests WHERE civ_id=civilizations.id)")) {
             statement.setLong(1, id);
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? Optional.of(mapCiv(rs)) : Optional.empty();
