@@ -312,6 +312,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleBuild(Player player, String[] args) throws IOException, SQLException {
+        if(args.length>=2 && (args[1].equalsIgnoreCase("repairnearest") || args[1].equalsIgnoreCase("repair"))) {
+            plugin.buildingRepair().command(player,args.length>=3 && args[2].equalsIgnoreCase("yes"));return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("cancel")) {
             LegacyStructureService.CancelBuildResult result = legacyStructures.cancelActiveBuild(player);
             success(player, msg("commands.build.cancelled", "Стройка #{id} отменена. В казну города возвращено {refund} монет.", "id", result.build().id(), "refund", result.refund()));
@@ -544,7 +547,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         send(player, msg("commands.build.info.line1", "&6Постройка: &e{name} &7#{id}", "name", info.displayName(), "id", info.id()));
         String status=switch(info.status()) {
             case "COMPLETE"->"готово";case "QUEUED"->"в очереди";case "BUILDING"->"строится";
-            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";case "WAR_DESTROY_PENDING"->"военное разрушение";case "WAR_DESTROYED"->"разрушено войной";default->info.status();
+            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";case "WAR_DESTROY_PENDING"->"военное разрушение";case "WAR_DESTROYED"->"разрушено войной";case "WAR_REPAIR_PENDING"->"ремонтируется";default->info.status();
         };
         send(player, msg("commands.build.info.line2", "&7Город: {town}, состояние: {status}, стоимость: {cost}, чанк: {chunk_x},{chunk_z}", "town", info.townName() == null ? "-" : info.townName(), "status", status, "cost", info.cost(), "chunk_x", info.chunkX(), "chunk_z", info.chunkZ()));
         send(player, msg("commands.build.info.line3", "&7Положение: {world} {x} {y} {z}, нужно молотков: {hammers}, производство: {production}/час", "world", info.world(), "x", info.x(), "y", info.y(), "z", info.z(), "hammers", formatNumber(info.totalHammers()), "production", formatNumber(info.hammersPerHour())));
@@ -558,6 +561,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void helpBuild(Player player) {
+        send(player,"&e/b repairnearest [yes]&7 - ремонт ближайшего разрушенного здания за 50% стоимости");
         for (String line : lang.list("commands.help.build", List.of(
                 "&e/b <id> [y] [0|90|180|270]&7 - превью постройки",
                 "&e/b cancel&7 - отменить активную стройку города и вернуть 90% стоимости",
@@ -711,7 +715,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
         }
         if (List.of("build", "b").contains(primary) && args.length == 1) {
-            return List.of("list", "cancel", "demolish", "info", "time", "s_townhall", "s_capitol");
+            return List.of("list", "cancel", "demolish", "repairnearest", "repair", "info", "time", "s_townhall", "s_capitol");
         }
         if (List.of("research", "tech").contains(primary) && args.length == 1) {
             return List.of("list", "start", "status", "rate");

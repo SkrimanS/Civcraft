@@ -75,8 +75,8 @@ public final class BuildingRuinService implements Listener {
         }
     }
     private boolean locked(Block block) {
-        try{return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND b.status IN ('WAR_DESTROY_PENDING','WAR_DESTROYED')")) {
-            s.setString(1,block.getWorld().getName());s.setInt(2,block.getX());s.setInt(3,block.getY());s.setInt(4,block.getZ());try(var r=s.executeQuery()){return r.next();}
+        try{return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND b.status IN ('WAR_DESTROY_PENDING','WAR_DESTROYED','WAR_REPAIR_PENDING') UNION ALL SELECT 1 FROM building_repair_blocks p JOIN building_repair_jobs j ON j.id=p.job_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND j.state='PREPARED' LIMIT 1")) {
+            for(int offset:new int[]{0,4}){s.setString(1+offset,block.getWorld().getName());s.setInt(2+offset,block.getX());s.setInt(3+offset,block.getY());s.setInt(4+offset,block.getZ());}try(var r=s.executeQuery()){return r.next();}
         }});}catch(SQLException failure){plugin.getLogger().warning("Ruin barrier lookup failed: "+failure.getMessage());return true;}
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void place(BlockPlaceEvent e){if(locked(e.getBlock()))e.setCancelled(true);if(e instanceof BlockMultiPlaceEvent multi)for(var b:multi.getReplacedBlockStates())if(locked(b.getBlock()))e.setCancelled(true);}
