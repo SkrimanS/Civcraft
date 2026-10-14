@@ -11,7 +11,7 @@ public final class OccupationActionsStore {
     private static void peaceTime(Connection db,long now)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE state='ACTIVE' AND start_at<=?")){s.setLong(1,now);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Во время боевого периода освобождение запрещено.");}}
     }
-    private static long capital(Connection db,long mother)throws SQLException {
+    static long capital(Connection db,long mother)throws SQLException {
         try(var s=db.prepareStatement("SELECT COALESCE(c.capital_town_id,(SELECT b.town_id FROM structure_builds b JOIN towns t ON t.id=b.town_id LEFT JOIN town_conquests tc ON tc.town_id=t.id WHERE b.structure_id='s_capitol' AND b.status='COMPLETE' AND (t.civ_id=c.id OR tc.mother_civ=c.id) ORDER BY b.id LIMIT 1),(SELECT MIN(t.id) FROM towns t LEFT JOIN town_conquests tc ON tc.town_id=t.id WHERE t.civ_id=c.id OR tc.mother_civ=c.id)) FROM civilizations c WHERE c.id=?")) {
             s.setLong(1,mother);try(var r=s.executeQuery()){if(!r.next() || r.getObject(1)==null)throw new IllegalArgumentException("Исходная столица не найдена.");return r.getLong(1);}
         }

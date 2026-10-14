@@ -7,6 +7,7 @@ import java.sql.*;
 import java.util.*;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
+import org.bukkit.Bukkit;
 
 public final class DiplomacyService {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;
@@ -39,7 +40,7 @@ public final class DiplomacyService {
         }
     }
     public void tick() {
-        try{storage.transaction(db->{DiplomacyStore.expire(db,System.currentTimeMillis());return null;});}
+        try{storage.transaction(db->{long now=System.currentTimeMillis();DiplomacyStore.expire(db,now);com.avrgaming.civcraft.modern.war.CapitulationStore.expire(db,now);return null;});}
         catch(SQLException failure){plugin.getLogger().warning("Diplomatic request expiration failed: "+failure.getMessage());}
     }
     public void advisors(Player player,String[] args)throws SQLException {
@@ -55,7 +56,16 @@ public final class DiplomacyService {
         tell(civ.id(),target.name()+(add?" назначен советником цивилизации.":" снят с должности советника."));
     }
     public void command(Player player,String[] args)throws SQLException {
-        var civ=own(player);String action=args.length>2?args[2].toLowerCase(Locale.ROOT):"show";
+        String action=args.length>2?args[2].toLowerCase(Locale.ROOT):"show";
+        if(action.equals("capitulate")) {
+            if(args.length<4)throw new IllegalArgumentException("Использование: /civ dip capitulate <город> [yes]");
+            boolean confirmed=args.length>4 && args[args.length-1].equalsIgnoreCase("yes");String town=String.join(" ",Arrays.copyOfRange(args,3,confirmed?args.length-1:args.length));
+            var offer=storage.transaction(db->{com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),System.currentTimeMillis());return com.avrgaming.civcraft.modern.war.CapitulationStore.offer(db,town,player.getUniqueId());});
+            if(!confirmed){player.sendMessage(Component.text(offer.whole()?"Капитуляция удалит исходную цивилизацию "+offer.motherName()+" и её право на возврат всех захваченных городов.":"Капитуляция снимет право исходной цивилизации на возврат города "+offer.townName()+"."));player.sendMessage(Component.text("Владелец должен принять предложение. Подтвердите: /civ dip capitulate "+town+" yes"));return;}
+            var sent=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return com.avrgaming.civcraft.modern.war.CapitulationStore.request(db,town,player.getUniqueId(),now);});
+            tell(sent.offer().owner(),"Предложение капитуляции от "+sent.offer().motherName()+" ("+sent.offer().townName()+"). Ответьте /civ dip respond yes|no в течение 30 секунд.");player.sendMessage(Component.text("Предложение капитуляции отправлено владельцу."));return;
+        }
+        var civ=own(player);
         if(action.equals("liberate")) {
             if(args.length<4)throw new IllegalArgumentException("Использование: /civ dip liberate <город>");
             var result=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return com.avrgaming.civcraft.modern.war.OccupationActionsStore.liberate(db,String.join(" ",Arrays.copyOfRange(args,3,args.length)),player.getUniqueId(),now);});
@@ -63,7 +73,7 @@ public final class DiplomacyService {
         }
         if(action.equals("calendar")){plugin.warClock().info(player);return;}
         if(action.equals("help")) {
-            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip liberate <город>\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
+            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip liberate <город>\n/civ dip capitulate <город> [yes]\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
         }
         if(List.of("show","global","wars").contains(action)) {
             var selected=action.equals("show") && args.length>3?named(String.join(" ",Arrays.copyOfRange(args,3,args.length))):civ;
@@ -76,11 +86,18 @@ public final class DiplomacyService {
             if(action.equals("show") && selected.id()==civ.id()) {
                 var pending=storage.query(db->DiplomacyStore.incoming(db,civ.id(),System.currentTimeMillis()));
                 if(pending!=null)player.sendMessage(Component.text("Предложение от "+storage.findCiv(pending.from()).orElseThrow().name()+": "+pending.status().title()+". Ответ: /civ dip respond yes|no"));
+                var capitulation=storage.query(db->com.avrgaming.civcraft.modern.war.CapitulationStore.incoming(db,civ.id(),System.currentTimeMillis()));
+                if(capitulation!=null)player.sendMessage(Component.text("Капитуляция от "+capitulation.offer().motherName()+": /civ dip respond yes|no"));
             }return;
         }
         if(action.equals("respond")) {
             if(args.length!=4 || !List.of("yes","no","да","нет").contains(args[3].toLowerCase(Locale.ROOT)))throw new IllegalArgumentException("Ответ: /civ dip respond yes|no");
             boolean accept=args[3].equalsIgnoreCase("yes") || args[3].equalsIgnoreCase("да");
+            var capitulation=storage.query(db->com.avrgaming.civcraft.modern.war.CapitulationStore.incoming(db,civ.id(),System.currentTimeMillis()));
+            if(capitulation!=null) {
+                var answered=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return com.avrgaming.civcraft.modern.war.CapitulationStore.respond(db,civ.id(),player.getUniqueId(),accept,now);});
+                if(accept){plugin.governments().refreshQueuedProduction();plugin.getServer().broadcast(Component.text("Капитуляция "+answered.offer().motherName()+" принята. Города остаются у нынешних владельцев; статус захвата снят."));}else{tell(civ.id(),"Предложение капитуляции отклонено.");var sender=Bukkit.getPlayer(UUID.fromString(answered.actor()));if(sender!=null)sender.sendMessage(Component.text("Владелец отклонил капитуляцию."));}return;
+            }
             var request=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return DiplomacyStore.respond(db,civ.id(),player.getUniqueId(),accept,now);});
             String text=civ.name()+(accept?" приняла предложение: ":" отклонила предложение: ")+request.status().title()+".";
             tell(request.from(),text);tell(civ.id(),text);return;

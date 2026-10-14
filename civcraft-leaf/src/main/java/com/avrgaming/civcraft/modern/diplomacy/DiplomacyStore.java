@@ -13,6 +13,7 @@ public final class DiplomacyStore {
     public record Relation(long first,long second,Status status,Long aggressor,long changedAt) {}
     public record Request(long id,long from,long to,Status status,Status before,long expires) {}
     public static void install(Connection db)throws SQLException {
+        com.avrgaming.civcraft.modern.war.CapitulationStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS civ_advisors(civ_id INTEGER NOT NULL REFERENCES civilizations(id) ON DELETE CASCADE,resident_uuid TEXT NOT NULL REFERENCES residents(uuid) ON DELETE CASCADE,PRIMARY KEY(civ_id,resident_uuid))");
             s.executeUpdate("CREATE TRIGGER IF NOT EXISTS remove_civ_advisor_on_leave AFTER UPDATE OF civ_id ON residents WHEN OLD.civ_id IS NOT NEW.civ_id BEGIN DELETE FROM civ_advisors WHERE resident_uuid=NEW.uuid; END");
@@ -67,7 +68,7 @@ public final class DiplomacyStore {
         authority(db,from,actor);pair(from,to);
         if(!List.of(Status.NEUTRAL,Status.PEACE,Status.ALLY).contains(status))throw new IllegalArgumentException("Предложить можно союз, мир или нейтралитет.");
         var current=relation(db,from,to);if(current.status()==status)throw new IllegalArgumentException("Эти отношения уже установлены.");
-        expire(db,now);if(incoming(db,to,now)!=null)throw new IllegalArgumentException("У цивилизации уже есть дипломатическое предложение.");
+        expire(db,now);com.avrgaming.civcraft.modern.war.CapitulationStore.expire(db,now);if(incoming(db,to,now)!=null || com.avrgaming.civcraft.modern.war.CapitulationStore.incoming(db,to,now)!=null)throw new IllegalArgumentException("У цивилизации уже есть дипломатическое предложение.");
         long expires=Math.addExact(now,30000);
         try(var s=db.prepareStatement("INSERT INTO diplomacy_requests(from_civ,to_civ,status,before_status,expires_at) VALUES(?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
             s.setLong(1,from);s.setLong(2,to);s.setString(3,status.name());s.setString(4,current.status().name());s.setLong(5,expires);s.executeUpdate();
