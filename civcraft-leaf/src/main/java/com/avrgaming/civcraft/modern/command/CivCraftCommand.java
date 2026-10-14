@@ -544,7 +544,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         send(player, msg("commands.build.info.line1", "&6Постройка: &e{name} &7#{id}", "name", info.displayName(), "id", info.id()));
         String status=switch(info.status()) {
             case "COMPLETE"->"готово";case "QUEUED"->"в очереди";case "BUILDING"->"строится";
-            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";case "WAR_DESTROY_PENDING"->"военное разрушение";default->info.status();
+            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";case "WAR_DESTROY_PENDING"->"военное разрушение";case "WAR_DESTROYED"->"разрушено войной";default->info.status();
         };
         send(player, msg("commands.build.info.line2", "&7Город: {town}, состояние: {status}, стоимость: {cost}, чанк: {chunk_x},{chunk_z}", "town", info.townName() == null ? "-" : info.townName(), "status", status, "cost", info.cost(), "chunk_x", info.chunkX(), "chunk_z", info.chunkZ()));
         send(player, msg("commands.build.info.line3", "&7Положение: {world} {x} {y} {z}, нужно молотков: {hammers}, производство: {production}/час", "world", info.world(), "x", info.x(), "y", info.y(), "z", info.z(), "hammers", formatNumber(info.totalHammers()), "production", formatNumber(info.hammersPerHour())));

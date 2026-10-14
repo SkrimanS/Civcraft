@@ -27,7 +27,7 @@ public final class BuildingDamageService implements Listener {
             event.getPlayer().sendMessage(Component.text(health.name()+": здоровье "+health.hitpoints()+"/"+health.maximum()+"."));
             block.getWorld().playSound(block.getLocation(),Sound.BLOCK_ANVIL_USE,.2f,1);
             block.getWorld().spawnParticle(Particle.SMOKE,block.getLocation().add(.5,.5,.5),5,.2,.2,.2,0);
-            if(health.hitpoints()==0)event.getPlayer().sendMessage(Component.text("Здание потеряло здоровье. Физическое разрушение ещё разрабатывается."));
+            if(health.hitpoints()==0)event.getPlayer().sendMessage(Component.text("Здание потеряло всё здоровье. Обвал поставлен в очередь."));
         }catch(IllegalArgumentException failure){event.getPlayer().sendMessage(Component.text(failure.getMessage()));}
         catch(SQLException failure){event.setCancelled(true);plugin.getLogger().severe("Building damage failed: "+failure.getMessage());}
     }

@@ -156,6 +156,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
             this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
+            var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,ruins::tick,100L,1L);
             getServer().getScheduler().runTaskTimer(this,warClock::tick,20L,20L);
             getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);

@@ -8,7 +8,14 @@ public final class BuildingDamageStore {
     public record Health(long build,String name,int hitpoints,int maximum,String phase) {}
     public static void install(Connection db)throws SQLException {
         try(var s=db.createStatement()) {
-            s.executeUpdate("CREATE TABLE IF NOT EXISTS building_combat_health(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE,hitpoints INTEGER NOT NULL CHECK(hitpoints>=0),maximum INTEGER NOT NULL CHECK(maximum>0),phase TEXT NOT NULL CHECK(phase IN ('DAMAGED','DESTROY_PENDING')),CHECK(hitpoints<=maximum))");
+            String schema="CREATE TABLE IF NOT EXISTS building_combat_health(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE,hitpoints INTEGER NOT NULL CHECK(hitpoints>=0),maximum INTEGER NOT NULL CHECK(maximum>0),phase TEXT NOT NULL CHECK(phase IN ('DAMAGED','DESTROY_PENDING','DESTROYED')),CHECK(hitpoints<=maximum))";
+            s.executeUpdate(schema);
+            boolean migrated;try(var r=s.executeQuery("SELECT sql FROM sqlite_master WHERE type='table' AND name='building_combat_health'")){r.next();migrated=r.getString(1).contains("'DESTROYED'");}
+            if(!migrated) {
+                s.executeUpdate("ALTER TABLE building_combat_health RENAME TO building_health_before_ruins");s.executeUpdate(schema);
+                s.executeUpdate("INSERT INTO building_combat_health SELECT * FROM building_health_before_ruins");s.executeUpdate("DROP TABLE building_health_before_ruins");
+            }
+            BuildingRuinStore.install(db);
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_defeated_towns(war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),town_id INTEGER NOT NULL REFERENCES towns(id),conqueror INTEGER NOT NULL REFERENCES civilizations(id),PRIMARY KEY(war_start,town_id))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS building_damage_hits(id TEXT PRIMARY KEY,build_id INTEGER NOT NULL,war_start INTEGER NOT NULL,actor_uuid TEXT NOT NULL,before_hp INTEGER NOT NULL,after_hp INTEGER NOT NULL,at INTEGER NOT NULL)");
         }
