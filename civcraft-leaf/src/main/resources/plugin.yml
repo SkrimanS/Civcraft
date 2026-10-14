@@ -25,8 +25,8 @@ commands:
     permission: civcraft.use
   resident:
     aliases: [res]
-    description: Книга рецептов, потенциал местности и налоговый долг жителя.
-    usage: /<command> [book|biome|taxes|paydebt]
+    description: Рецепты, потенциал местности, налоги и уведомления дозора.
+    usage: /<command> [book|biome|taxes|paydebt|toggle showscout]
     permission: civcraft.use
   camp:
     aliases: [c]

@@ -68,6 +68,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.war.WarClockService warClock;
     private com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage;
     private com.avrgaming.civcraft.modern.war.ArrowTowerService arrowTowers;
+    private com.avrgaming.civcraft.modern.war.ScoutTowerService scouts;
+    public com.avrgaming.civcraft.modern.war.ScoutTowerService scouts(){return scouts;}
     public com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage(){return buildingDamage;}
     private com.avrgaming.civcraft.modern.war.BuildingRepairService buildingRepair;
     public com.avrgaming.civcraft.modern.war.BuildingRepairService buildingRepair(){return buildingRepair;}
@@ -175,6 +177,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
             this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
             this.arrowTowers=new com.avrgaming.civcraft.modern.war.ArrowTowerService(this,storage);
+            this.scouts=new com.avrgaming.civcraft.modern.war.ScoutTowerService(this,storage);
             var buildingRegeneration=new com.avrgaming.civcraft.modern.war.BuildingRegenerationService(this,storage);
             getServer().getScheduler().runTaskTimer(this,buildingRegeneration::tick,100L,100L);
             warPvp=new com.avrgaming.civcraft.modern.war.WarPvpService(this,storage);

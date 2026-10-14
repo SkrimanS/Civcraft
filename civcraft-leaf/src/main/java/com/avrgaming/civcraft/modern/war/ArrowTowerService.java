@@ -48,7 +48,7 @@ public final class ArrowTowerService implements Listener {
                 double firingRange=storage.query(db->TowerTargetStore.range(db,tower.town(),tesla?teslaRange:range,lighthouse));
                 Player target=null;Location turret=null;double nearest=Double.MAX_VALUE;long now=System.currentTimeMillis();
                 for(var player:world.getPlayers()) {
-                    if(player.isDead()||player.getGameMode()!=GameMode.SURVIVAL)continue;double distance=center.distanceSquared(player.getLocation());
+                    if(player.isDead()||player.getGameMode()!=GameMode.SURVIVAL||player.getMetadata("vanished").stream().anyMatch(value->value.asBoolean()))continue;double distance=center.distanceSquared(player.getLocation());
                     if(distance>=nearest||!TowerTargetStore.range(distance,tesla?teslaMinimum:minimum,firingRange)||!storage.query(db->TowerTargetStore.eligible(db,tower.town(),player.getUniqueId(),now)))continue;
                     Location firing=null;double closest=Double.MAX_VALUE;
                     for(var offset:shape.turrets()){var location=new Location(world,tower.x()+offset.getX(),tower.y()+offset.getY(),tower.z()+offset.getZ());double d=location.distanceSquared(player.getLocation());if(d<closest){closest=d;firing=location;}}
