@@ -34,6 +34,7 @@ public final class NativeLegacyItems implements Listener {
     private final List<NamespacedKey> recipeKeys=new ArrayList<>();
     private final Map<String,Color> leatherColors=new HashMap<>();
     private final Set<String> placeable=new HashSet<>();
+    private final Set<String> tradeable=new HashSet<>();
     private final Map<String,CombatProperties> combat=new HashMap<>();
     public record CombatProperties(double rangedAttack, double deathDamage) {}
     private final LegacyComponentSerializer colors=LegacyComponentSerializer.legacySection();
@@ -48,12 +49,13 @@ public final class NativeLegacyItems implements Listener {
     }
     public void reload() {
         for(NamespacedKey key:recipeKeys)Bukkit.removeRecipe(key);
-        recipeKeys.clear();definitions.clear();recipes.clear();leatherColors.clear();placeable.clear();combat.clear();
+        recipeKeys.clear();definitions.clear();recipes.clear();leatherColors.clear();placeable.clear();tradeable.clear();combat.clear();
         YamlConfiguration yaml=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/materials.yml"));
         List<Map<?,?>> raw=yaml.getMapList("materials");
         for(Map<?,?> item:raw) {
             String id=text(item.get("id"));
             if(id.isBlank())continue;
+            if(Boolean.parseBoolean(text(item.get("tradeable"))))tradeable.add(id);
             double attack=0,defense=0,rangedAttack=0,deathDamage=0;boolean unbreakable=false;
             if(item.get("components") instanceof List<?> components)for(Object value:components)if(value instanceof Map<?,?> component) {
                 switch(text(component.get("name"))) {
@@ -105,6 +107,7 @@ public final class NativeLegacyItems implements Listener {
     public List<Definition> list() {return List.copyOf(definitions.values());}
     public List<LegacyRecipe> recipes() {return List.copyOf(recipes);}
     public Optional<Definition> definition(ItemStack stack) {return Optional.ofNullable(definitions.get(id(stack)));}
+    public boolean tradeable(ItemStack stack) {return tradeable.contains(id(stack));}
     public CombatProperties combat(String id) {return combat.getOrDefault(id,new CombatProperties(0,0));}
     public ItemStack vanilla(int legacyId,int quantity) {return new ItemStack(materials.resolve(legacyId,0),quantity);}
     public ItemStack vanilla(int legacyId,int data,int quantity) {return new ItemStack(materials.resolve(legacyId,data),quantity);}

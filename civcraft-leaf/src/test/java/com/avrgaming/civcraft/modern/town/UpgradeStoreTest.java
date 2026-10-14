@@ -68,4 +68,22 @@ class UpgradeStoreTest {
         }
     }
     long coins(Connection db)throws SQLException {try(var row=db.createStatement().executeQuery("SELECT coins FROM towns WHERE id=1")){assertTrue(row.next());return row.getLong(1);}}
+    @Test void tradeShipUpgradePersistsSeparatelyFromShipProgressAndRollsBack()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'ti_trade_ship','COMPLETE')");
+            var upgrade=new UpgradeDefinition("ship2","Корабль II",1000,"set_tradeship_upgrade_level","2","","","ti_trade_ship","Корабль");
+            db.setAutoCommit(false);UpgradeStore.buy(db,1,mayor,upgrade,0);db.rollback();
+            assertEquals(20000,coins(db));assertEquals(1,com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,1));
+            UpgradeStore.buy(db,1,mayor,upgrade,0);db.commit();
+            assertEquals(19000,coins(db));assertEquals(2,com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,1));
+            var state=new com.avrgaming.civcraft.modern.trade.TradeShipProgress.State(3,137);
+            com.avrgaming.civcraft.modern.trade.TradeShipStore.progress(db,1,state);db.commit();
+            assertEquals(state,com.avrgaming.civcraft.modern.trade.TradeShipStore.progress(db,1));
+            assertEquals(2,com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,1));
+            db.createStatement().execute("DELETE FROM structure_builds WHERE id=1");db.commit();
+            assertEquals(new com.avrgaming.civcraft.modern.trade.TradeShipProgress.State(1,0),com.avrgaming.civcraft.modern.trade.TradeShipStore.progress(db,1));
+            assertEquals(2,com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,1));
+        }
+    }
 }
