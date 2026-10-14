@@ -15,10 +15,11 @@ public final class ArrowTowerService implements Listener {
     private final double range,minimum,power,stop,lighthouse;private final int damage;private final long period;
     private final double teslaRange,teslaMinimum;private final TeslaFireClock teslaClock;
     private final double cannonRange,cannonMinimum;private final TeslaFireClock cannonClock;private final CannonProjectileService cannonProjectiles;
+    private final double waterRange;
     private record Geometry(double x,double y,double z,List<org.bukkit.util.Vector> turrets) {}
     private record Tower(long id,long town,String type,String world,String path,int x,int y,int z,boolean admin) {}
     private static final class Flight {final Arrow arrow;final Player target;final long town,expires;Location aim;Flight(Arrow arrow,Player target,long town,long now){this.arrow=arrow;this.target=target;this.town=town;expires=now+5000;aim=target.getLocation().clone();}}
-    private final Map<String,Geometry> templates=new HashMap<>();private final Map<UUID,Flight> flights=new HashMap<>();
+    private final Map<String,List<Geometry>> templates=new HashMap<>();private final Map<UUID,Flight> flights=new HashMap<>();
     public ArrowTowerService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws java.sql.SQLException {
         this.plugin=plugin;this.storage=storage;identity=new NamespacedKey(plugin,"arrow-tower");
         var config=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
@@ -30,27 +31,34 @@ public final class ArrowTowerService implements Listener {
         cannonProjectiles=new CannonProjectileService(plugin,config.getInt("cannon_tower.speed",6),config.getInt("cannon_tower.damage",8),config.getInt("cannon_tower.splash",30));
         lighthouse=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()).getMapList("buffs").stream().filter(raw->"buff_great_lighthouse_tower_range".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing lighthouse tower range buff"));
         if(!Double.isFinite(lighthouse)||lighthouse<=0)throw new IllegalArgumentException("Invalid lighthouse range multiplier");
+        waterRange=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()).getMapList("buffs").stream().filter(raw->"buff_ingermanland_water_range".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Ingermanland water range buff"));
+        if(!Double.isFinite(waterRange)||waterRange<=0)throw new IllegalArgumentException("Invalid ship range multiplier");
         if(!Double.isFinite(range)||!Double.isFinite(minimum)||!Double.isFinite(power)||!Double.isFinite(stop)||range<=minimum||minimum<0||power<=0||stop<0||damage<1||period<1)throw new IllegalArgumentException("Invalid arrow tower settings");
         storage.transaction(db->{OutlawStore.install(db);return null;});plugin.getServer().getPluginManager().registerEvents(this,plugin);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::fire,period,period);plugin.getServer().getScheduler().runTaskTimer(plugin,this::steer,5L,5L);
         for(var world:plugin.getServer().getWorlds())for(var arrow:world.getEntitiesByClass(Arrow.class))if(arrow.getPersistentDataContainer().has(identity,PersistentDataType.LONG))arrow.remove();
     }
-    private Geometry geometry(String path)throws java.io.IOException {
-        var result=templates.get(path);if(result!=null)return result;
+    private List<Geometry> geometry(String path,boolean ship)throws java.io.IOException {
+        String key=path+(ship?"#ship":"#single");var result=templates.get(key);if(result!=null)return result;
         var template=new LegacyDefTemplateLoader().load(Path.of(path));var turrets=new ArrayList<org.bukkit.util.Vector>();
         for(var block:template.blocks())if(com.avrgaming.civcraft.modern.build.TowerMarker.firing(block.signLines()))turrets.add(new org.bukkit.util.Vector(block.x(),block.y(),block.z()));
         if(turrets.isEmpty())throw new java.io.IOException("Arrow tower template lacks /towerfire markers");
-        result=new Geometry(template.sizeX()/2,template.sizeY()/2,template.sizeZ()/2,List.copyOf(turrets));templates.put(path,result);return result;
+        var batteries=new ArrayList<Geometry>();batteries.add(new Geometry(template.sizeX()/2,template.sizeY()/2,template.sizeZ()/2,List.copyOf(turrets)));
+        if(ship)for(var marker:com.avrgaming.civcraft.modern.build.ShipBatteryPlan.groups(template)){var position=new org.bukkit.util.Vector(marker.x(),marker.y(),marker.z());batteries.add(new Geometry(marker.x(),marker.y(),marker.z(),List.of(position)));}
+        result=List.copyOf(batteries);templates.put(key,result);return result;
     }
     private void fire() {
         try {
-            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id IN ('s_arrowtower','s_teslatower','s_cannontower') AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("structure_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
+            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id IN ('s_arrowtower','s_teslatower','s_cannontower','s_arrowship','s_cannonship') AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("structure_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
             for(var tower:towers) {
                 if(storage.query(db->BuildingDamageStore.health(db,tower.id()).hitpoints())==0||(!tower.admin()&&!storage.query(db->HallValidationStore.state(db,tower.id()).valid())))continue;
-                var world=Bukkit.getWorld(tower.world());if(world==null)continue;var shape=geometry(tower.path());var center=new Location(world,tower.x()+shape.x(),tower.y()+shape.y(),tower.z()+shape.z());
+                var world=Bukkit.getWorld(tower.world());if(world==null)continue;
+                for(var shape:geometry(tower.path(),tower.type().equals("s_arrowship"))) {
+                var center=new Location(world,tower.x()+shape.x(),tower.y()+shape.y(),tower.z()+shape.z());
                 boolean tesla=tower.type().equals("s_teslatower");
-                boolean cannon=tower.type().equals("s_cannontower");
-                double firingRange=storage.query(db->TowerTargetStore.range(db,tower.town(),tesla?teslaRange:cannon?cannonRange:range,lighthouse));
+                boolean cannon=tower.type().equals("s_cannontower")||tower.type().equals("s_cannonship");boolean ship=tower.type().equals("s_arrowship")||tower.type().equals("s_cannonship");
+                double baseRange=tesla?teslaRange:cannon?cannonRange:range;
+                double firingRange=storage.query(db->ship?TowerTargetStore.waterRange(db,tower.town(),baseRange,waterRange):TowerTargetStore.range(db,tower.town(),baseRange,lighthouse));
                 Player target=null;Location turret=null;double nearest=Double.MAX_VALUE;long now=System.currentTimeMillis();
                 for(var player:world.getPlayers()) {
                     if(player.isDead()||player.getGameMode()!=GameMode.SURVIVAL||player.getMetadata("vanished").stream().anyMatch(value->value.asBoolean()))continue;double distance=center.distanceSquared(player.getLocation());
@@ -68,6 +76,7 @@ public final class ArrowTowerService implements Listener {
                 var targetLocation=target.getLocation().add(0,1,0);turret.add(2*Integer.compare(targetLocation.getBlockX(),turret.getBlockX()),0,2*Integer.compare(targetLocation.getBlockZ(),turret.getBlockZ()));
                 var direction=targetLocation.toVector().subtract(turret.toVector());if(direction.lengthSquared()==0)continue;direction.normalize();
                 var arrow=world.spawnArrow(turret,direction,(float)power,0);arrow.setVelocity(direction.multiply(power));arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);arrow.getPersistentDataContainer().set(identity,PersistentDataType.LONG,tower.id());flights.put(arrow.getUniqueId(),new Flight(arrow,target,tower.town(),now));
+                }
             }
         }catch(Exception failure){plugin.getLogger().severe("Arrow tower firing failed: "+failure.getMessage());}
     }

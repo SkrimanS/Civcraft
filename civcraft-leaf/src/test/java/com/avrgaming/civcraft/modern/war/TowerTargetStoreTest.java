@@ -22,6 +22,13 @@ class TowerTargetStoreTest {
             db.createStatement().execute("UPDATE structure_builds SET status='DEMOLISHED' WHERE id IN (3,4)");assertEquals(100,TowerTargetStore.range(db,2,100,1.5));
         }
     }
+    @Test void ingermanlandBoostsShipsAcrossCivilizationButNotFromForeignOrIncompleteWonder()throws Exception {
+        try(var db=fixture.database()) {
+            db.createStatement().execute("INSERT INTO towns VALUES(3,2)");db.createStatement().execute("INSERT INTO structure_builds VALUES(2,1,'w_grand_ship_ingermanland','COMPLETE',1,'Foreign'),(3,3,'w_grand_ship_ingermanland','BUILDING',1,'Own')");assertEquals(100,TowerTargetStore.waterRange(db,2,100,1.5));
+            db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE' WHERE id=3");assertEquals(150,TowerTargetStore.waterRange(db,2,100,1.5));assertEquals(100,TowerTargetStore.range(db,2,100,1.5));
+            db.createStatement().execute("UPDATE structure_builds SET status='DEMOLISHED' WHERE id=3");assertEquals(100,TowerTargetStore.waterRange(db,2,100,1.5));
+        }
+    }
     @Test void rangeUsesThreeDimensionalDistanceWithInclusiveOuterAndExclusiveInnerBoundary() {
         assertFalse(TowerTargetStore.range(25,5,100));assertTrue(TowerTargetStore.range(25.01,5,100));assertTrue(TowerTargetStore.range(10000,5,100));assertFalse(TowerTargetStore.range(10000.01,5,100));assertFalse(TowerTargetStore.range(Double.NaN,5,100));
     }
