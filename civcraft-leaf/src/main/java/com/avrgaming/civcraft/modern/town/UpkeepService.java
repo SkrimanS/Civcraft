@@ -54,7 +54,7 @@ public final class UpkeepService {
         for(var town:towns)civs.merge(town.civ(),town.capital()||administrative(db,town.civ())?0:extraTownCost,Math::addExact);
         var bonuses=new ArrayList<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit>();
         com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.reconcile(db,false);
-        var payments=UpkeepStore.daily(db,day,now,towns,civs,charge->com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.pay(db,day,charge,wonders.leechRate()),()->bonuses.addAll(com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.pay(db,day,now,wonders)));
+        var payments=UpkeepStore.daily(db,day,now,towns,civs,charge->com.avrgaming.civcraft.modern.wonder.ColossusLeechStore.pay(db,day,charge,wonders.leechRate()),()->bonuses.addAll(com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.pay(db,day,now,wonders,storage.capturedPenalty())));
         return new DailyResult(payments,List.copyOf(bonuses));
     }
     private static boolean administrative(Connection db,long civ)throws SQLException {try(var s=db.prepareStatement("SELECT 1 FROM administrative_civilizations WHERE civ_id=?")){s.setLong(1,civ);try(var r=s.executeQuery()){return r.next();}}}

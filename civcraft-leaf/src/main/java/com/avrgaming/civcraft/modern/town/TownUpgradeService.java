@@ -65,6 +65,7 @@ public final class TownUpgradeService {
             result.notices().forEach(plugin.taxes()::notify);
             for(var bonus:result.bonuses())for(var player:plugin.getServer().getOnlinePlayers()) {
                 var resident=storage.findResident(player.getUniqueId()).orElse(null);
+                if(bonus.type().equals("w_notre_dame")){if(resident!=null&&resident.townId()!=null&&resident.townId()==bonus.town())player.sendMessage(Component.text("Нотр-Дам: мирных городов — "+bonus.units()+". Доход до налога — "+bonus.coins()+" монет."));continue;}
                 if(resident!=null&&resident.civId()!=null&&resident.civId()==bonus.civ())player.sendMessage(Component.text((bonus.type().equals("w_colossus")?"Колосс: культурных участков — ":"Колизей: городов в мире — ")+bonus.units()+". Начислено цивилизации "+bonus.coins()+" монет."));
             }
             for(var payment:result.interest().entrySet()) {
