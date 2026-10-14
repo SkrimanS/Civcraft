@@ -940,6 +940,7 @@ public final class BuildQueue {
                 origin.getBlockY() + legacyBlock.y(),
                 origin.getBlockZ() + legacyBlock.z()
         );
+        if(TowerMarker.firing(legacyBlock.signLines())){block.setType(Material.AIR,false);return null;}
         if(ChestMarker.parse(legacyBlock.signLines()).isPresent()) {
             StructureChestBlocks.place(block,legacyBlock.legacyData());material=Material.CHEST;
         }else {

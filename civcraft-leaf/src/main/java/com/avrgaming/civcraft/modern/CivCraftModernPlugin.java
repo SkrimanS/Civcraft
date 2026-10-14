@@ -67,6 +67,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
     private com.avrgaming.civcraft.modern.war.WarClockService warClock;
     private com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage;
+    private com.avrgaming.civcraft.modern.war.ArrowTowerService arrowTowers;
     public com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage(){return buildingDamage;}
     private com.avrgaming.civcraft.modern.war.BuildingRepairService buildingRepair;
     public com.avrgaming.civcraft.modern.war.BuildingRepairService buildingRepair(){return buildingRepair;}
@@ -173,6 +174,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
             this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
+            this.arrowTowers=new com.avrgaming.civcraft.modern.war.ArrowTowerService(this,storage);
             var buildingRegeneration=new com.avrgaming.civcraft.modern.war.BuildingRegenerationService(this,storage);
             getServer().getScheduler().runTaskTimer(this,buildingRegeneration::tick,100L,100L);
             warPvp=new com.avrgaming.civcraft.modern.war.WarPvpService(this,storage);
@@ -275,6 +277,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if(arrowTowers!=null)arrowTowers.close();
         if (foundationItems != null) {
             foundationItems.shutdown();
         }

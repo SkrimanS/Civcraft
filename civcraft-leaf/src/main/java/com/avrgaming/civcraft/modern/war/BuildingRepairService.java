@@ -46,7 +46,7 @@ public final class BuildingRepairService {
             if(foreign)throw new IllegalArgumentException("Шаблон ремонта пересекает другое здание.");
             // Keep original inventories, signs and block entity data intact.
             if(block.getState() instanceof TileState)continue;
-            var b=defined.get(x+":"+y+":"+z);String data=b==null?"minecraft:air":LegacyBlockDataFactory.create(b).getAsString();
+            var b=defined.get(x+":"+y+":"+z);String data=b==null||TowerMarker.firing(b.signLines())?"minecraft:air":LegacyBlockDataFactory.create(b).getAsString();
             result.add(new BuildingRepairStore.Block(offer.world(),bx,by,bz,data));
         }return List.copyOf(result);
     }

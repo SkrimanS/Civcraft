@@ -40,6 +40,7 @@ public final class LegacyCombatListener implements Listener {
 
     @EventHandler(priority=EventPriority.LOW,ignoreCancelled=true)
     public void damage(EntityDamageByEntityEvent event) {
+        if(event.getDamager() instanceof Arrow towerArrow&&towerArrow.getPersistentDataContainer().has(new NamespacedKey(plugin,"arrow-tower"),PersistentDataType.LONG))return;
         try {
             if(event.getDamager() instanceof Player attacker) {
                 var weapon=items.definition(attacker.getInventory().getItemInMainHand()).orElse(null);
