@@ -157,6 +157,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.gameplayRestrictions.start();
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
         storage.setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses.load(getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()));
+        var gardenHealing=new com.avrgaming.civcraft.modern.wonder.HangingGardensHealing(this,storage);
+        getServer().getScheduler().runTaskTimer(this,gardenHealing::tick,20L,20L);
         try {
             this.governments=new com.avrgaming.civcraft.modern.government.GovernmentService(this,storage);
         } catch(java.sql.SQLException exception) {
