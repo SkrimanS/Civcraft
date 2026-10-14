@@ -83,6 +83,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public com.avrgaming.civcraft.modern.culture.CultureService culture(){return culture;}
     public com.avrgaming.civcraft.modern.government.GovernmentService governments(){return governments;}
     public LegacyStructureService legacyStructures(){return legacyStructures;}
+    private com.avrgaming.civcraft.modern.war.WarPvpService warPvp;
+    public com.avrgaming.civcraft.modern.war.WarPvpService warPvp(){return warPvp;}
 
 
     @Override
@@ -158,6 +160,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
             this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
+            warPvp=new com.avrgaming.civcraft.modern.war.WarPvpService(this,storage);
             var controlPoints=new com.avrgaming.civcraft.modern.war.ControlPointService(this,storage);
             getServer().getScheduler().runTaskTimer(this,controlPoints::tick,80L,20L);
             var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);

@@ -219,6 +219,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=2&&args[1].equalsIgnoreCase("outlaw")){plugin.warPvp().command(player,args);return;}
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("growth")) {
             var resident=game.resident(player);var town=game.town(resident).orElseThrow(()->new IllegalArgumentException("Вы не состоите в городе."));
             send(player,"&6Рост города &e"+town.name()+"&6: &e"+formatNumber(town.growth()));return;
@@ -239,6 +240,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&e/town set flattax [монеты], set taxrate [процент] &7- налоги жителей");
             send(player,"&e/res taxes, /res paydebt &7- ваш налоговый долг и его погашение");
             send(player,"&e/town info culture / info growth &7- культурная территория и рост");
+            send(player,"&e/town outlaw list|add|remove <ник> &7- преступники города");
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
@@ -710,6 +712,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if(primary.equals("ad"))primary="civadmin";
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes");
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("revolution"))return List.of("yes");
+        if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("outlaw"))return List.of("list","add","remove","addall","removeall","addallciv","removeallciv");
         if(List.of("town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("flattax","taxrate");
         if(List.of("civ","town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("upkeep"))return List.of("pay");
         if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {

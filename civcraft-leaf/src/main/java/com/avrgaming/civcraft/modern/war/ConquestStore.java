@@ -6,6 +6,7 @@ public final class ConquestStore {
     private ConquestStore() {}
     public record Result(long war,int towns,int civilizations,boolean casual) {}
     public static void install(Connection db)throws SQLException {
+        OutlawStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_results(war_start INTEGER PRIMARY KEY REFERENCES war_sessions(start_at),casual INTEGER NOT NULL,processed_at INTEGER NOT NULL)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS town_conquests(town_id INTEGER PRIMARY KEY REFERENCES towns(id) ON DELETE CASCADE,mother_civ INTEGER REFERENCES civilizations(id),changed_at INTEGER NOT NULL)");
@@ -29,6 +30,7 @@ public final class ConquestStore {
         try(var s=db.prepareStatement("UPDATE town_claims SET civ_id=? WHERE town_id=?")){s.setLong(1,winner);s.setLong(2,town);s.executeUpdate();}
         // Resident membership is explicit in the new storage; legacy derives it from the town.
         try(var s=db.prepareStatement("UPDATE residents SET civ_id=?,updated_at=? WHERE town_id=?")){s.setLong(1,winner);s.setLong(2,now);s.setLong(3,town);s.executeUpdate();}
+        OutlawStore.removeNewCivilizationMembers(db,town,winner);
         try(var s=db.prepareStatement("INSERT INTO war_town_transfers VALUES(?,?,?,?)")){s.setLong(1,war);s.setLong(2,town);s.setLong(3,old);s.setLong(4,winner);s.executeUpdate();}return true;
     }
     public static List<Result> processClosed(Connection db,boolean casual,long now)throws SQLException {
