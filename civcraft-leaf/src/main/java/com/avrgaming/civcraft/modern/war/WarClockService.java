@@ -17,6 +17,7 @@ public final class WarClockService {
         storage.transaction(db->{WarClockStore.install(db);return null;});
     }
     public WarCalendar calendar(){return calendar;}
+    public boolean casual(){return casual;}
     public void tick() {
         try {
             record Changes(java.util.List<WarClockStore.Event> events,java.util.List<ConquestStore.Result> results) {}
@@ -32,6 +33,6 @@ public final class WarClockService {
         long now=System.currentTimeMillis();Long end=storage.query(db->WarClockStore.activeEnd(db,now));boolean active=end!=null;
         player.sendMessage(Component.text("Военный календарь: "+(active?"боевой период активен":"боевой период не активен")+". Следующий запуск: "+format(calendar.next(Instant.ofEpochMilli(now)))+". Часовой пояс: "+calendar.zone()+"."));
         if(active)player.sendMessage(Component.text("Окончание текущего периода: "+format(Instant.ofEpochMilli(end))+"."));
-        player.sendMessage(Component.text("Период запускается при наличии объявленных войн. Объявление войны и захват ещё разрабатываются."));
+        player.sendMessage(Component.text("Объявить войну: /civ dip declare <цивилизация> WAR. Боевой период запускается при наличии объявленных войн."));
     }
 }

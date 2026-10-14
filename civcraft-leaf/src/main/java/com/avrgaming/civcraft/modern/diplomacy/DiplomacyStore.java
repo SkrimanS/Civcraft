@@ -95,7 +95,7 @@ public final class DiplomacyStore {
         }
         return relation(db,from,to);
     }
-    private static void change(Connection db,long first,long second,UUID actor,Status status,Long aggressor,long now)throws SQLException {
+    static void change(Connection db,long first,long second,UUID actor,Status status,Long aggressor,long now)throws SQLException {
         var before=relation(db,first,second);
         try(var s=db.prepareStatement("INSERT INTO diplomacy_relations VALUES(?,?,?,?,?) ON CONFLICT(first_civ,second_civ) DO UPDATE SET status=excluded.status,aggressor=excluded.aggressor,changed_at=excluded.changed_at")) {
             s.setLong(1,before.first());s.setLong(2,before.second());s.setString(3,status.name());if(aggressor==null)s.setNull(4,Types.INTEGER);else s.setLong(4,aggressor);s.setLong(5,now);s.executeUpdate();

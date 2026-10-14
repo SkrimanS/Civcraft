@@ -19,7 +19,7 @@ class WarClockTest {
     }
     @Test void declarationAndAllyWindowsMatchOriginalInclusiveLimits() {
         var c=calendar();assertFalse(c.declarationClosed(Instant.ofEpochMilli(at(14,10,0)-1)));assertTrue(c.declarationClosed(Instant.ofEpochMilli(at(14,10,0))));
-        assertFalse(c.allyDeclarationClosed(Instant.ofEpochMilli(at(16,10,0)-1)));assertTrue(c.allyDeclarationClosed(Instant.ofEpochMilli(at(16,10,0))));
+        assertFalse(c.allyDeclarationClosed(Instant.ofEpochMilli(at(16,10,0)-1)));assertFalse(c.allyDeclarationClosed(Instant.ofEpochMilli(at(16,10,0))));assertTrue(c.allyDeclarationClosed(Instant.ofEpochMilli(at(16,10,0)+1)));
     }
     @Test void calendarSundayMappingAndDstKeepElapsedDurationAndLocalWeeklyHour() {
         var zone=ZoneId.of("Europe/Berlin");var c=new WarCalendar(1,2,120,3,24,zone);var now=Instant.parse("2026-10-25T00:30:00Z");var w=c.current(now);

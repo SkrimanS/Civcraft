@@ -73,7 +73,7 @@ public final class DiplomacyService {
         }
         if(action.equals("calendar")){plugin.warClock().info(player);return;}
         if(action.equals("help")) {
-            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip liberate <город>\n/civ dip capitulate <город> [yes]\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
+            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip liberate <город>\n/civ dip capitulate <город> [yes]\n/civ dip declare <цивилизация> HOSTILE|WAR\n/civ advisor list|add|remove"));return;
         }
         if(List.of("show","global","wars").contains(action)) {
             var selected=action.equals("show") && args.length>3?named(String.join(" ",Arrays.copyOfRange(args,3,args.length))):civ;
@@ -106,7 +106,7 @@ public final class DiplomacyService {
         var other=named(String.join(" ",Arrays.copyOfRange(args,3,args.length-1)));
         DiplomacyStore.Status status;
         try{status=DiplomacyStore.Status.valueOf(args[args.length-1].toUpperCase(Locale.ROOT));}
-        catch(IllegalArgumentException invalid){throw new IllegalArgumentException("Отношения: ALLY, PEACE, NEUTRAL или HOSTILE.");}
+        catch(IllegalArgumentException invalid){throw new IllegalArgumentException("Отношения: ALLY, PEACE, NEUTRAL, HOSTILE или WAR.");}
         if(action.equals("request")) {
             storage.transaction(db->{long now=System.currentTimeMillis();var calendar=plugin.warClock().calendar();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,calendar,now);
                 if(status==DiplomacyStore.Status.ALLY && calendar.declarationClosed(java.time.Instant.ofEpochMilli(now)) && (com.avrgaming.civcraft.modern.war.WarClockStore.hasWars(db,civ.id()) || com.avrgaming.civcraft.modern.war.WarClockStore.hasWars(db,other.id())))throw new IllegalArgumentException("Слишком близко к боевому периоду: воюющая цивилизация не может заключить новый союз.");
@@ -114,9 +114,8 @@ public final class DiplomacyService {
             tell(other.id(),civ.name()+" предлагает: "+status.title()+". Ответьте /civ dip respond yes|no в течение 30 секунд.");
             tell(civ.id(),"Предложение отправлено цивилизации "+other.name()+".");
         }else {
-            if(status!=DiplomacyStore.Status.HOSTILE)throw new IllegalArgumentException("Сейчас доступно объявление HOSTILE. Объявление войны будет подключено вместе с военными правилами.");
-            storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return DiplomacyStore.hostile(db,civ.id(),other.id(),player.getUniqueId(),now);});
-            plugin.getServer().broadcast(Component.text(civ.name()+" объявила враждебность цивилизации "+other.name()+"."));
+            storage.transaction(db->WarDeclarationRules.declare(db,civ.id(),other.id(),player.getUniqueId(),status,plugin.warClock().calendar(),plugin.warClock().casual(),System.currentTimeMillis()));
+            plugin.getServer().broadcast(Component.text(civ.name()+(status==DiplomacyStore.Status.WAR?" объявила войну цивилизации ":" объявила враждебность цивилизации ")+other.name()+"."));
         }
     }
 }

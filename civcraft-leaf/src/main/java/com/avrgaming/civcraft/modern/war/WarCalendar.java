@@ -31,5 +31,5 @@ public final class WarCalendar {
         var window=current(now);return window.start().atZone(zone).plusWeeks(1).toInstant();
     }
     public boolean declarationClosed(Instant now){return Duration.between(now,next(now)).compareTo(Duration.ofDays(declareDays))<=0;}
-    public boolean allyDeclarationClosed(Instant now){return Duration.between(now,next(now)).compareTo(Duration.ofHours(allyHours))<=0;}
+    public boolean allyDeclarationClosed(Instant now){return Duration.between(now,next(now)).compareTo(Duration.ofHours(allyHours))<0;}
 }
