@@ -163,6 +163,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             warPvp=new com.avrgaming.civcraft.modern.war.WarPvpService(this,storage);
             var controlPoints=new com.avrgaming.civcraft.modern.war.ControlPointService(this,storage);
             getServer().getScheduler().runTaskTimer(this,controlPoints::tick,80L,20L);
+            var warRespawns=new com.avrgaming.civcraft.modern.war.WarRespawnService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,warRespawns::tick,100L,20L);
             var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);
             getServer().getScheduler().runTaskTimer(this,ruins::tick,100L,1L);
             buildingRepair=new com.avrgaming.civcraft.modern.war.BuildingRepairService(this,storage);
