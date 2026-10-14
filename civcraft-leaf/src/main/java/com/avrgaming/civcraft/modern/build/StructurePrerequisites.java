@@ -2,6 +2,10 @@ package com.avrgaming.civcraft.modern.build;
 import java.sql.*;
 public final class StructurePrerequisites {
     private StructurePrerequisites() {}
+    public static void requireUpgrade(Connection db,long town,String required,String name)throws SQLException {
+        if(required==null||required.isBlank())return;
+        try(var s=db.prepareStatement("SELECT 1 FROM town_upgrades WHERE town_id=? AND upgrade_id=?")){s.setLong(1,town);s.setString(2,required);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Для этой постройки требуется улучшение вашего города: "+name+".");}}
+    }
     public static void require(Connection db,long town,String required)throws SQLException {
         require(db,town,required,required);
     }

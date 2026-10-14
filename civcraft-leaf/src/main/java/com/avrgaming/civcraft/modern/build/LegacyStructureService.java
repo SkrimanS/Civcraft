@@ -1110,6 +1110,7 @@ public final class LegacyStructureService {
     }
 
     private void validateStructureLimit(TownRecord town, StructureDefinition definition) throws SQLException {
+        if(town!=null)storage.query(db->{StructureCapitalRules.require(db,town.id(),definition.id());return null;});
         if (definition.wonder()) {
             if (town == null) {
                 throw new IllegalArgumentException("Чудо света можно построить только в городе.");
@@ -1131,6 +1132,7 @@ public final class LegacyStructureService {
     }
 
     private void validateRequiredTechnologies(TownRecord town, StructureDefinition definition) throws SQLException {
+        if(town!=null){String required=definitions.requiredUpgrade(definition.id());String name=required;if(plugin instanceof CivCraftModernPlugin modern&&!required.isBlank())name=modern.townUpgrades().catalog().require(required).name();final String label=name;storage.query(db->{StructurePrerequisites.requireUpgrade(db,town.id(),required,label);return null;});}
         if(town!=null){String required=definitions.requiredStructure(definition.id());String name=definitions.find(required).map(StructureDefinition::displayName).orElse("обязательное здание");storage.query(db->{StructurePrerequisites.require(db,town.id(),required,name);return null;});}
         if (town == null || definition.requiredTechnology() == null || definition.requiredTechnology().isBlank()) {
             return;
