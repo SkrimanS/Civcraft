@@ -120,6 +120,7 @@ public final class NativeLegacyItems implements Listener {
         if(meta instanceof LeatherArmorMeta leather && leatherColors.containsKey(id))leather.setColor(leatherColors.get(id));
         List<Component> lore=new ArrayList<>();if(!definition.category().isBlank())lore.add(display(definition.category()));
         for(String line:definition.lore())lore.add(display(line));
+        if(id.equals("mat_found_warcamp"))lore.add(display("&eПравый клик: основать военный лагерь во время боя."));
         if(definition.attack()>0)lore.add(display("&cУрон: "+definition.attack()));
         if(definition.defense()>0)lore.add(display("&9Защита: "+definition.defense()));
         if(combat(id).rangedAttack()>0)lore.add(display("&cУрон стрел: "+combat(id).rangedAttack()));

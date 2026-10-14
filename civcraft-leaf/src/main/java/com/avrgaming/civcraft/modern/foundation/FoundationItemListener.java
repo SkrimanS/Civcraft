@@ -43,6 +43,7 @@ public final class FoundationItemListener implements Listener {
     private final Lang lang;
     private ModernCivCraftSettings settings;
     private final Map<UUID, PendingFoundation> pending = new ConcurrentHashMap<>();
+    public boolean hasPending(UUID player){return pending.containsKey(player);}
 
     public FoundationItemListener(JavaPlugin plugin, CivCraftGameService game, LegacyStructureService structures, TabPrefixService tabPrefixes, ModernCivCraftSettings settings) {
         this(plugin, game, structures, tabPrefixes, settings, new Lang(plugin));
@@ -72,6 +73,11 @@ public final class FoundationItemListener implements Listener {
         if(event.getClickedBlock()!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
                 && civ.trades()!=null && civ.trades().isPublicTradePoint(event.getClickedBlock()))return;
         Player player = event.getPlayer();
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.isWarCampPending(player.getUniqueId())) {
+            player.sendMessage(net.kyori.adventure.text.Component.text("Сначала подтвердите военный лагерь словом yes или отмените другим ответом."));
+            event.setCancelled(true);
+            return;
+        }
         if (pending.containsKey(player.getUniqueId())) {
             PendingFoundation current = pending.get(player.getUniqueId());
             player.sendMessage(component(current != null && current.awaitingPreview

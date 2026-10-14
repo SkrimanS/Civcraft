@@ -51,6 +51,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private SettlementMembershipService memberships;
     private CivCraftPlaceholderExpansion placeholderExpansion;
     private FoundationItemListener foundationItems;
+    private com.avrgaming.civcraft.modern.war.WarCampItemService warCampItems;
+    public boolean isWarCampPending(java.util.UUID player){return warCampItems!=null&&warCampItems.hasPending(player);}
+    public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
     private TabPrefixService tabPrefixes;
     private CampService campService;
     private CivCraftCampApi campApi;
@@ -176,6 +179,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             warCampPlacement=new com.avrgaming.civcraft.modern.war.WarCampPlacement(this,storage);
             var warCampWorld=new com.avrgaming.civcraft.modern.war.WarCampWorldService(this,storage);
             getServer().getScheduler().runTaskTimer(this,warCampWorld::tick,100L,1L);
+            warCampItems=new com.avrgaming.civcraft.modern.war.WarCampItemService(this,storage);
             getServer().getScheduler().runTaskTimer(this,warRespawns::tick,100L,20L);
             var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);
             getServer().getScheduler().runTaskTimer(this,ruins::tick,100L,1L);

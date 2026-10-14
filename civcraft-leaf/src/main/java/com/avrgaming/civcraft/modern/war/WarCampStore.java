@@ -21,6 +21,7 @@ public final class WarCampStore {
             s.executeUpdate("CREATE INDEX IF NOT EXISTS war_camp_block_coordinates ON war_camp_blocks(world,x,y,z)");
             boolean nbt=false;try(var r=s.executeQuery("PRAGMA table_info(war_camp_blocks)")){while(r.next())if(r.getString("name").equals("before_nbt"))nbt=true;}if(!nbt)s.executeUpdate("ALTER TABLE war_camp_blocks ADD COLUMN before_nbt TEXT");
         }
+        WarCampItemStore.install(db);
     }
     public static Authority authority(Connection db,UUID actor,long now)throws SQLException {
         long town,civ;
@@ -55,7 +56,7 @@ public final class WarCampStore {
         try(var s=db.prepareStatement("SELECT * FROM war_camps WHERE id=?")){s.setLong(1,id);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Camp not found");return new Camp(id,r.getLong("war_start"),r.getLong("civ_id"),r.getLong("town_id"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("state"));}}
     }
     public static Long nextPreparation(Connection db)throws SQLException {
-        try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM war_camps WHERE state='PREPARED' ORDER BY id LIMIT 1")){return r.next()?r.getLong(1):null;}
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT c.id FROM war_camps c WHERE c.state='PREPARED' AND NOT EXISTS(SELECT 1 FROM war_camp_item_receipts r WHERE r.camp_id=c.id AND r.state='PREPARED') ORDER BY c.id LIMIT 1")){return r.next()?r.getLong(1):null;}
     }
     public static void activate(Connection db,long id,long now)throws SQLException {
         var camp=camp(db,id);if(camp.state().equals("ACTIVE"))return;
