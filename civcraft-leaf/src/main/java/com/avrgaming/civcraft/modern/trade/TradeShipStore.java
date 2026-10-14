@@ -5,6 +5,7 @@ import java.sql.*;
 public final class TradeShipStore {
     private TradeShipStore() {}
     public static void install(Connection db) throws SQLException {
+        TradeShipIncomeStore.install(db);
         try (var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS town_trade_ship_settings(town_id INTEGER PRIMARY KEY REFERENCES towns(id) ON DELETE CASCADE,upgrade_level INTEGER NOT NULL DEFAULT 1 CHECK(upgrade_level BETWEEN 1 AND 6))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS trade_ship_progress(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE,level INTEGER NOT NULL DEFAULT 1 CHECK(level BETWEEN 1 AND 10),trade_count INTEGER NOT NULL DEFAULT 0 CHECK(trade_count>=0))");
