@@ -20,6 +20,7 @@ class HallValidationTest {
             assertFalse(HallValidationStore.state(db,1).validated());HallValidationStore.save(db,1,true,"",1000);db.commit();assertTrue(HallValidationStore.state(db,1).valid());
             db.createStatement().execute("INSERT INTO towns VALUES(3,2)");db.commit();assertFalse(HallValidationStore.state(db,1).valid());assertTrue(HallValidationStore.state(db,1).reason().contains("без ратуши"));
             db.createStatement().execute("INSERT INTO structure_builds VALUES(2,3,'s_townhall','BUILDING',20,'Hall')");db.commit();assertTrue(HallValidationStore.state(db,1).valid());
+            db.createStatement().execute("UPDATE structure_builds SET status='DEMOLISHED' WHERE id=2");db.commit();assertFalse(HallValidationStore.state(db,1).valid());db.createStatement().execute("UPDATE structure_builds SET status='BUILDING' WHERE id=2");db.commit();
             db.createStatement().execute("UPDATE civilizations SET capital_town_id=3 WHERE id=2");db.commit();assertFalse(HallValidationStore.state(db,1).valid());
             db.createStatement().execute("INSERT INTO town_conquests VALUES(2,1,1000)");db.commit();assertTrue(HallValidationStore.state(db,1).valid());
         }
@@ -46,6 +47,33 @@ class HallValidationTest {
             db.createStatement().execute("UPDATE civilizations SET capital_town_id=2 WHERE id=1");db.commit();assertFalse(HallValidationStore.capitalValid(db,1));
             db.createStatement().execute("UPDATE civilizations SET capital_town_id=1 WHERE id=1");db.createStatement().execute("DELETE FROM structure_builds WHERE id=9000");db.commit();assertFalse(HallValidationStore.capitalValid(db,1));
             assertThrows(IllegalArgumentException.class,()->ControlPointStore.hit(db,"missing",fixture.f.attacker,fixture.first,1,150));db.rollback();assertEquals(20,ControlPointStore.health(db,fixture.first,100));
+        }
+    }
+    @Test void anyTownMemberCanRequestNearestOwnBuildingButNotForeignBuildingsOrDuringBattle()throws Exception {
+        try(var db=database()) {
+            for(String column:new String[]{"world TEXT","x INTEGER","y INTEGER","z INTEGER"})db.createStatement().execute("ALTER TABLE structure_builds ADD COLUMN "+column);
+            db.createStatement().execute("UPDATE structure_builds SET world='world',x=0,y=80,z=0 WHERE id=1");db.createStatement().execute("UPDATE structure_builds SET world='world',x=100,y=80,z=0 WHERE id=9000");db.commit();
+            assertThrows(IllegalArgumentException.class,()->HallValidationStore.nearestForManual(db,fixture.f.owner,"world",0,80,0,150));db.rollback();
+            assertEquals(1,HallValidationStore.nearestForManual(db,fixture.f.owner,"world",0,80,0,200));
+            assertThrows(IllegalArgumentException.class,()->HallValidationStore.nearestForManual(db,fixture.f.attacker,"world",0,80,0,200));assertThrows(IllegalArgumentException.class,()->HallValidationStore.nearestForManual(db,fixture.f.homeless,"world",0,80,0,200));
+            db.createStatement().execute("UPDATE residents SET town_id=2,civ_id=2 WHERE uuid='"+fixture.f.homeless+"'");db.commit();assertEquals(1,HallValidationStore.nearestForManual(db,fixture.f.homeless,"world",0,80,0,200));
+            assertEquals(9000,HallValidationStore.nearestForManual(db,fixture.f.attacker,"world",100,80,0,200));
+        }
+    }
+    @Test void manualValidationCanCheckConstructionButNeverRevivesADemolishedBuilding()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("UPDATE structure_builds SET status='BUILDING' WHERE id=1");HallValidationStore.saveManual(db,1,false,"No foundation",1000);db.commit();assertFalse(HallValidationStore.state(db,1).valid());
+            HallValidationStore.saveManual(db,1,true,"",2000);db.commit();assertTrue(HallValidationStore.state(db,1).valid());
+            db.createStatement().execute("UPDATE structure_builds SET status='DEMOLISHED' WHERE id=1");HallValidationStore.saveManual(db,1,false,"stale result",3000);db.commit();assertEquals(2000,HallValidationStore.state(db,1).checkedAt());
+        }
+    }
+    @Test void nearestBuildingUsesTemplateCenterAndCornerHeightLikeTheOriginal()throws Exception {
+        try(var db=database()) {
+            for(String column:new String[]{"world TEXT","x INTEGER","y INTEGER","z INTEGER"})db.createStatement().execute("ALTER TABLE structure_builds ADD COLUMN "+column);
+            db.createStatement().execute("UPDATE structure_builds SET world='world',x=0,y=80,z=0 WHERE id=1");db.createStatement().execute("UPDATE structure_builds SET world='world',x=45,y=80,z=0 WHERE id=9000");
+            HallValidationStore.geometry(db,1,100,1);HallValidationStore.geometry(db,9000,2,1);db.commit();assertEquals(1,HallValidationStore.nearestForManual(db,fixture.f.owner,"world",50,80,0,200));
+            db.createStatement().execute("INSERT INTO structure_builds(id,town_id,structure_id,status,world,x,y,z) VALUES(9002,NULL,'camp','COMPLETE','world',51,80,0)");db.commit();assertEquals(1,HallValidationStore.nearestForManual(db,fixture.f.owner,"world",51.5,80,0,200));
+            assertThrows(IllegalArgumentException.class,()->HallValidationStore.geometry(db,1,0,1));db.rollback();
         }
     }
 }

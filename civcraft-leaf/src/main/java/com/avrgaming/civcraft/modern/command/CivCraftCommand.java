@@ -319,6 +319,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleBuild(Player player, String[] args) throws IOException, SQLException {
+        if(args.length>=2&&List.of("validatenearest","validate").contains(args[1].toLowerCase(Locale.ROOT))){plugin.hallValidation().request(player);return;}
         if(args.length>=2 && (args[1].equalsIgnoreCase("repairnearest") || args[1].equalsIgnoreCase("repair"))) {
             plugin.buildingRepair().command(player,args.length>=3 && args[2].equalsIgnoreCase("yes"));return;
         }
@@ -548,6 +549,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendStructureInfo(Player player, StorageBootstrap.StructureBuildView info) {
+        try{send(player,plugin.hallValidation().description(info.id()));}catch(SQLException failure){plugin.getLogger().warning("Validation information failed: "+failure.getMessage());}
         sendConsumptionInfo(player,info);
         try{if(plugin.buildingDamage()!=null)plugin.buildingDamage().description(info.id()).ifPresent(text->send(player,text));}
         catch(SQLException failure){plugin.getLogger().warning("Building health information failed: "+failure.getMessage());}
@@ -569,6 +571,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
 
     private void helpBuild(Player player) {
         send(player,"&e/b repairnearest [yes]&7 - ремонт ближайшего разрушенного здания за 50% стоимости");
+        send(player,"&e/b validatenearest&7 - проверка опоры ближайшего здания своего города");
         for (String line : lang.list("commands.help.build", List.of(
                 "&e/b <id> [y] [0|90|180|270]&7 - превью постройки",
                 "&e/b cancel&7 - отменить активную стройку города и вернуть 90% стоимости",
@@ -724,7 +727,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
         }
         if (List.of("build", "b").contains(primary) && args.length == 1) {
-            return List.of("list", "cancel", "demolish", "repairnearest", "repair", "info", "time", "s_townhall", "s_capitol");
+            return List.of("list", "cancel", "demolish", "repairnearest", "repair", "validatenearest", "validate", "info", "time", "s_townhall", "s_capitol");
         }
         if (List.of("research", "tech").contains(primary) && args.length == 1) {
             return List.of("list", "start", "status", "rate");
