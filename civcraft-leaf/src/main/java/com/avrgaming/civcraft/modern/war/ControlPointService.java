@@ -11,12 +11,14 @@ import org.bukkit.block.TileState;
 import org.bukkit.configuration.file.YamlConfiguration;
 public final class ControlPointService {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;
-    private final int capitolHp,hallHp;private final Set<Long> loaded=new HashSet<>();private long lastWarning;
+    private final int capitolHp,hallHp,chichenHp;private final Set<Long> loaded=new HashSet<>();private long lastWarning;
     public ControlPointService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         var config=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
         capitolHp=config.getInt("war.control_block_hitpoints_capitol",100);hallHp=config.getInt("war.control_block_hitpoints_townhall",20);
         if(capitolHp<1 || hallHp<1)throw new IllegalArgumentException("Control point health must be positive");
+        var buffs=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile());
+        chichenHp=buffs.getMapList("buffs").stream().filter(b->"buff_chichen_itza_cp_bonus_hp".equals(b.get("id"))).mapToInt(b->(int)Double.parseDouble(b.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Chichen Itza control health buff"));
         storage.transaction(db->{ControlPointStore.install(db);return null;});
     }
     private void discover()throws Exception {
@@ -40,10 +42,11 @@ public final class ControlPointService {
     public void tick() {
         try {
             discover();
+            storage.transaction(db->{ControlPointBonusStore.reconcile(db,chichenHp,System.currentTimeMillis());return null;});
             record Visible(ControlPointStore.Point point,int hp) {}
             var points=storage.query(db->{var out=new ArrayList<Visible>();long now=System.currentTimeMillis();
                 Long war=null;try(var s=db.prepareStatement("SELECT start_at FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>? LIMIT 1")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(r.next())war=r.getLong(1);}}
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT p.* FROM war_control_points p JOIN structure_builds b ON b.id=p.build_id WHERE b.status='COMPLETE'")){while(r.next()){var p=new ControlPointStore.Point(r.getLong("build_id"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getInt("maximum"),r.getString("base"));out.add(new Visible(p,war==null?p.maximum():ControlPointStore.health(db,p,war)));}}return out;});
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT p.* FROM war_control_points p JOIN structure_builds b ON b.id=p.build_id WHERE b.status='COMPLETE'")){while(r.next()){var p=ControlPointStore.point(db,r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"));out.add(new Visible(p,war==null?p.maximum():ControlPointStore.health(db,p,war)));}}return out;});
             for(var v:points) {
                 var p=v.point();var w=Bukkit.getWorld(p.world());if(w==null)continue;
                 var base=w.getBlockAt(p.x(),p.y()-1,p.z());var top=w.getBlockAt(p.x(),p.y(),p.z());

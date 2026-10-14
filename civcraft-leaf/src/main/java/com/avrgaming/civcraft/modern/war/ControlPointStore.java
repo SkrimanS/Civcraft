@@ -9,6 +9,7 @@ public final class ControlPointStore {
     public static void install(Connection db)throws SQLException {
         ConquestStore.install(db);
         HallValidationStore.install(db);
+        ControlPointBonusStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_control_points(build_id INTEGER NOT NULL REFERENCES structure_builds(id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,maximum INTEGER NOT NULL CHECK(maximum>0),base TEXT NOT NULL,PRIMARY KEY(world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_control_health(war_start INTEGER NOT NULL REFERENCES war_sessions(start_at),world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,hitpoints INTEGER NOT NULL CHECK(hitpoints>=0),PRIMARY KEY(war_start,world,x,y,z),FOREIGN KEY(world,x,y,z) REFERENCES war_control_points(world,x,y,z) ON DELETE CASCADE)");
@@ -23,7 +24,7 @@ public final class ControlPointStore {
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO war_control_points VALUES(?,?,?,?,?,?,?)")) {
             s.setLong(1,p.build());s.setString(2,p.world());s.setInt(3,p.x());s.setInt(4,p.y());s.setInt(5,p.z());s.setInt(6,p.maximum());s.setString(7,p.base());s.executeUpdate();
         }
-        var registered=point(db,p.world(),p.x(),p.y(),p.z());if(!registered.equals(p))throw new SQLException("Control point definition conflict");
+        var registered=point(db,p.world(),p.x(),p.y(),p.z());var expected=new Point(p.build(),p.world(),p.x(),p.y(),p.z(),Math.addExact(p.maximum(),ControlPointBonusStore.bonus(db,p.build())),p.base());if(!registered.equals(expected))throw new SQLException("Control point definition conflict");
         for(int dy:new int[]{-1,0})try(var s=db.prepareStatement("INSERT INTO protected_blocks(world,x,y,z,build_id,material) VALUES(?,?,?,?,?,?) ON CONFLICT(world,x,y,z) DO UPDATE SET material=excluded.material WHERE protected_blocks.build_id=excluded.build_id")) {
             s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y()+dy);s.setInt(4,p.z());s.setLong(5,p.build());s.setString(6,dy==0?"OBSIDIAN":p.base());s.executeUpdate();
             try(var check=db.prepareStatement("SELECT build_id FROM protected_blocks WHERE world=? AND x=? AND y=? AND z=?")){check.setString(1,p.world());check.setInt(2,p.x());check.setInt(3,p.y()+dy);check.setInt(4,p.z());try(var r=check.executeQuery()){if(!r.next() || r.getLong(1)!=p.build())throw new SQLException("Control point overlaps another building");}}
@@ -31,7 +32,7 @@ public final class ControlPointStore {
     }
     public static Point point(Connection db,String world,int x,int y,int z)throws SQLException {
         try(var s=db.prepareStatement("SELECT * FROM war_control_points WHERE world=? AND x=? AND y=? AND z=?")) {
-            s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){return r.next()?new Point(r.getLong("build_id"),world,x,y,z,r.getInt("maximum"),r.getString("base")):null;}
+            s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){return r.next()?new Point(r.getLong("build_id"),world,x,y,z,Math.addExact(r.getInt("maximum"),ControlPointBonusStore.bonus(db,r.getLong("build_id"))),r.getString("base")):null;}
         }
     }
     public static int health(Connection db,Point point,long war)throws SQLException {
