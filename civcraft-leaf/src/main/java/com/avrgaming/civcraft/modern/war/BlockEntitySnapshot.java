@@ -14,4 +14,14 @@ public final class BlockEntitySnapshot {
             return encoded;
         }catch(ReflectiveOperationException failure){throw new IllegalStateException("Не удалось сохранить полные данные блока "+state.getType()+".",failure);}
     }
+    public static void restore(BlockState state,String encoded) {
+        if(encoded==null)return;
+        if(!(state instanceof TileState))throw new IllegalStateException("Snapshot target is not a block entity");
+        try {
+            Class<?> parser=Class.forName("net.minecraft.nbt.TagParser"),compound=Class.forName("net.minecraft.nbt.CompoundTag");
+            Object tag=parser.getMethod("parseCompoundFully",String.class).invoke(null,encoded);
+            state.getClass().getMethod("loadData",compound).invoke(state,tag);
+            if(!state.update(true,false))throw new IllegalStateException("Block entity snapshot update rejected");
+        }catch(ReflectiveOperationException failure){throw new IllegalStateException("Не удалось восстановить полные данные блока "+state.getType()+".",failure);}
+    }
 }

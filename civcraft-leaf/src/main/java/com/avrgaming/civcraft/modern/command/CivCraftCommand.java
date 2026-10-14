@@ -393,6 +393,13 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             var plan=plugin.warCampPlacement().plan(player);var origin=plan.origin();
             send(sender,"Место военного лагеря проверено: "+origin.x()+" "+origin.y()+" "+origin.z()+", направление "+origin.direction()+". Блоков: "+plan.blocks().size()+", контрольных точек: "+plan.markers().stream().filter(m->m.kind().equals("control")).count()+", респаун-точек: "+plan.markers().stream().filter(m->m.kind().equals("respawn")).count()+", блоков с NBT: "+plan.blocks().stream().filter(b->b.beforeNbt()!=null).count()+".");return;
         }
+        if(args.length==2&&args[1].equalsIgnoreCase("warcampprepare")) {
+            if(!(sender instanceof Player player))throw new IllegalArgumentException("Подготовку выполняет игрок.");
+            var plan=plugin.warCampPlacement().plan(player);var origin=plan.origin();
+            var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
+            var camp=plugin.storage().transaction(db->{var created=com.avrgaming.civcraft.modern.war.WarCampStore.prepare(db,java.util.UUID.randomUUID().toString(),player.getUniqueId(),player.getWorld().getName(),origin.x(),origin.y(),origin.z(),plan.blocks(),config.getInt("warcamp.max",3),config.getInt("warcamp.rebuild_timeout",30),System.currentTimeMillis());for(var point:plan.markers())com.avrgaming.civcraft.modern.war.WarCampStore.point(db,created.id(),point.kind(),player.getWorld().getName(),point.x(),point.y()+(point.kind().equals("control")?1:0),point.z(),point.kind().equals("control")?config.getInt("warcamp.control_block_hitpoints",20):0);return created;});
+            send(sender,"Тестовая подготовка военного лагеря #"+camp.id()+" записана. Предмет не расходуется.");return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("item")) {
             if (args.length < 5 || !args[2].equalsIgnoreCase("give")) {
                 send(sender, "&e/civadmin item give <ник> <ID предмета> [количество]");
@@ -751,7 +758,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 return List.of();
             }
             if (args.length == 1) {
-                return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds");
+                return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds", "item", "warcampcheck", "warcampprepare");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("recovery")) {
                 return List.of("status");

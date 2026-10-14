@@ -42,6 +42,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private ModernCivCraftSettings settings;
     private IntegrationRegistry integrations;
     private StorageBootstrap storage;
+    public StorageBootstrap storage(){return storage;}
     private CivCraftEconomyService economy;
     private CivCraftGameService game;
     private LegacyStructureService legacyStructures;
@@ -173,6 +174,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,hallValidation::tick,100L,1L);
             warRespawns=new com.avrgaming.civcraft.modern.war.WarRespawnService(this,storage);
             warCampPlacement=new com.avrgaming.civcraft.modern.war.WarCampPlacement(this,storage);
+            var warCampWorld=new com.avrgaming.civcraft.modern.war.WarCampWorldService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,warCampWorld::tick,100L,1L);
             getServer().getScheduler().runTaskTimer(this,warRespawns::tick,100L,20L);
             var ruins=new com.avrgaming.civcraft.modern.war.BuildingRuinService(this,storage);
             getServer().getScheduler().runTaskTimer(this,ruins::tick,100L,1L);

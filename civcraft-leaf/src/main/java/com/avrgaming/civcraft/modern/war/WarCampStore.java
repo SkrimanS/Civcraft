@@ -18,6 +18,7 @@ public final class WarCampStore {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_cooldowns(civ_id INTEGER PRIMARY KEY REFERENCES civilizations(id) ON DELETE CASCADE,built_at INTEGER NOT NULL)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_points(camp_id INTEGER NOT NULL REFERENCES war_camps(id) ON DELETE CASCADE,kind TEXT NOT NULL CHECK(kind IN ('respawn','control')),world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,maximum INTEGER NOT NULL,hitpoints INTEGER NOT NULL,PRIMARY KEY(camp_id,kind,world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS war_camp_hits(id TEXT PRIMARY KEY,camp_id INTEGER NOT NULL REFERENCES war_camps(id),actor TEXT NOT NULL,before_hp INTEGER NOT NULL,after_hp INTEGER NOT NULL,at INTEGER NOT NULL)");
+            s.executeUpdate("CREATE INDEX IF NOT EXISTS war_camp_block_coordinates ON war_camp_blocks(world,x,y,z)");
             boolean nbt=false;try(var r=s.executeQuery("PRAGMA table_info(war_camp_blocks)")){while(r.next())if(r.getString("name").equals("before_nbt"))nbt=true;}if(!nbt)s.executeUpdate("ALTER TABLE war_camp_blocks ADD COLUMN before_nbt TEXT");
         }
     }
@@ -52,6 +53,9 @@ public final class WarCampStore {
     }
     public static Camp camp(Connection db,long id)throws SQLException {
         try(var s=db.prepareStatement("SELECT * FROM war_camps WHERE id=?")){s.setLong(1,id);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Camp not found");return new Camp(id,r.getLong("war_start"),r.getLong("civ_id"),r.getLong("town_id"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("state"));}}
+    }
+    public static Long nextPreparation(Connection db)throws SQLException {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM war_camps WHERE state='PREPARED' ORDER BY id LIMIT 1")){return r.next()?r.getLong(1):null;}
     }
     public static void activate(Connection db,long id,long now)throws SQLException {
         var camp=camp(db,id);if(camp.state().equals("ACTIVE"))return;

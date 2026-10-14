@@ -36,7 +36,7 @@ public final class WarCampPlacement {
         var before=new HashMap<Position,String>();var nbt=new HashMap<Position,String>();
         for(var block:definition.blocks()) {
             var position=new Position(origin.x()+block.x(),origin.y()+block.y(),origin.z()+block.z());var current=world.getBlockAt(position.x(),position.y(),position.z());
-            if(current.getType()==Material.CHEST||current.getType()==Material.TRAPPED_CHEST)throw new IllegalArgumentException("Сундук мешает размещению военного лагеря: "+position.x()+","+position.y()+","+position.z()+".");
+            if(current.getType()==Material.CHEST)throw new IllegalArgumentException("Сундук мешает размещению военного лагеря: "+position.x()+","+position.y()+","+position.z()+".");
             String saved=current.getBlockData().getAsString();before.put(position,saved);nbt.put(position,BlockEntitySnapshot.read(current.getState()));
             // WarCamp skips command/literal signs while placing ordinary template blocks.
             if(!block.signLines().isEmpty()){after.put(position,saved);String command=block.signLines().getFirst().trim().toLowerCase(Locale.ROOT);if(Set.of("/respawn","/control").contains(command))markers.add(new Marker(command.substring(1),position.x(),position.y(),position.z()));}
