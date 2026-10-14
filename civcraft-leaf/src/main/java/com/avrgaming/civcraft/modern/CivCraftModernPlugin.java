@@ -156,6 +156,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.gameplayRestrictions = new GameplayRestrictionService(this, settings);
         this.gameplayRestrictions.start();
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
+        storage.setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses.load(getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()));
         try {
             this.governments=new com.avrgaming.civcraft.modern.government.GovernmentService(this,storage);
         } catch(java.sql.SQLException exception) {

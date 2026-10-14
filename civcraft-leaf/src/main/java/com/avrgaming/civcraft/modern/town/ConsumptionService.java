@@ -109,7 +109,8 @@ public final class ConsumptionService implements Listener {
             if(!any)return;
         }
         var before=ConsumptionContainers.capture(positions);
-        var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),1,List.of());
+        var wonder=storage.townWonderBonuses(building.town());
+        var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),building.type().equals("ti_cottage")?wonder.cottageFood():1,List.of());
         var after=ConsumptionContainers.after(before,cycle.remaining(),materials);
         boolean poisoned=building.type().equals("ti_cottage") && cycle.state().consumed()
             && storage.query(db->GranaryPoisonStore.remaining(db,building.town()))>0;
@@ -130,7 +131,7 @@ public final class ConsumptionService implements Listener {
         double multiplied=Math.round(raw)*bonus;
         if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production bonus");
         // Original compound integer multiplication applies taxation after rounding.
-        long output=poisoned || building.type().equals("ti_mine")?0:(long)multiplied,townCoins=0,civCoins=0,culture=0;
+        long output=poisoned || building.type().equals("ti_mine")?0:building.type().equals("ti_cottage")?com.avrgaming.civcraft.modern.wonder.WonderBonuses.cottageOutput(raw,wonder.cottageIncome(),bonus):(long)multiplied,townCoins=0,civCoins=0,culture=0;
         if(building.type().equals("s_temple"))culture=output;
         else if(building.type().equals("ti_cottage")) {
             double tax=storage.query(db->{try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")) {

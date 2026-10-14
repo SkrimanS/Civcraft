@@ -36,6 +36,9 @@ public final class StorageBootstrap implements AutoCloseable {
     private Double legacyTownBaseHammers;
     private com.avrgaming.civcraft.modern.town.HappinessRules happinessRules;
     private com.avrgaming.civcraft.modern.town.ConsumptionCatalog consumptionCatalog;
+    private com.avrgaming.civcraft.modern.wonder.WonderBonuses wonderBonuses;
+    public synchronized void setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses bonuses){wonderBonuses=bonuses;}
+    public synchronized com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values townWonderBonuses(long town)throws SQLException {return wonderBonuses==null?com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values.NONE:wonderBonuses.town(connection,town);}
     public synchronized void setConsumptionCatalog(com.avrgaming.civcraft.modern.town.ConsumptionCatalog catalog){consumptionCatalog=catalog;}
     public synchronized void setHappinessRules(com.avrgaming.civcraft.modern.town.HappinessRules rules){happinessRules=rules;}
     public synchronized void setLegacyTownBaseHammers(double rate){legacyTownBaseHammers=rate;}
@@ -1961,10 +1964,11 @@ public final class StorageBootstrap implements AutoCloseable {
         if(happinessRules!=null)try(var query=connection.prepareStatement("SELECT t.base_growth,EXISTS(SELECT 1 FROM civ_technologies ct WHERE ct.civ_id=t.civ_id AND ct.tech_id='tech_fertilizer') FROM towns t WHERE t.id=?")) {
             query.setLong(1,townId);try(var row=query.executeQuery()){if(row.next()){growth+=row.getDouble(1);fertilizer=row.getBoolean(2);}}
         }
-        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,0);
+        var wonder=townWonderBonuses(townId);
+        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,wonder.growth());
         return new TownProduction(
                 Math.max(0.0,(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate * (com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,townId)?capturedPenalty:1)),
-                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate,
+                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate * (1+wonder.science()),
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * coinMultiplier,
                 mood==null?happiness:mood.happy(),
                 mood==null?"Инициализация":mood.state().name(),
