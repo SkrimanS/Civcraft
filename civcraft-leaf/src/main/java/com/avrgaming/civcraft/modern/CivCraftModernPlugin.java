@@ -61,6 +61,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
     private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
+    private com.avrgaming.civcraft.modern.war.WarClockService warClock;
+    public com.avrgaming.civcraft.modern.war.WarClockService warClock(){return warClock;}
     public com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy(){return diplomacy;}
     public com.avrgaming.civcraft.modern.town.ConsumptionService consumption(){return consumption;}
     public com.avrgaming.civcraft.modern.trade.NativeTradeService trades(){return trades;}
@@ -150,6 +152,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         try {
             this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
+            this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,warClock::tick,20L,20L);
             getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             townClaims.useLevels(townUpgrades.catalog(),org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(),"civcraft/data/civ.yml")).getInt("civ.min_distance",15));

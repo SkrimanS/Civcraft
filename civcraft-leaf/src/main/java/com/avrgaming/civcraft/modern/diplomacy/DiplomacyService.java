@@ -47,8 +47,9 @@ public final class DiplomacyService {
     }
     public void command(Player player,String[] args)throws SQLException {
         var civ=own(player);String action=args.length>2?args[2].toLowerCase(Locale.ROOT):"show";
+        if(action.equals("calendar")){plugin.warClock().info(player);return;}
         if(action.equals("help")) {
-            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
+            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
         }
         if(List.of("show","global","wars").contains(action)) {
             var selected=action.equals("show") && args.length>3?named(String.join(" ",Arrays.copyOfRange(args,3,args.length))):civ;
@@ -66,7 +67,7 @@ public final class DiplomacyService {
         if(action.equals("respond")) {
             if(args.length!=4 || !List.of("yes","no","да","нет").contains(args[3].toLowerCase(Locale.ROOT)))throw new IllegalArgumentException("Ответ: /civ dip respond yes|no");
             boolean accept=args[3].equalsIgnoreCase("yes") || args[3].equalsIgnoreCase("да");
-            var request=storage.transaction(db->DiplomacyStore.respond(db,civ.id(),player.getUniqueId(),accept,System.currentTimeMillis()));
+            var request=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return DiplomacyStore.respond(db,civ.id(),player.getUniqueId(),accept,now);});
             String text=civ.name()+(accept?" приняла предложение: ":" отклонила предложение: ")+request.status().title()+".";
             tell(request.from(),text);tell(civ.id(),text);return;
         }
@@ -76,12 +77,14 @@ public final class DiplomacyService {
         try{status=DiplomacyStore.Status.valueOf(args[args.length-1].toUpperCase(Locale.ROOT));}
         catch(IllegalArgumentException invalid){throw new IllegalArgumentException("Отношения: ALLY, PEACE, NEUTRAL или HOSTILE.");}
         if(action.equals("request")) {
-            storage.transaction(db->DiplomacyStore.request(db,civ.id(),other.id(),player.getUniqueId(),status,System.currentTimeMillis()));
+            storage.transaction(db->{long now=System.currentTimeMillis();var calendar=plugin.warClock().calendar();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,calendar,now);
+                if(status==DiplomacyStore.Status.ALLY && calendar.declarationClosed(java.time.Instant.ofEpochMilli(now)) && (com.avrgaming.civcraft.modern.war.WarClockStore.hasWars(db,civ.id()) || com.avrgaming.civcraft.modern.war.WarClockStore.hasWars(db,other.id())))throw new IllegalArgumentException("Слишком близко к боевому периоду: воюющая цивилизация не может заключить новый союз.");
+                return DiplomacyStore.request(db,civ.id(),other.id(),player.getUniqueId(),status,now);});
             tell(other.id(),civ.name()+" предлагает: "+status.title()+". Ответьте /civ dip respond yes|no в течение 30 секунд.");
             tell(civ.id(),"Предложение отправлено цивилизации "+other.name()+".");
         }else {
             if(status!=DiplomacyStore.Status.HOSTILE)throw new IllegalArgumentException("Сейчас доступно объявление HOSTILE. Объявление войны будет подключено вместе с военными правилами.");
-            storage.transaction(db->DiplomacyStore.hostile(db,civ.id(),other.id(),player.getUniqueId(),System.currentTimeMillis()));
+            storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return DiplomacyStore.hostile(db,civ.id(),other.id(),player.getUniqueId(),now);});
             plugin.getServer().broadcast(Component.text(civ.name()+" объявила враждебность цивилизации "+other.name()+"."));
         }
     }
