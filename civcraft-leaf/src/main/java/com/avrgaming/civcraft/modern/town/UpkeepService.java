@@ -13,10 +13,13 @@ public final class UpkeepService {
     private final CivCraftModernPlugin plugin;
     private final StorageBootstrap storage;
     private final long extraTownCost;
+    private final com.avrgaming.civcraft.modern.wonder.WonderEconomy wonders;
+    public record DailyResult(List<UpkeepStore.Payment> payments,List<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit> bonuses) {}
     public UpkeepService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         extraTownCost=(long)YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getDouble("civ.town_upkeep",500);
-        storage.query(db->{UpkeepStore.install(db);return null;});
+        wonders=com.avrgaming.civcraft.modern.wonder.WonderEconomy.load(new File(plugin.getDataFolder(),"civcraft/data/buffs.yml"));
+        storage.query(db->{UpkeepStore.install(db);com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.install(db);return null;});
     }
     private List<UpkeepStore.Charge> plan(Connection db)throws SQLException {
         Map<String,Double> costs=new HashMap<>();
@@ -37,15 +40,18 @@ public final class UpkeepService {
                 query.setLong(1,town.id());try(var rows=query.executeQuery()){while(rows.next())total+=costs.getOrDefault(rows.getString(1),0.0)*rows.getInt(2);}
             }
             total*=plugin.governments().upkeepRate(com.avrgaming.civcraft.modern.war.OccupationRules.government(db,town.id()));
+            total=wonders.upkeep(db,town.id(),total);
             if(!Double.isFinite(total) || total<0 || total>1_000_000_000_000L)throw new SQLException("Unsupported town upkeep");
             charges.add(new UpkeepStore.Charge(town.id(),town.civ(),town.id()==town.capital(),(long)Math.floor(total)));
         }
         return charges;
     }
-    public List<UpkeepStore.Payment> daily(Connection db,String day,long now)throws SQLException {
+    public DailyResult daily(Connection db,String day,long now)throws SQLException {
         var towns=plan(db);Map<Long,Long> civs=new LinkedHashMap<>();
         for(var town:towns)civs.merge(town.civ(),town.capital()?0:extraTownCost,Math::addExact);
-        return UpkeepStore.daily(db,day,now,towns,civs);
+        var bonuses=new ArrayList<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit>();
+        var payments=UpkeepStore.daily(db,day,now,towns,civs,()->bonuses.addAll(com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.pay(db,day,now,wonders)));
+        return new DailyResult(payments,List.copyOf(bonuses));
     }
     public void command(Player player,String[] args,boolean civilization)throws SQLException {
         if(args.length>4 || (args.length>2 && !args[2].equalsIgnoreCase("pay")))

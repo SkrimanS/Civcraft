@@ -210,7 +210,9 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         } catch(java.sql.SQLException exception) {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }
-        getServer().getScheduler().runTaskTimer(this,townUpgrades::tick,20L*60L,20L*60L);
+        int dailyTickSeconds=Integer.getInteger("civcraft.test.daily.tickSeconds",60);
+        if(dailyTickSeconds<1||dailyTickSeconds>60)throw new IllegalArgumentException("Invalid daily test tick period");
+        getServer().getScheduler().runTaskTimer(this,townUpgrades::tick,20L*dailyTickSeconds,20L*dailyTickSeconds);
         getServer().getScheduler().runTaskTimer(this,culture::tick,40L,20L);
         try {
             var cultureClock=new com.avrgaming.civcraft.modern.culture.CultureClock(this,storage);

@@ -19,7 +19,7 @@ public final class TownUpgradeService {
     public TownUpgradeService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         catalog=new TownCatalog(new File(plugin.getDataFolder(),"civcraft/data/town.yml"));
-        dailyHour=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getInt("global.daily_upkeep_hour",20);
+        dailyHour=Integer.getInteger("civcraft.test.daily.hour",YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getInt("global.daily_upkeep_hour",20));
         if(dailyHour<0 || dailyHour>23)throw new IllegalArgumentException("Invalid daily economy hour");
         zone=ZoneId.of(plugin.getConfig().getString("server.timezone",ZoneId.systemDefault().getId()));
         storage.query(db->{UpgradeStore.install(db);BankDailyStore.install(db);return null;});
@@ -55,14 +55,18 @@ public final class TownUpgradeService {
         var now=ZonedDateTime.now(zone);
         if(now.getHour()<dailyHour)return;
         try {
-            record DailyResult(Map<Long,Long> interest,List<TaxStore.Notice> notices) {}
+            record DailyResult(Map<Long,Long> interest,List<TaxStore.Notice> notices,List<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit> bonuses) {}
             var result=storage.transaction(db->{
                 TaxStore.collect(db,now.toLocalDate().toString(),System.currentTimeMillis());
-                plugin.upkeep().daily(db,now.toLocalDate().toString(),System.currentTimeMillis());
+                var upkeep=plugin.upkeep().daily(db,now.toLocalDate().toString(),System.currentTimeMillis());
                 var notices=TaxStore.advanceGrace(db,now.toLocalDate().toString(),System.currentTimeMillis());
-                return new DailyResult(BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis()),notices);
+                return new DailyResult(BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis()),notices,upkeep.bonuses());
             });
             result.notices().forEach(plugin.taxes()::notify);
+            for(var bonus:result.bonuses())for(var player:plugin.getServer().getOnlinePlayers()) {
+                var resident=storage.findResident(player.getUniqueId()).orElse(null);
+                if(resident!=null&&resident.civId()!=null&&resident.civId()==bonus.civ())player.sendMessage(Component.text((bonus.type().equals("w_colossus")?"Колосс: культурных участков — ":"Колизей: городов в мире — ")+bonus.units()+". Начислено цивилизации "+bonus.coins()+" монет."));
+            }
             for(var payment:result.interest().entrySet()) {
                 var town=storage.findTown(payment.getKey()).orElse(null);
                 if(town==null)continue;

@@ -8,6 +8,7 @@ public final class UpkeepStore {
     private UpkeepStore() {}
     public record Charge(long town,long civ,boolean capital,long amount) {}
     public record Payment(String kind,long id,long cost,long paid,long debt) {}
+    @FunctionalInterface public interface BeforeCivilizationCharges {void pay()throws SQLException;}
     public static void install(Connection db)throws SQLException {
         column(db,"towns","debt","INTEGER NOT NULL DEFAULT 0");
         column(db,"towns","days_in_debt","INTEGER NOT NULL DEFAULT 0");
@@ -31,6 +32,9 @@ public final class UpkeepStore {
         }
     }
     public static List<Payment> daily(Connection db,String day,long now,List<Charge> towns,Map<Long,Long> civCharges)throws SQLException {
+        return daily(db,day,now,towns,civCharges,()->{});
+    }
+    public static List<Payment> daily(Connection db,String day,long now,List<Charge> towns,Map<Long,Long> civCharges,BeforeCivilizationCharges bonuses)throws SQLException {
         try(var insert=db.prepareStatement("INSERT OR IGNORE INTO daily_economy_events VALUES('upkeep',?,?)")) {
             insert.setString(1,day);insert.setLong(2,now);if(insert.executeUpdate()==0)return List.of();
         }
@@ -46,6 +50,7 @@ public final class UpkeepStore {
             } else addDebt(db,"towns",charge.town(),shortage);
             Payment payment=new Payment("town",charge.town(),charge.amount(),paid,shortage);audit(db,day,payment);result.add(payment);
         }
+        bonuses.pay();
         for(var charge:civCharges.entrySet()) {
             long paid=withdrawAvailable(db,"civilizations",charge.getKey(),charge.getValue());
             long shortage=charge.getValue()-paid;addDebt(db,"civilizations",charge.getKey(),shortage);
