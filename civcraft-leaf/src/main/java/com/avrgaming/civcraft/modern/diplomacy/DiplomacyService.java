@@ -11,7 +11,7 @@ import org.bukkit.entity.Player;
 public final class DiplomacyService {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;
     public DiplomacyService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
-        this.plugin=plugin;this.storage=storage;storage.transaction(db->{DiplomacyStore.install(db);return null;});
+        this.plugin=plugin;this.storage=storage;storage.transaction(db->{DiplomacyStore.install(db);com.avrgaming.civcraft.modern.war.OccupationActionsStore.install(db);return null;});
     }
     private CivRecord own(Player player)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();
@@ -47,9 +47,14 @@ public final class DiplomacyService {
     }
     public void command(Player player,String[] args)throws SQLException {
         var civ=own(player);String action=args.length>2?args[2].toLowerCase(Locale.ROOT):"show";
+        if(action.equals("liberate")) {
+            if(args.length<4)throw new IllegalArgumentException("Использование: /civ dip liberate <город>");
+            var result=storage.transaction(db->{long now=System.currentTimeMillis();com.avrgaming.civcraft.modern.war.WarClockStore.requireDiplomacyOpen(db,plugin.warClock().calendar(),now);return com.avrgaming.civcraft.modern.war.OccupationActionsStore.liberate(db,String.join(" ",Arrays.copyOfRange(args,3,args.length)),player.getUniqueId(),now);});
+            plugin.governments().refreshQueuedProduction();plugin.getServer().broadcast(Component.text(result.civilization()?"Цивилизация "+result.mother()+" освобождена. Возвращено городов: "+result.towns()+".":"Город "+result.town()+" освобождён и возвращён в "+result.mother()+"."));return;
+        }
         if(action.equals("calendar")){plugin.warClock().info(player);return;}
         if(action.equals("help")) {
-            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
+            player.sendMessage(Component.text("/civ dip show [цивилизация], global, wars, calendar\n/civ dip request <цивилизация> ALLY|PEACE|NEUTRAL\n/civ dip respond yes|no\n/civ dip liberate <город>\n/civ dip declare <цивилизация> HOSTILE\n/civ advisor list|add|remove"));return;
         }
         if(List.of("show","global","wars").contains(action)) {
             var selected=action.equals("show") && args.length>3?named(String.join(" ",Arrays.copyOfRange(args,3,args.length))):civ;
