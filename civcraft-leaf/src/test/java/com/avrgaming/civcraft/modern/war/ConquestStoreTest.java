@@ -9,6 +9,7 @@ class ConquestStoreTest {
             s.execute("CREATE TABLE towns(id INTEGER PRIMARY KEY,civ_id INTEGER REFERENCES civilizations(id))");s.execute("INSERT INTO towns VALUES(1,1),(2,2),(3,2)");
             s.execute("CREATE TABLE residents(uuid TEXT PRIMARY KEY,town_id INTEGER,civ_id INTEGER,updated_at INTEGER)");s.execute("INSERT INTO residents VALUES('member',2,2,0),('homeless',NULL,2,0)");
             s.execute("CREATE TABLE town_claims(town_id INTEGER,civ_id INTEGER)");s.execute("INSERT INTO town_claims VALUES(2,2),(3,2)");
+            s.execute("CREATE TABLE structure_builds(id INTEGER PRIMARY KEY,town_id INTEGER,structure_id TEXT,status TEXT)");
             s.execute("CREATE TABLE war_defeated_towns(war_start INTEGER,town_id INTEGER,conqueror INTEGER)");s.execute("CREATE TABLE war_defeated_civs(war_start INTEGER,civ_id INTEGER,conqueror INTEGER)");
             s.execute("CREATE TABLE war_inactive_towns(war_start INTEGER,town_id INTEGER)");
             s.execute("CREATE TABLE diplomacy_relations(first_civ INTEGER,second_civ INTEGER,status TEXT,aggressor INTEGER,changed_at INTEGER)");s.execute("INSERT INTO diplomacy_relations VALUES(1,2,'WAR',1,0),(2,3,'ALLY',NULL,0)");

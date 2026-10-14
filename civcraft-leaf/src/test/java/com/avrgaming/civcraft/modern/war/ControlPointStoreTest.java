@@ -6,7 +6,7 @@ class ControlPointStoreTest {
     final BuildingDamageStoreTest f=new BuildingDamageStoreTest();
     final ControlPointStore.Point first=new ControlPointStore.Point(1,"world",1,81,1,20,"OAK_FENCE"),second=new ControlPointStore.Point(1,"world",2,81,1,20,"OAK_FENCE");
     Connection database()throws Exception {
-        var db=f.database();db.createStatement().execute("ALTER TABLE protected_blocks ADD COLUMN material TEXT");db.createStatement().execute("CREATE UNIQUE INDEX protected_coordinate ON protected_blocks(world,x,y,z)");db.createStatement().execute("UPDATE structure_builds SET structure_id='s_townhall'");ControlPointStore.install(db);ControlPointStore.register(db,first);ControlPointStore.register(db,second);db.commit();return db;
+        var db=f.database();db.createStatement().execute("ALTER TABLE civilizations ADD COLUMN capital_town_id INTEGER");db.createStatement().execute("ALTER TABLE protected_blocks ADD COLUMN material TEXT");db.createStatement().execute("CREATE UNIQUE INDEX protected_coordinate ON protected_blocks(world,x,y,z)");db.createStatement().execute("UPDATE structure_builds SET structure_id='s_townhall'");ControlPointStore.install(db);ControlPointStore.register(db,first);ControlPointStore.register(db,second);db.commit();return db;
     }
     @Test void hitsAndDestroyedPointsPersistAndReplayDoesNotDamageAgain()throws Exception {
         try(var db=database()) {
@@ -51,7 +51,7 @@ class ControlPointStoreTest {
     @Test void capitolVictoryInheritsEarlierCapturesWithoutReactivatingDefeatedCities()throws Exception {
         try(var db=database()) {
             try(var s=db.createStatement()) {
-                s.execute("UPDATE structure_builds SET structure_id='s_capitol'");s.execute("INSERT INTO civilizations VALUES(3)");s.execute("INSERT INTO towns VALUES(3,3),(4,1)");
+                s.execute("UPDATE structure_builds SET structure_id='s_capitol'");s.execute("INSERT INTO civilizations(id) VALUES(3)");s.execute("INSERT INTO towns VALUES(3,3),(4,1)");
                 s.execute("INSERT INTO war_defeated_towns VALUES(100,3,2),(100,4,2)");s.execute("INSERT INTO war_inactive_towns VALUES(100,3),(100,4)");s.execute("INSERT INTO war_defeated_civs VALUES(100,3,2)");
             }db.commit();
             ControlPointStore.hit(db,"first",f.attacker,first,20,150);ControlPointStore.hit(db,"last",f.attacker,second,20,150);db.commit();
@@ -59,6 +59,37 @@ class ControlPointStoreTest {
             try(var r=db.createStatement().executeQuery("SELECT conqueror FROM war_defeated_civs WHERE civ_id=3")){r.next();assertEquals(1,r.getLong(1));}
             try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_defeated_towns WHERE town_id=4")){r.next();assertEquals(0,r.getInt(1));}
             try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_inactive_towns WHERE town_id=4")){r.next();assertEquals(1,r.getInt(1));}
+        }
+    }
+    @Test void aFormerCapitolOutsideTheOwnersCapitalCausesOnlyTownDefeat()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("UPDATE structure_builds SET structure_id='s_capitol'");db.createStatement().execute("INSERT INTO towns VALUES(3,2)");db.createStatement().execute("UPDATE civilizations SET capital_town_id=3 WHERE id=2");db.commit();
+            ControlPointStore.hit(db,"first",f.attacker,first,20,150);var hit=ControlPointStore.hit(db,"last",f.attacker,second,20,150);db.commit();assertTrue(hit.townDefeated());assertFalse(hit.civDefeated());
+            try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_defeated_civs")){r.next();assertEquals(0,r.getInt(1));}
+            try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_inactive_towns WHERE town_id=3")){r.next();assertEquals(0,r.getInt(1));}
+        }
+    }
+    @Test void aTownHallServingAsTheActualCapitalCausesCivilizationDefeat()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("INSERT INTO towns VALUES(3,2)");db.createStatement().execute("UPDATE civilizations SET capital_town_id=2 WHERE id=2");db.commit();
+            ControlPointStore.hit(db,"first",f.attacker,first,20,150);assertTrue(ControlPointStore.hit(db,"last",f.attacker,second,20,150).civDefeated());db.commit();
+            try(var r=db.createStatement().executeQuery("SELECT COUNT(*) FROM war_defeated_towns WHERE conqueror=1")){r.next();assertEquals(2,r.getInt(1));}
+        }
+    }
+    @Test void legacyCapitalFallbackDoesNotMistakeAnotherCapitolBuildingForTheCapital()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("INSERT INTO towns VALUES(3,2)");db.createStatement().execute("UPDATE structure_builds SET structure_id='s_capitol',town_id=3");db.createStatement().execute("INSERT INTO town_conquests VALUES(3,1,0)");db.commit();
+            ControlPointStore.hit(db,"first",f.attacker,first,20,150);var hit=ControlPointStore.hit(db,"last",f.attacker,second,20,150);db.commit();assertTrue(hit.townDefeated());assertFalse(hit.civDefeated());
+            try(var r=db.createStatement().executeQuery("SELECT town_id FROM war_defeated_towns")){r.next();assertEquals(3,r.getLong(1));assertFalse(r.next());}
+        }
+    }
+    @Test void capturedOlderTownCannotReplaceAPinnedOrPreviouslyUnfilledCapital()throws Exception {
+        try(var db=database()) {
+            CapitalStore.seed(db);db.commit();
+            db.createStatement().execute("UPDATE towns SET civ_id=2 WHERE id=1");db.createStatement().execute("INSERT INTO town_conquests VALUES(1,1,0)");db.commit();
+            CapitalStore.seed(db);db.commit();try(var r=db.createStatement().executeQuery("SELECT capital_town_id FROM civilizations WHERE id=2")){r.next();assertEquals(2,r.getLong(1));}
+            db.createStatement().execute("UPDATE civilizations SET capital_town_id=NULL WHERE id=2");db.commit();CapitalStore.seed(db);db.commit();
+            try(var r=db.createStatement().executeQuery("SELECT capital_town_id FROM civilizations WHERE id=2")){r.next();assertEquals(2,r.getLong(1));}
         }
     }
 }

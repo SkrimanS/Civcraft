@@ -32,6 +32,7 @@ public final class ConquestStore {
         try(var s=db.prepareStatement("INSERT INTO war_town_transfers VALUES(?,?,?,?)")){s.setLong(1,war);s.setLong(2,town);s.setLong(3,old);s.setLong(4,winner);s.executeUpdate();}return true;
     }
     public static List<Result> processClosed(Connection db,boolean casual,long now)throws SQLException {
+        CapitalStore.seed(db);
         var wars=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT w.start_at FROM war_sessions w LEFT JOIN war_results r ON r.war_start=w.start_at WHERE w.state='CLOSED' AND r.war_start IS NULL ORDER BY w.start_at")){while(r.next())wars.add(r.getLong(1));}
         var results=new ArrayList<Result>();
         for(long war:wars) {
