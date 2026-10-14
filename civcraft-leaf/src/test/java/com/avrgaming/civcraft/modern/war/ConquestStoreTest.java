@@ -27,6 +27,22 @@ class ConquestStoreTest {
             assertTrue(ConquestStore.processClosed(db,false,300).isEmpty());db.commit();assertEquals(1,value(db,"SELECT COUNT(*) FROM war_town_transfers"));
         }
     }
+    @Test void captureWaitsForPendingTradeWithoutPartiallyMovingTownOrResidents()throws Exception {
+        try(var db=database()) {
+            com.avrgaming.civcraft.modern.trade.TradeShipOperations.install(db);
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(1,2,'ti_trade_ship','COMPLETE')");
+            db.createStatement().execute("INSERT INTO trade_ship_operations VALUES('pending',1,3600000,1,0,1,0,1,10,2,2,'9','1',1,'GROW',10,X'01','PREPARED')");
+            db.createStatement().execute("INSERT INTO war_defeated_towns VALUES(100,2,1)");db.commit();
+            assertThrows(IllegalArgumentException.class,()->ConquestStore.processClosed(db,false,201));db.rollback();
+            assertEquals(2,value(db,"SELECT civ_id FROM towns WHERE id=2"));
+            assertEquals(2,value(db,"SELECT civ_id FROM residents WHERE uuid='member'"));
+            assertEquals(0,value(db,"SELECT COUNT(*) FROM war_results"));
+            assertEquals(0,value(db,"SELECT COUNT(*) FROM war_town_transfers"));
+            db.createStatement().execute("UPDATE trade_ship_operations SET status='COMPLETE'");db.commit();
+            assertEquals(1,ConquestStore.processClosed(db,false,202).getFirst().towns());db.commit();
+            assertEquals(1,value(db,"SELECT civ_id FROM towns WHERE id=2"));
+        }
+    }
     @Test void recaptureKeepsTheOriginalMotherlandAndLiberationClearsIt()throws Exception {
         try(var db=database()) {
             db.createStatement().execute("INSERT INTO war_defeated_towns VALUES(100,2,1)");ConquestStore.processClosed(db,false,201);db.commit();

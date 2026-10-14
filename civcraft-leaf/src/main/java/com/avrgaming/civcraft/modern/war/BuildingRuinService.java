@@ -42,10 +42,12 @@ public final class BuildingRuinService implements Listener {
             if(current==null) {
                 current=storage.query(BuildingRuinStore::next);if(current==null)return;
                 changes=storage.query(db->BuildingRuinStore.changes(db,current));index=0;
-                if(changes==null) {
-                    changes=plan(current);var saved=changes;long build=current;
-                    storage.transaction(db->{BuildingRuinStore.prepare(db,build,saved);return null;});interrupt("prepared");
-                }
+            }
+            storage.query(db->{com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,current);return null;});
+            if(changes==null) {
+                var saved=plan(current);long build=current;
+                storage.transaction(db->{BuildingRuinStore.prepare(db,build,saved);return null;});
+                changes=saved;interrupt("prepared");
             }
             int budget=256;
             while(index<changes.size() && budget-->0) {

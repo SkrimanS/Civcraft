@@ -31,6 +31,25 @@ public final class TradeShipOperations {
     private static void transaction(Connection db)throws SQLException {
         if(db.getAutoCommit())throw new SQLException("Trade ship operation requires a transaction");
     }
+    public static boolean installed(Connection db)throws SQLException {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trade_ship_operations'")){return r.next();}
+    }
+    public static void requireBuildUnlocked(Connection db,long build)throws SQLException {requireUnlocked(db,"build_id",build);}
+    public static void requireTownUnlocked(Connection db,long town)throws SQLException {requireUnlocked(db,"town_id",town);}
+    private static void requireUnlocked(Connection db,String column,long id)throws SQLException {
+        if(!installed(db))return;
+        try(var s=db.prepareStatement("SELECT 1 FROM trade_ship_operations WHERE "+column+"=? AND status='PREPARED' LIMIT 1")) {
+            s.setLong(1,id);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Торговая операция корабля ещё сохраняется. Дождитесь восстановления.");}
+        }
+    }
+    public static void resetDestroyed(Connection db,long build)throws SQLException {
+        if(!installed(db))return;
+        requireBuildUnlocked(db,build);
+        try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE id=? AND structure_id='ti_trade_ship' AND status='WAR_DESTROYED'")) {
+            s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())return;}
+        }
+        TradeShipStore.progress(db,build,new TradeShipProgress.State(1,0));
+    }
     public static Clock clock(Connection db,long build)throws SQLException {
         try(var s=db.prepareStatement("SELECT period,last_hour FROM trade_ship_clock WHERE build_id=?")) {
             s.setLong(1,build);try(var r=s.executeQuery()){return r.next()?new Clock(build,r.getLong(1),r.getLong(2),TradeShipStore.progress(db,build)):null;}

@@ -23,6 +23,7 @@ public final class ConquestStore {
         long old;Long mother;
         try(var s=db.prepareStatement("SELECT t.civ_id,c.mother_civ FROM towns t LEFT JOIN town_conquests c ON c.town_id=t.id WHERE t.id=?")){s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Captured town disappeared");old=r.getLong(1);mother=r.getObject(2)==null?null:r.getLong(2);}}
         if(old==winner)return false;
+        com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireTownUnlocked(db,town);
         if(conquered(db,winner))throw new SQLException("Capture winner is dormant");
         Long origin;if(mother==null)origin=old;else if(mother==winner)origin=null;else origin=mother;
         try(var s=db.prepareStatement("INSERT INTO town_conquests VALUES(?,?,?) ON CONFLICT(town_id) DO UPDATE SET mother_civ=excluded.mother_civ,changed_at=excluded.changed_at")){s.setLong(1,town);if(origin==null)s.setNull(2,Types.BIGINT);else s.setLong(2,origin);s.setLong(3,now);s.executeUpdate();}

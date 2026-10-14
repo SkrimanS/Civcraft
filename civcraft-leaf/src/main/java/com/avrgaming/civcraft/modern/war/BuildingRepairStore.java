@@ -22,6 +22,7 @@ public final class BuildingRepairStore {
         }
     }
     public static void validate(Connection db,Offer offer,String technology,long now)throws SQLException {
+        com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,offer.build());
         try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE state='ACTIVE' AND start_at<=?")){s.setLong(1,now);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Во время боевого периода ремонт запрещён.");}}
         if(!offer.status().equals("WAR_DESTROYED"))throw new IllegalArgumentException("Ремонтируется только разрушенное здание.");
         if(offer.type().equals("s_townhall") || offer.type().equals("s_capitol") || offer.type().startsWith("w_"))throw new IllegalArgumentException("Для этого здания предусмотрен отдельный ремонт.");

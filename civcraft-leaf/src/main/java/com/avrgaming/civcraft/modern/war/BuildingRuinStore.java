@@ -23,6 +23,7 @@ public final class BuildingRuinStore {
         }return List.copyOf(result);
     }
     public static void prepare(Connection db,long build,List<Change> changes)throws SQLException {
+        com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,build);
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds b JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.status='WAR_DESTROY_PENDING' AND h.hitpoints=0 AND h.phase='DESTROY_PENDING'")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Building no longer awaits destruction");}
         }
@@ -38,11 +39,13 @@ public final class BuildingRuinStore {
         }
     }
     public static boolean complete(Connection db,long build)throws SQLException {
+        com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,build);
         try(var s=db.prepareStatement("SELECT state FROM building_ruin_jobs WHERE build_id=?")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing ruin plan");if(r.getString(1).equals("COMPLETE"))return false;}
         }
         try(var s=db.prepareStatement("UPDATE building_combat_health SET phase='DESTROYED' WHERE build_id=? AND hitpoints=0 AND phase='DESTROY_PENDING'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Building health changed before ruin completion");}
         try(var s=db.prepareStatement("UPDATE structure_builds SET status='WAR_DESTROYED' WHERE id=? AND status='WAR_DESTROY_PENDING'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Building changed before ruin completion");}
+        com.avrgaming.civcraft.modern.trade.TradeShipOperations.resetDestroyed(db,build);
         try(var s=db.prepareStatement("UPDATE building_ruin_jobs SET state='COMPLETE' WHERE build_id=?")){s.setLong(1,build);s.executeUpdate();}return true;
     }
 }
