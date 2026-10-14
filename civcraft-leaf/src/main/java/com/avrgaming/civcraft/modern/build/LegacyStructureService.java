@@ -116,6 +116,8 @@ public final class LegacyStructureService {
         Location origin = definedOrigin(player, requested, definition, cleanDirection, resolved.sizeX(), resolved.sizeZ());
         validateDefinedHeight(origin, resolved.sizeY(),definition.id());
 
+        validateSpacing(town,definition.id(),origin,resolved.sizeX(),resolved.sizeY(),resolved.sizeZ());
+
         cancelPreview(player, true);
 
         PendingStructurePreview preview = new PendingStructurePreview(
@@ -534,6 +536,7 @@ public final class LegacyStructureService {
     private QueuedLegacyBuild startBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, LegacyDefTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
+        validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -613,6 +616,7 @@ public final class LegacyStructureService {
     private QueuedLegacyBuild startSchematicBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, WorldEditSchematicTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
+        validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -1127,6 +1131,7 @@ public final class LegacyStructureService {
     }
 
     private void validateRequiredTechnologies(TownRecord town, StructureDefinition definition) throws SQLException {
+        if(town!=null){String required=definitions.requiredStructure(definition.id());String name=definitions.find(required).map(StructureDefinition::displayName).orElse("обязательное здание");storage.query(db->{StructurePrerequisites.require(db,town.id(),required,name);return null;});}
         if (town == null || definition.requiredTechnology() == null || definition.requiredTechnology().isBlank()) {
             return;
         }
@@ -1162,6 +1167,18 @@ public final class LegacyStructureService {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
         return town;
+    }
+
+    private void validateSpacing(TownRecord town,String id,Location origin,int sizeX,int sizeY,int sizeZ)throws SQLException {
+        if(town==null||id==null||StructureSpacingRules.family(id).isEmpty())return;
+        var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
+        double distance=config.getDouble(StructureSpacingRules.family(id).equals("cannon")?"cannon_tower.build_distance":"tesla_tower.build_distance");
+        for(var other:storage.query(db->StructureSpacingRules.existing(db,town.id(),id,origin.getWorld().getName())))try {
+            int width,height,depth;Path path=Path.of(other.path());
+            if(other.path().toLowerCase(Locale.ROOT).endsWith(".def")){var template=loadTemplate(path);width=template.sizeX();height=template.sizeY();depth=template.sizeZ();}
+            else{var template=loadSchematic(path);width=template.sizeX();height=template.sizeY();depth=template.sizeZ();}
+            StructureSpacingRules.requireDistance(origin.getBlockX()+sizeX/2,origin.getBlockY()+sizeY/2,origin.getBlockZ()+sizeZ/2,other.x()+width/2,other.y()+height/2,other.z()+depth/2,distance);
+        }catch(IOException failure){throw new SQLException("Cannot read existing military structure template",failure);}
     }
 
     private void validateDefinedHeight(Location origin,int sizeY,String id) {

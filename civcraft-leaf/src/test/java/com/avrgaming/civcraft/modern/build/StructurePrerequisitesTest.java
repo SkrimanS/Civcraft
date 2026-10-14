@@ -1,0 +1,9 @@
+package com.avrgaming.civcraft.modern.build;
+import java.sql.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class StructurePrerequisitesTest {
+    Connection database()throws Exception{var db=DriverManager.getConnection("jdbc:sqlite::memory:");db.createStatement().execute("CREATE TABLE structure_builds(id INTEGER,town_id INTEGER,structure_id TEXT,status TEXT,max_hitpoints INTEGER)");db.createStatement().execute("CREATE TABLE building_combat_health(build_id INTEGER,hitpoints INTEGER)");return db;}
+    @Test void requiresCompleteLivingStructureInSameTown()throws Exception{try(var db=database()){assertDoesNotThrow(()->StructurePrerequisites.require(db,1,""));assertThrows(IllegalArgumentException.class,()->StructurePrerequisites.require(db,1,"s_shipyard"));db.createStatement().execute("INSERT INTO structure_builds VALUES(1,2,'s_shipyard','COMPLETE',100),(2,1,'s_shipyard','BUILDING',100)");assertThrows(IllegalArgumentException.class,()->StructurePrerequisites.require(db,1,"s_shipyard"));db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE' WHERE id=2");assertDoesNotThrow(()->StructurePrerequisites.require(db,1,"s_shipyard"));db.createStatement().execute("INSERT INTO building_combat_health VALUES(2,0)");assertThrows(IllegalArgumentException.class,()->StructurePrerequisites.require(db,1,"s_shipyard"));}}
+    @Test void destroyedAndDemolishedDependenciesDoNotUnlockConstruction()throws Exception{try(var db=database()){for(String status:new String[]{"WAR_DESTROYED","DEMOLISHED","CANCELLED"}){db.createStatement().execute("DELETE FROM structure_builds");db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'s_school','"+status+"',100)");assertThrows(IllegalArgumentException.class,()->StructurePrerequisites.require(db,1,"s_school"));}}}
+}

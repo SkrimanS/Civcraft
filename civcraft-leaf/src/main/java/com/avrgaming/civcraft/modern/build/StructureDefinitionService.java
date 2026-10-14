@@ -17,6 +17,7 @@ public final class StructureDefinitionService {
     private ModernCivCraftSettings settings;
     private final Map<String,StaticAttributes> attributes=new LinkedHashMap<>();
     private final Map<String,Integer> templateYShifts=new LinkedHashMap<>();
+    private final Map<String,String> requiredStructures=new LinkedHashMap<>();
 
     public StructureDefinitionService(JavaPlugin plugin, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -33,6 +34,7 @@ public final class StructureDefinitionService {
         definitions.clear();
         attributes.clear();
         templateYShifts.clear();
+        requiredStructures.clear();
         File file = new File(settings.structureConfigPath());
         if (!file.isFile()) {
             plugin.getLogger().warning("Structure config not found: " + file.getAbsolutePath());
@@ -59,6 +61,7 @@ public final class StructureDefinitionService {
             StaticAttributes stats=StaticAttributes.parse(raw.get("components"));
             attributes.put(id.toLowerCase(Locale.ROOT),stats);
             templateYShifts.put(id.toLowerCase(Locale.ROOT),(int)number(raw.get("template_y_shift"),0));
+            requiredStructures.put(id.toLowerCase(Locale.ROOT),string(raw.get("require_structure")));
             StructureDefinition definition = new StructureDefinition(
                     id,
                     template,
@@ -85,6 +88,7 @@ public final class StructureDefinitionService {
     }
     public StaticAttributes attributes(String id){return id==null?new StaticAttributes(Map.of()):attributes.getOrDefault(id.toLowerCase(Locale.ROOT),new StaticAttributes(Map.of()));}
     public int templateYShift(String id){return templateYShifts.getOrDefault(id.toLowerCase(Locale.ROOT),0);}
+    public String requiredStructure(String id){return requiredStructures.getOrDefault(id.toLowerCase(Locale.ROOT),"");}
 
     public List<StructureDefinition> list(int limit) {
         return definitions.values().stream()
