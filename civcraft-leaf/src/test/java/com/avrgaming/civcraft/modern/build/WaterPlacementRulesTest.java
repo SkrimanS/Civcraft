@@ -1,0 +1,10 @@
+package com.avrgaming.civcraft.modern.build;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class WaterPlacementRulesTest {
+    @Test void shipOriginsUsePlayerPositionAndDirectionRatherThanChunkGrid(){assertEquals(new WaterPlacementRules.Origin(101,57,194),WaterPlacementRules.origin("s_arrowship",-5,101.5,80,202.5,32,16,"east"));assertEquals(new WaterPlacementRules.Origin(69,57,194),WaterPlacementRules.origin("s_cannonship",-5,101.5,80,202.5,32,16,"west"));assertEquals(new WaterPlacementRules.Origin(85,57,186),WaterPlacementRules.origin("s_scoutship",-5,101.5,80,202.5,32,16,"north"));assertEquals(new WaterPlacementRules.Origin(85,57,202),WaterPlacementRules.origin("s_scoutship",-5,101.5,80,202.5,32,16,"south"));}
+    @Test void tradeShipUsesContainingChunkIncludingNegativeCoordinates(){assertEquals(new WaterPlacementRules.Origin(-16,57,-32),WaterPlacementRules.origin("ti_trade_ship",-5,-.1,100,-16.1,32,16,"east"));}
+    @Test void commandAnglesMatchCompassDirections(){for(String[] pair:new String[][]{{"0","north"},{"90","east"},{"180","south"},{"270","west"}})assertEquals(WaterPlacementRules.origin("s_scoutship",-5,10.5,80,10.5,15,31,pair[1]),WaterPlacementRules.origin("s_scoutship",-5,10.5,80,10.5,15,31,pair[0]));}
+    @Test void seaAnchorUsesDefinitionShiftButZeroShiftRetainsRequestedHeight(){assertEquals(59,WaterPlacementRules.origin("s_shipyard",-3,0,80,0,16,16,"east").y());assertEquals(80,WaterPlacementRules.origin("s_shipyard",0,0,80.9,0,16,16,"east").y());}
+    @Test void playerHeightGateIncludes82AndDoesNotApplyToFishingBoatOrOtherStructures(){assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",82));assertThrows(IllegalArgumentException.class,()->WaterPlacementRules.requireHeight("s_arrowship",83));assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",-64));assertDoesNotThrow(()->WaterPlacementRules.requireHeight("ti_fishing_boat",200));assertFalse(WaterPlacementRules.water("w_grand_ship_ingermanland"));}
+}

@@ -113,8 +113,8 @@ public final class LegacyStructureService {
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
         Location requested = player.getLocation().clone();
         requested.setY(y);
-        Location origin = nextChunkOrigin(player, requested, resolved.sizeX(), resolved.sizeZ());
-        validateStructureHeight(origin, resolved.sizeY());
+        Location origin = definedOrigin(player, requested, definition, cleanDirection, resolved.sizeX(), resolved.sizeZ());
+        validateDefinedHeight(origin, resolved.sizeY(),definition.id());
 
         cancelPreview(player, true);
 
@@ -141,8 +141,8 @@ public final class LegacyStructureService {
         StructureDefinition definition = definition(structureId);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
-        Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
-        validateStructureHeight(origin, resolved.sizeY());
+        Location origin = definedOrigin(player, location, definition, cleanDirection, resolved.sizeX(), resolved.sizeZ());
+        validateDefinedHeight(origin, resolved.sizeY(),definition.id());
         cancelPreview(player, true);
         PendingStructurePreview preview = new PendingStructurePreview(
                 player.getUniqueId(),
@@ -513,7 +513,7 @@ public final class LegacyStructureService {
         validateStructureLimit(town, definition);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
-        Location origin = nextChunkOrigin(player, location, resolved.sizeX(), resolved.sizeZ());
+        Location origin = definedOrigin(player, location, definition, cleanDirection, resolved.sizeX(), resolved.sizeZ());
         if (resolved.legacy() != null) {
             return startBuild(player, town, definition.templateKind(), definition.template(), cleanDirection, resolved.path(), resolved.legacy(), definition.id(), definition.displayName(), chargeMoney ? definition.cost() : 0.0, definition.maxHitpoints(), hammerCost, definition.hammersPerHourBonus(), definition.beakersPerHour(), definition.moneyPerHour(), definition.happiness(), origin, true);
         }
@@ -532,7 +532,8 @@ public final class LegacyStructureService {
     }
 
     private QueuedLegacyBuild startBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, LegacyDefTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
-        validateStructureHeight(origin, template.sizeY());
+        WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
+        validateDefinedHeight(origin, template.sizeY(),structureId);
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -610,7 +611,8 @@ public final class LegacyStructureService {
     }
 
     private QueuedLegacyBuild startSchematicBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, WorldEditSchematicTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
-        validateStructureHeight(origin, template.sizeY());
+        WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
+        validateDefinedHeight(origin, template.sizeY(),structureId);
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -1162,6 +1164,11 @@ public final class LegacyStructureService {
         return town;
     }
 
+    private void validateDefinedHeight(Location origin,int sizeY,String id) {
+        if(!WaterPlacementRules.water(id)){validateStructureHeight(origin,sizeY);return;}
+        if(origin.getBlockY()<origin.getWorld().getMinHeight()||(long)origin.getBlockY()+sizeY>origin.getWorld().getMaxHeight())throw new IllegalArgumentException("Шаблон корабля выходит за границы высоты мира.");
+    }
+
     private void validateStructureHeight(Location origin, int sizeY) {
         int baseY = origin.getBlockY();
         if (baseY < settings.structureMinY() || baseY > settings.structureMaxY()) {
@@ -1202,6 +1209,13 @@ public final class LegacyStructureService {
                 plugin.getLogger().warning("Unable to complete structure build " + buildId + ": " + exception.getMessage());
             }
         });
+    }
+
+    private Location definedOrigin(Player player,Location requested,StructureDefinition definition,String direction,int sizeX,int sizeZ) {
+        if(!WaterPlacementRules.water(definition.id()))return nextChunkOrigin(player,requested,sizeX,sizeZ);
+        WaterPlacementRules.requireHeight(definition.id(),player.getLocation().getBlockY());
+        var origin=WaterPlacementRules.origin(definition.id(),definitions.templateYShift(definition.id()),requested.getX(),requested.getY(),requested.getZ(),sizeX,sizeZ,direction);
+        return new Location(requested.getWorld(),origin.x(),origin.y(),origin.z());
     }
 
     private Location nextChunkOrigin(Player player, Location location, int sizeX, int sizeZ) {
