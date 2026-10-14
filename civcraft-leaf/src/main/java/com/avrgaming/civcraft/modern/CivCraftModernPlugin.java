@@ -60,6 +60,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
+    private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
+    public com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy(){return diplomacy;}
     public com.avrgaming.civcraft.modern.town.ConsumptionService consumption(){return consumption;}
     public com.avrgaming.civcraft.modern.trade.NativeTradeService trades(){return trades;}
     private com.avrgaming.civcraft.modern.town.TownUpgradeService townUpgrades;
@@ -147,6 +149,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.memberships = new SettlementMembershipService(this, game, storage);
         try {
             this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
+            this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             townClaims.useLevels(townUpgrades.catalog(),org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(getDataFolder(),"civcraft/data/civ.yml")).getInt("civ.min_distance",15));
             this.upkeep=new com.avrgaming.civcraft.modern.town.UpkeepService(this,storage);

@@ -138,6 +138,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && (args[1].equalsIgnoreCase("dip") || args[1].equalsIgnoreCase("diplomacy"))){plugin.diplomacy().command(player,args);return;}
+        if(args.length>=2 && args[1].equalsIgnoreCase("advisor")){plugin.diplomacy().advisors(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,true);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,true);return;}
         if(args.length>=2 && (args[1].equalsIgnoreCase("gov") || args[1].equalsIgnoreCase("government"))) {
@@ -153,6 +155,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             }
             send(player,"&e/civ upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             send(player,"&e/civ set taxes [процент] &7- налог цивилизации с городского дохода");
+            send(player,"&e/civ dip help &7- дипломатические договоры и враждебность");
+            send(player,"&e/civ advisor list|add|remove &7- советники цивилизации");
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("invite")) {
@@ -714,7 +718,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("help", "create", "info", "gov", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
+            return List.of("help", "create", "info", "gov", "dip", "advisor", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
             return List.of("help", "create", "info", "upgrade", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
