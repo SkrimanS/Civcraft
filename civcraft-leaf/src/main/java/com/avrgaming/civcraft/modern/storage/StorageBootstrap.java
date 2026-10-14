@@ -35,6 +35,8 @@ public final class StorageBootstrap implements AutoCloseable {
     private com.avrgaming.civcraft.modern.culture.BiomePotential cultureBiomes;
     private Double legacyTownBaseHammers;
     private com.avrgaming.civcraft.modern.town.HappinessRules happinessRules;
+    private com.avrgaming.civcraft.modern.town.ConsumptionCatalog consumptionCatalog;
+    public synchronized void setConsumptionCatalog(com.avrgaming.civcraft.modern.town.ConsumptionCatalog catalog){consumptionCatalog=catalog;}
     public synchronized void setHappinessRules(com.avrgaming.civcraft.modern.town.HappinessRules rules){happinessRules=rules;}
     public synchronized void setLegacyTownBaseHammers(double rate){legacyTownBaseHammers=rate;}
     public synchronized double townBaseHammers(double fallback){return legacyTownBaseHammers==null?fallback:legacyTownBaseHammers;}
@@ -1937,6 +1939,7 @@ public final class StorageBootstrap implements AutoCloseable {
         double multiplier=mood==null?1:mood.state().hammers();
         double scienceMultiplier=mood==null?multiplier:mood.state().science(),coinMultiplier=mood==null?multiplier:mood.state().coins();
         if(mood!=null)multiplier=mood.state().hammers();
+        if(consumptionCatalog!=null)structureHammers+=com.avrgaming.civcraft.modern.town.MineProductionStore.hammers(connection,townId,consumptionCatalog);
         double hammerRate=1,beakerRate=1,growthRate=1;
         if(governments!=null) {
             try(var query=connection.prepareStatement("SELECT c.government FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")) {

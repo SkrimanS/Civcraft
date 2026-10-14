@@ -17,6 +17,11 @@ class ConsumptionPlanTest {
         assertEquals(600,catalog.levels("ti_cottage").get(6).output());
         assertEquals(5,catalog.levels("s_temple").size());
         assertEquals(Map.of(423,10),catalog.levels("s_temple").get(5).food());
+        assertEquals(5,catalog.levels("ti_mine").size());
+        assertEquals(Map.of(331,10),catalog.levels("ti_mine").get(1).food());
+        assertEquals(150,catalog.levels("ti_mine").get(1).output());
+        assertEquals(Map.of(331,30),catalog.levels("ti_mine").get(5).food());
+        assertEquals(400,catalog.levels("ti_mine").get(5).output());
         assertThrows(UnsupportedOperationException.class,()->catalog.levels("s_temple").clear());
     }
     @Test void missingOneIngredientDoesNotConsumeAnyOtherFood() {

@@ -21,6 +21,7 @@ public final class ConsumptionCatalog {
         var all=new LinkedHashMap<String,Map<Integer,Level>>();
         all.put("ti_cottage",read(yaml,"cottage_levels","coins"));
         all.put("s_temple",read(yaml,"temple_levels","culture"));
+        all.put("ti_mine",read(yaml,"mine_levels","hammers"));
         buildings=Map.copyOf(all);
     }
     public Map<Integer,Level> levels(String structure) {
@@ -32,14 +33,18 @@ public final class ConsumptionCatalog {
         var result=new TreeMap<Integer,Level>();
         for(var raw:yaml.getMapList(section)) {
             int number=integer(raw.get("level")),count=integer(raw.get("count"));
-            if(!(raw.get("consumes") instanceof List<?> consumes) || !(raw.get(outputKey) instanceof Number output))
+            if(!(raw.get(outputKey) instanceof Number output))
                 throw new IllegalArgumentException("Invalid consumption configuration: "+section);
             var food=new LinkedHashMap<Integer,Integer>();
-            for(var value:consumes) {
+            if(section.equals("mine_levels"))food.put(331,integer(raw.get("amount")));
+            else {
+                if(!(raw.get("consumes") instanceof List<?> consumes))throw new IllegalArgumentException("Missing consumption requirements: "+section);
+                for(var value:consumes) {
                 var pair=value.toString().split(",",-1);
                 if(pair.length!=2)throw new IllegalArgumentException("Invalid food requirement: "+value);
                 int id=Integer.parseInt(pair[0].trim()),amount=Integer.parseInt(pair[1].trim());
                 if(food.putIfAbsent(id,amount)!=null)throw new IllegalArgumentException("Duplicate food requirement: "+id);
+                }
             }
             if(result.putIfAbsent(number,new Level(number,count,food,output.doubleValue()))!=null)
                 throw new IllegalArgumentException("Duplicate consumption level: "+number);

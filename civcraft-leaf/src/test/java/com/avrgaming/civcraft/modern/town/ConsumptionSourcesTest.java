@@ -21,6 +21,13 @@ class ConsumptionSourcesTest {
     @Test void templeUsesOnlyItsOwnChests()throws Exception {
         try(var db=database()){assertEquals(List.of(new ConsumptionContainers.Position("world",7,80,1)),ConsumptionSources.positions(db,6,1,"s_temple"));}
     }
+    @Test void mineUsesOwnGroupZeroInsteadOfFoodGroupOne()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(7,1,'ti_mine','COMPLETE')");
+            db.createStatement().execute("INSERT INTO structure_chests VALUES(7,0,'world',8,80,1),(7,1,'world',9,80,1)");
+            assertEquals(List.of(new ConsumptionContainers.Position("world",8,80,1)),ConsumptionSources.positions(db,7,1,"ti_mine"));
+        }
+    }
     @Test void noGranaryProducesEmptyInventoryForStarvationInsteadOfSkippingTheCottage()throws Exception {
         try(var db=database()){assertTrue(ConsumptionSources.positions(db,1,3,"ti_cottage").isEmpty());}
         var encoded=ConsumptionContainers.encode(List.of());assertEquals(8,encoded.length);assertEquals(List.of(),ConsumptionContainers.decode(encoded));

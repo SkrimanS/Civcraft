@@ -42,9 +42,10 @@ public final class ConsumptionService implements Listener {
         taxationBonus=YamlConfiguration.loadConfiguration(new File(folder,"techs.yml")).getDouble("taxation_cottage_buff",2);
         if(!Double.isFinite(taxationBonus) || taxationBonus<0)throw new IllegalArgumentException("Invalid taxation cottage bonus");
         var legacy=new LegacyItemMaterials(plugin.getResource("legacy-materials.properties"));
-        for(var type:List.of("s_temple","ti_cottage"))for(var level:catalog.levels(type).values())
+        for(var type:List.of("s_temple","ti_cottage","ti_mine"))for(var level:catalog.levels(type).values())
             for(var id:level.food().keySet())materials.putIfAbsent(id,legacy.resolve(id,0));
         storage.transaction(db->{ConsumptionStore.install(db);return null;});
+        storage.setConsumptionCatalog(catalog);
         for(var pending:storage.query(ConsumptionStore::pending))lock(pending);
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
@@ -58,11 +59,11 @@ public final class ConsumptionService implements Listener {
         if(affected)throw new IllegalArgumentException("Сундуки здания участвуют в незавершённом питании. Дождитесь восстановления операции.");
     }
     public Optional<String> description(long build,String type)throws SQLException {
-        if(!List.of("ti_cottage","s_temple").contains(type))return Optional.empty();
+        if(!List.of("ti_cottage","s_temple","ti_mine").contains(type))return Optional.empty();
         var state=storage.query(db->ConsumptionStore.state(db,build));
         if(state==null)return Optional.empty();
         var level=catalog.levels(type).get(state.level());
-        String source=type.equals("ti_cottage")?"амбары города":"сундуки храма";
+        String source=switch(type){case "ti_cottage"->"амбары города";case "ti_mine"->"сундуки шахты (красная пыль)";default->"сундуки храма";};
         return Optional.of("Уровень: "+state.level()+" | Питание: "+state.count()+"/"+(level==null?"?":level.count())+" | Источник еды: "+source+".");
     }
     public void tick() {
@@ -75,7 +76,7 @@ public final class ConsumptionService implements Listener {
             }
             var buildings=storage.query(db->{
                 var result=new ArrayList<Building>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,structure_id FROM structure_builds WHERE status='COMPLETE' AND town_id IS NOT NULL AND structure_id IN ('s_temple','ti_cottage') ORDER BY id")) {
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,structure_id FROM structure_builds WHERE status='COMPLETE' AND town_id IS NOT NULL AND structure_id IN ('s_temple','ti_cottage','ti_mine') ORDER BY id")) {
                     while(r.next())result.add(new Building(r.getLong(1),r.getLong(2),r.getString(3)));
                 }return result;
             });
@@ -101,7 +102,12 @@ public final class ConsumptionService implements Listener {
         if(state.hour()>=hour)return;
         var positions=storage.query(db->ConsumptionSources.positions(db,building.id(),building.town(),building.type()));
         if(positions.stream().anyMatch(locked::contains))return;
-        if(positions.isEmpty() && building.type().equals("s_temple"))return;
+        if(positions.isEmpty() && !building.type().equals("ti_cottage")) {
+            boolean any=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM structure_chests WHERE build_id=? LIMIT 1")) {
+                s.setLong(1,building.id());try(var r=s.executeQuery()){return r.next();}
+            }});
+            if(!any)return;
+        }
         var before=ConsumptionContainers.capture(positions);
         var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),1,List.of());
         var after=ConsumptionContainers.after(before,cycle.remaining(),materials);
@@ -124,9 +130,9 @@ public final class ConsumptionService implements Listener {
         double multiplied=Math.round(raw)*bonus;
         if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production bonus");
         // Original compound integer multiplication applies taxation after rounding.
-        long output=poisoned?0:(long)multiplied,townCoins=0,civCoins=0,culture=0;
+        long output=poisoned || building.type().equals("ti_mine")?0:(long)multiplied,townCoins=0,civCoins=0,culture=0;
         if(building.type().equals("s_temple"))culture=output;
-        else {
+        else if(building.type().equals("ti_cottage")) {
             double tax=storage.query(db->{try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")) {
                 s.setLong(1,civ.id());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Civilization missing");return r.getDouble(1);}
             }});
@@ -156,6 +162,7 @@ public final class ConsumptionService implements Listener {
         }
         boolean completed=storage.transaction(db->ConsumptionStore.complete(db,pending.id()));
         for(var image:images)locked.remove(image.position());
+        if(completed && pending.after().level()!=pending.before().level())plugin.governments().refreshQueuedProduction();
         if(completed) {
             String status=switch(pending.after().result()) {
                 case GROW->"прогресс вырос";case LEVELUP->"уровень повышен";case MAXED->"предел уровня";
