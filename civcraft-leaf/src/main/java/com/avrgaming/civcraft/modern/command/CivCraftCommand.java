@@ -138,6 +138,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleCiv(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && args[1].equalsIgnoreCase("revolution")){plugin.diplomacy().revolution(player,args);return;}
         if(args.length>=2 && (args[1].equalsIgnoreCase("dip") || args[1].equalsIgnoreCase("diplomacy"))){plugin.diplomacy().command(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("advisor")){plugin.diplomacy().advisors(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,true);return;}
@@ -156,6 +157,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&e/civ upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             send(player,"&e/civ set taxes [процент] &7- налог цивилизации с городского дохода");
             send(player,"&e/civ dip help &7- дипломатические договоры и враждебность");
+            send(player,"&e/civ revolution [yes] &7- восстание в захваченной исходной столице");
             send(player,"&e/civ advisor list|add|remove &7- советники цивилизации");
             return;
         }
@@ -707,6 +709,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         String primary = alias.toLowerCase(Locale.ROOT);
         if(primary.equals("ad"))primary="civadmin";
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes");
+        if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("revolution"))return List.of("yes");
         if(List.of("town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("flattax","taxrate");
         if(List.of("civ","town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("upkeep"))return List.of("pay");
         if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {
@@ -727,7 +730,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return campService.completions(1);
         }
         if (primary.equals("civ") && args.length == 1) {
-            return List.of("help", "create", "info", "gov", "dip", "advisor", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
+            return List.of("help", "create", "info", "gov", "dip", "advisor", "set", "upkeep", "revolution", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
             return List.of("help", "create", "info", "upgrade", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");

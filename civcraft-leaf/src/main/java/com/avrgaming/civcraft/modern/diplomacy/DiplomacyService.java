@@ -10,8 +10,17 @@ import org.bukkit.entity.Player;
 
 public final class DiplomacyService {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;
+    private final com.avrgaming.civcraft.modern.war.RevolutionRules revolutionRules;
     public DiplomacyService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;storage.transaction(db->{DiplomacyStore.install(db);com.avrgaming.civcraft.modern.war.OccupationActionsStore.install(db);return null;});
+        revolutionRules=new com.avrgaming.civcraft.modern.war.RevolutionRules(new java.io.File(plugin.getDataFolder(),"civcraft/data"));
+    }
+    public void revolution(Player player,String[] args)throws SQLException {
+        boolean confirmed=args.length==3 && args[2].equalsIgnoreCase("yes");
+        if(args.length>3 || (args.length==3 && !confirmed))throw new IllegalArgumentException("Использование: /civ revolution [yes]");
+        var result=storage.transaction(db->{long now=System.currentTimeMillis();return confirmed?com.avrgaming.civcraft.modern.war.OccupationActionsStore.revolution(db,player.getUniqueId(),revolutionRules,plugin.warClock().calendar(),now):com.avrgaming.civcraft.modern.war.OccupationActionsStore.revolutionOffer(db,player.getUniqueId(),revolutionRules,plugin.warClock().calendar(),now);});
+        if(!confirmed){player.sendMessage(Component.text("Восстание "+result.name()+" стоит "+result.fee().coins()+" монет из казны столицы. Будут возвращены города: "+result.fee().towns()+"; их владельцам будет объявлена война. Подтвердите: /civ revolution yes"));return;}
+        plugin.governments().refreshQueuedProduction();plugin.getServer().broadcast(Component.text("Цивилизация "+result.name()+" восстановлена восстанием. Города возвращены, прежние владельцы объявлены агрессорами в войне."));
     }
     private CivRecord own(Player player)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();

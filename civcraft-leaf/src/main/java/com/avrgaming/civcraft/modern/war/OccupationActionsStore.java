@@ -4,6 +4,7 @@ import java.util.*;
 public final class OccupationActionsStore {
     private OccupationActionsStore() {}
     public record Liberation(String town,String mother,int towns,boolean civilization) {}
+    public record Revolution(long capital,long mother,String name,RevolutionRules.Fee fee,long conquered) {}
     public static void install(Connection db)throws SQLException {
         try(var s=db.createStatement()){s.executeUpdate("CREATE TABLE IF NOT EXISTS occupation_actions(id INTEGER PRIMARY KEY AUTOINCREMENT,action TEXT NOT NULL,actor TEXT NOT NULL,town_id INTEGER NOT NULL,mother_civ INTEGER NOT NULL,owner_civ INTEGER NOT NULL,towns INTEGER NOT NULL,at INTEGER NOT NULL)");}
     }
@@ -20,6 +21,31 @@ public final class OccupationActionsStore {
         try(var s=db.prepareStatement("UPDATE town_claims SET civ_id=? WHERE town_id=?")){s.setLong(1,civ);s.setLong(2,town);s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE residents SET civ_id=?,updated_at=? WHERE town_id=?")){s.setLong(1,civ);s.setLong(2,now);s.setLong(3,town);s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE town_conquests SET mother_civ=NULL,changed_at=? WHERE town_id=?")){s.setLong(1,now);s.setLong(2,town);s.executeUpdate();}
+    }
+    public static Revolution revolutionOffer(Connection db,UUID actor,RevolutionRules rules,WarCalendar calendar,long now)throws SQLException {
+        WarClockStore.requireDiplomacyOpen(db,calendar,now);
+        if(calendar.declarationClosed(java.time.Instant.ofEpochMilli(now)))throw new IllegalArgumentException("Слишком близко к боевому периоду: восстание запрещено.");
+        long town,mother,conquered;String name;
+        try(var s=db.prepareStatement("SELECT t.id,tc.mother_civ,c.name,cc.conquered_at FROM residents r JOIN towns t ON t.id=r.town_id AND t.civ_id=r.civ_id LEFT JOIN town_conquests tc ON tc.town_id=t.id LEFT JOIN civilizations c ON c.id=tc.mother_civ LEFT JOIN civ_conquests cc ON cc.civ_id=c.id WHERE r.uuid=?")){s.setString(1,actor.toString());try(var r=s.executeQuery()) {
+            if(!r.next())throw new IllegalArgumentException("Для восстания нужно состоять в захваченном городе.");
+            if(r.getObject(2)==null || r.getObject(4)==null)throw new IllegalArgumentException("Исходная цивилизация не завоёвана.");town=r.getLong(1);mother=r.getLong(2);name=r.getString(3);conquered=r.getLong(4);
+        }}
+        if(capital(db,mother)!=town)throw new IllegalArgumentException("Восстание начинается только в исходной столице.");
+        if(!rules.cooldownPassed(conquered,now,calendar.zone()))throw new IllegalArgumentException("После завоевания нужно подождать "+rules.cooldownDays()+" дня до восстания.");
+        return new Revolution(town,mother,name,rules.fee(db,mother),conquered);
+    }
+    public static Revolution revolution(Connection db,UUID actor,RevolutionRules rules,WarCalendar calendar,long now)throws SQLException {
+        var offer=revolutionOffer(db,actor,rules,calendar,now);
+        try(var s=db.prepareStatement("UPDATE towns SET coins=coins-? WHERE id=? AND coins>=?")){s.setLong(1,offer.fee().coins());s.setLong(2,offer.capital());s.setLong(3,offer.fee().coins());if(s.executeUpdate()!=1)throw new IllegalArgumentException("В казне столицы недостаточно монет: требуется "+offer.fee().coins()+".");}
+        record Captured(long town,long owner) {}
+        var towns=new ArrayList<Captured>();try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM towns t JOIN town_conquests tc ON tc.town_id=t.id WHERE tc.mother_civ=? ORDER BY t.id")){s.setLong(1,offer.mother());try(var r=s.executeQuery()){while(r.next())towns.add(new Captured(r.getLong(1),r.getLong(2)));}}
+        try(var s=db.prepareStatement("DELETE FROM civ_conquests WHERE civ_id=?")){s.setLong(1,offer.mother());s.executeUpdate();}
+        var owners=new LinkedHashSet<Long>();for(var city:towns){owners.add(city.owner());move(db,city.town(),offer.mother(),now);}
+        for(long owner:owners)if(owner!=offer.mother()) {
+            try(var s=db.prepareStatement("INSERT INTO diplomacy_relations(first_civ,second_civ,status,aggressor,changed_at) VALUES(?,?,'WAR',?,?) ON CONFLICT(first_civ,second_civ) DO UPDATE SET status='WAR',aggressor=excluded.aggressor,changed_at=excluded.changed_at")){s.setLong(1,Math.min(owner,offer.mother()));s.setLong(2,Math.max(owner,offer.mother()));s.setLong(3,owner);s.setLong(4,now);s.executeUpdate();}
+            try(var s=db.prepareStatement("UPDATE diplomacy_requests SET state='CANCELLED' WHERE state='PENDING' AND ((from_civ=? AND to_civ=?) OR (from_civ=? AND to_civ=?))")){s.setLong(1,owner);s.setLong(2,offer.mother());s.setLong(3,offer.mother());s.setLong(4,owner);s.executeUpdate();}
+        }
+        try(var s=db.prepareStatement("INSERT INTO occupation_actions(action,actor,town_id,mother_civ,owner_civ,towns,at) VALUES('REVOLUTION',?,?,?,?,?,?)")){s.setString(1,actor.toString());s.setLong(2,offer.capital());s.setLong(3,offer.mother());s.setLong(4,towns.getFirst().owner());s.setInt(5,towns.size());s.setLong(6,now);s.executeUpdate();}return offer;
     }
     public static Liberation liberate(Connection db,String name,UUID actor,long now)throws SQLException {
         peaceTime(db,now);long town,owner,mother;String townName,motherName;
