@@ -10,6 +10,21 @@ class WonderBonusesTest {
     @Test void IncompleteDestroyedAndDuplicateWondersDoNotCreateExtraBonuses()throws Exception {try(var db=database()){db.createStatement().execute("INSERT INTO structure_builds VALUES(5,2,'w_greatlibrary','COMPLETE')");assertEquals(.1,bonuses.town(db,1).science());db.createStatement().execute("UPDATE structure_builds SET status='QUEUED' WHERE structure_id='w_greatlibrary'");assertEquals(0,bonuses.town(db,1).science());db.createStatement().execute("UPDATE structure_builds SET status='WAR_DESTROYED'");assertEquals(WonderBonuses.Values.NONE,bonuses.town(db,1));}}
     @Test void TownTransferImmediatelyMovesTheEffectsToTheNewOwner()throws Exception {try(var db=database()){db.createStatement().execute("UPDATE towns SET civ_id=2 WHERE id=1");assertEquals(0,bonuses.town(db,2).science());assertEquals(.5,bonuses.town(db,2).growth());assertEquals(.1,bonuses.town(db,3).science());assertEquals(.25,bonuses.town(db,3).growth());assertEquals(1,bonuses.town(db,3).cottageIncome());}}
     @Test void cottageIncomeTruncatesPyramidBeforeTaxationAsOriginalIntegerCompoundAssignments(){assertEquals(9,WonderBonuses.cottageOutput(7.4,1.1,1.3));assertEquals(10,WonderBonuses.cottageOutput(7.6,1.1,1.3));assertThrows(IllegalArgumentException.class,()->WonderBonuses.cottageOutput(Double.POSITIVE_INFINITY,1.1,1));}
+    @Test void globeCountsAllWorldTownsAndOnlyBenefitsItsHost()throws Exception {
+        try(var db=database()) {
+            assertEquals(0,bonuses.globeCulture(db,1));db.createStatement().execute("INSERT INTO structure_builds VALUES(5,1,'w_globe_theatre','COMPLETE')");
+            assertEquals(30,bonuses.globeCulture(db,1));assertEquals(0,bonuses.globeCulture(db,2));assertEquals(0,bonuses.globeCulture(db,3));
+            db.createStatement().execute("INSERT INTO towns VALUES(4,2)");assertEquals(40,bonuses.globeCulture(db,1));
+            db.createStatement().execute("UPDATE towns SET civ_id=2 WHERE id=1");assertEquals(40,bonuses.globeCulture(db,1));
+            db.createStatement().execute("UPDATE structure_builds SET status='WAR_DESTROYED' WHERE id=5");assertEquals(0,bonuses.globeCulture(db,1));
+        }
+    }
+    @Test void globeDoesNotStackDuplicatesOrActivateWhileUnderConstruction()throws Exception {
+        try(var db=database()) {
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(5,1,'w_globe_theatre','QUEUED')");assertEquals(0,bonuses.globeCulture(db,1));
+            db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE' WHERE id=5");db.createStatement().execute("INSERT INTO structure_builds VALUES(6,1,'w_globe_theatre','COMPLETE')");assertEquals(30,bonuses.globeCulture(db,1));
+        }
+    }
     @Test void pyramidFoodFactorFeedsARealConfiguredCottageAndRetainsTheMinimumOneItem()throws Exception {
         try(var db=database()) {
             var levels=new com.avrgaming.civcraft.modern.town.ConsumptionCatalog(new java.io.File("src/main/resources/civcraft/data/structures.yml")).levels("ti_cottage");

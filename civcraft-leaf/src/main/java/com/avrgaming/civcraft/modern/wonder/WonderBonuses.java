@@ -9,8 +9,8 @@ public final class WonderBonuses {
     private final Map<String,Double> values;
     public WonderBonuses(Map<String,Double> values){this.values=Map.copyOf(values);if(values.values().stream().anyMatch(v->!Double.isFinite(v)||v<0))throw new IllegalArgumentException("Invalid wonder bonus");}
     public static WonderBonuses load(java.io.File file) {
-        var values=new HashMap<String,Double>();for(var raw:YamlConfiguration.loadConfiguration(file).getMapList("buffs"))if(raw.get("id")!=null&&raw.get("value")!=null){String id=raw.get("id").toString();if(Set.of("buff_greatlibrary_extra_beakers","buff_hanging_gardens_growth","buff_mother_tree_growth","buff_pyramid_culture","buff_pyramid_cottage_consume","buff_pyramid_cottage_bonus").contains(id))values.put(id,Double.parseDouble(raw.get("value").toString()));}
-        var result=new WonderBonuses(values);for(String id:Set.of("buff_greatlibrary_extra_beakers","buff_hanging_gardens_growth","buff_mother_tree_growth","buff_pyramid_culture","buff_pyramid_cottage_consume","buff_pyramid_cottage_bonus"))if(!values.containsKey(id))throw new IllegalArgumentException("Missing wonder buff: "+id);return result;
+        var values=new HashMap<String,Double>();for(var raw:YamlConfiguration.loadConfiguration(file).getMapList("buffs"))if(raw.get("id")!=null&&raw.get("value")!=null){String id=raw.get("id").toString();if(Set.of("buff_greatlibrary_extra_beakers","buff_hanging_gardens_growth","buff_mother_tree_growth","buff_pyramid_culture","buff_pyramid_cottage_consume","buff_pyramid_cottage_bonus","buff_globe_theatre_culture_from_towns").contains(id))values.put(id,Double.parseDouble(raw.get("value").toString()));}
+        var result=new WonderBonuses(values);for(String id:Set.of("buff_greatlibrary_extra_beakers","buff_hanging_gardens_growth","buff_mother_tree_growth","buff_pyramid_culture","buff_pyramid_cottage_consume","buff_pyramid_cottage_bonus","buff_globe_theatre_culture_from_towns"))if(!values.containsKey(id))throw new IllegalArgumentException("Missing wonder buff: "+id);return result;
     }
     public Values town(Connection db,long town)throws SQLException {
         var civilization=new HashSet<String>();var local=new HashSet<String>();
@@ -23,6 +23,11 @@ public final class WonderBonuses {
             local.contains("w_pyramid")?value("buff_pyramid_cottage_consume"):1,local.contains("w_pyramid")?value("buff_pyramid_cottage_bonus"):1);
     }
     private double value(String id){var value=values.get(id);if(value==null)throw new IllegalArgumentException("Missing wonder buff: "+id);return value;}
+    public double globeCulture(Connection db,long town)throws SQLException {
+        try(var s=db.prepareStatement("SELECT (SELECT COUNT(*) FROM towns) FROM structure_builds WHERE town_id=? AND structure_id='w_globe_theatre' AND status='COMPLETE' LIMIT 1")) {
+            s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?r.getLong(1)*value("buff_globe_theatre_culture_from_towns"):0;}
+        }
+    }
     public static long cottageOutput(double raw,double pyramid,double taxation) {
         double first=Math.round(raw)*pyramid;if(!Double.isFinite(first)||first<0||first>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid cottage wonder income");
         double second=(long)first*taxation;if(!Double.isFinite(second)||second<0||second>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid cottage taxation income");return (long)second;
