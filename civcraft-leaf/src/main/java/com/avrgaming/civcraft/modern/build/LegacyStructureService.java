@@ -736,6 +736,7 @@ public final class LegacyStructureService {
         if (build.townId() == null || build.townId() != town.id()) {
             throw new IllegalArgumentException("Эта постройка не принадлежит вашему городу.");
         }
+        if(plugin instanceof CivCraftModernPlugin modern && modern.buildingDamage()!=null)modern.buildingDamage().requireDemolitionSafe(build.id());
         if (!build.status().equalsIgnoreCase("COMPLETE")) {
             throw new IllegalArgumentException("Разрушать можно только полностью построенные здания. Для активной стройки используйте /b cancel.");
         }

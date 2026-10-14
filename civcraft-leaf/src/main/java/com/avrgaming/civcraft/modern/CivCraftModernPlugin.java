@@ -62,6 +62,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
     private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
     private com.avrgaming.civcraft.modern.war.WarClockService warClock;
+    private com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage;
+    public com.avrgaming.civcraft.modern.war.BuildingDamageService buildingDamage(){return buildingDamage;}
     public com.avrgaming.civcraft.modern.war.WarClockService warClock(){return warClock;}
     public com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy(){return diplomacy;}
     public com.avrgaming.civcraft.modern.town.ConsumptionService consumption(){return consumption;}
@@ -153,6 +155,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
+            this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
             getServer().getScheduler().runTaskTimer(this,warClock::tick,20L,20L);
             getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
