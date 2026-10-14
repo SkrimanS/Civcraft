@@ -117,7 +117,7 @@ public final class ConsumptionService implements Listener {
         var town=storage.findTown(building.town()).orElseThrow();
         var civ=storage.findCiv(town.civId()).orElseThrow();
         // Original Temple.templeCulture also uses cottage rate, including coin happiness.
-        double rate=plugin.governments().cottageRate(civ.government())*happiness.evaluate(town.happiness(),town.unhappiness()).state().coins();
+        double rate=plugin.governments().cottageRate(plugin.governments().townGovernment(town.id()))*happiness.evaluate(town.happiness(),town.unhappiness()).state().coins();
         double bonus=1;
         if(building.type().equals("ti_cottage")) {
             boolean taxation=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM civ_technologies WHERE civ_id=? AND tech_id='tech_taxation'")) {
@@ -137,7 +137,8 @@ public final class ConsumptionService implements Listener {
                 s.setLong(1,civ.id());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Civilization missing");return r.getDouble(1);}
             }});
             if(!Double.isFinite(tax) || tax<0 || tax>1)throw new IllegalArgumentException("Invalid civilization income tax");
-            civCoins=Math.round(output*tax);townCoins=output-civCoins;
+            var payout=storage.query(db->com.avrgaming.civcraft.modern.war.OccupationRules.income(output,tax,com.avrgaming.civcraft.modern.war.OccupationRules.captured(db,town.id()),storage.capturedPenalty()));
+            civCoins=payout.civilization();townCoins=payout.town();
         }
         long creditTown=townCoins,creditCiv=civCoins,creditCulture=culture;
         var payload=ConsumptionContainers.encode(after);

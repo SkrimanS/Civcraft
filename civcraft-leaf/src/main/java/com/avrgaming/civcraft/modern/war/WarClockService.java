@@ -12,6 +12,7 @@ public final class WarClockService {
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;private final WarCalendar calendar;private final boolean casual;
     public WarClockService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;calendar=new WarCalendar(new File(plugin.getDataFolder(),"civcraft/data/war.yml"),ZoneId.systemDefault());
+        storage.setCapturedPenalty(org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/war.yml")).getDouble("war.captured_penalty",.5));
         casual=Boolean.parseBoolean(String.valueOf(org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).get("global.casual_mode",false)));
         storage.transaction(db->{WarClockStore.install(db);return null;});
     }

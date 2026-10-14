@@ -49,6 +49,9 @@ public final class StorageBootstrap implements AutoCloseable {
     }
     public synchronized void setCultureBiomes(com.avrgaming.civcraft.modern.culture.BiomePotential catalog){cultureBiomes=catalog;}
     private long joinCooldownMillis=12L*3600000;
+    private double capturedPenalty=.5;
+    public synchronized void setCapturedPenalty(double value){com.avrgaming.civcraft.modern.war.OccupationRules.validatePenalty(value);capturedPenalty=value;}
+    public synchronized double capturedPenalty(){return capturedPenalty;}
     public synchronized void setJoinCooldownMillis(long duration){joinCooldownMillis=duration;}
     private final JavaPlugin plugin;
     private final ModernCivCraftSettings settings;
@@ -1830,7 +1833,7 @@ public final class StorageBootstrap implements AutoCloseable {
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement update = connection.prepareStatement("""
-                    UPDATE towns SET coins = coins + ?, income_remainder = ? WHERE id = ?
+                    UPDATE towns SET income_remainder = ? WHERE id = ?
                     """)) {
                 for (IncomeBase town : towns) {
                     TownProduction production = townProduction(
@@ -1842,11 +1845,14 @@ public final class StorageBootstrap implements AutoCloseable {
                     }
                     long wholeCoins = (long) Math.floor(earned + 1.0e-9);
                     double fraction = Math.max(0.0, earned - wholeCoins);
-                    update.setLong(1, wholeCoins);
-                    update.setDouble(2, fraction);
-                    update.setLong(3, town.id());
+                    long civ;double tax;
+                    try(var s=connection.prepareStatement("SELECT t.civ_id,c.income_tax_rate FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")){s.setLong(1,town.id());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing income town");civ=r.getLong(1);tax=r.getDouble(2);}}
+                    var payout=com.avrgaming.civcraft.modern.war.OccupationRules.income(wholeCoins,tax,com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,town.id()),capturedPenalty);
+                    update.setDouble(1, fraction);
+                    update.setLong(2, town.id());
                     update.executeUpdate();
-                    total = Math.addExact(total, wholeCoins);
+                    com.avrgaming.civcraft.modern.war.OccupationRules.credit(connection,town.id(),civ,payout);
+                    total = Math.addExact(total, payout.town());
                 }
             }
             connection.commit();
@@ -1947,15 +1953,8 @@ public final class StorageBootstrap implements AutoCloseable {
         if(consumptionCatalog!=null)structureHammers+=com.avrgaming.civcraft.modern.town.MineProductionStore.hammers(connection,townId,consumptionCatalog);
         double hammerRate=1,beakerRate=1,growthRate=1;
         if(governments!=null) {
-            try(var query=connection.prepareStatement("SELECT c.government FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?")) {
-                query.setLong(1,townId);
-                try(var result=query.executeQuery()) {
-                    if(result.next()) {
-                        var government=governments.require(result.getString(1));
-                        hammerRate=government.hammers();beakerRate=government.beakers();growthRate=government.growth();
-                    }
-                }
-            }
+            var government=governments.require(com.avrgaming.civcraft.modern.war.OccupationRules.government(connection,townId));
+            hammerRate=government.hammers();beakerRate=government.beakers();growthRate=government.growth();
         }
         boolean fertilizer=false;
         // The additional growth column is installed with the full happiness data.
@@ -1964,7 +1963,7 @@ public final class StorageBootstrap implements AutoCloseable {
         }
         growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,0);
         return new TownProduction(
-                Math.max(Math.max(0.0,baseHammersPerHour),(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate),
+                Math.max(0.0,(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate * (com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,townId)?capturedPenalty:1)),
                 (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate,
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * coinMultiplier,
                 mood==null?happiness:mood.happy(),
@@ -1983,7 +1982,7 @@ public final class StorageBootstrap implements AutoCloseable {
             s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing happiness town");civ=r.getLong(1);level=r.getInt(2);capital=r.getLong(3);residents=r.getInt(4);count=r.getInt(5);unhappy+=r.getDouble(6);}
         }
         happy+=happinessRules.base(level);unhappy+=happinessRules.population(residents,0,0)+happinessRules.empire(Math.max(0,count-1),0);
-        if(town!=capital) {
+        if(town!=capital && !com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,town)) {
             record Hall(String world,int x,int y,int z) {}
             java.util.Map<Long,Hall> halls=new java.util.HashMap<>();
             try(var s=connection.prepareStatement("SELECT town_id,world,x,y,z FROM structure_builds WHERE town_id IN (?,?) AND structure_id IN ('s_capitol','s_townhall') AND status IN ('QUEUED','BUILDING','COMPLETE') ORDER BY id")) {

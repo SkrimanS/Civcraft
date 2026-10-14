@@ -24,6 +24,11 @@ public final class GovernmentService {
     public double maximumTax(String stored){return definitions.require(stored).maximumTax();}
     public double cultureRate(String stored){return definitions.require(stored).culture();}
     public double cottageRate(String stored){return definitions.require(stored).cottages();}
+    public String townGovernment(long town)throws SQLException {return storage.query(db->com.avrgaming.civcraft.modern.war.OccupationRules.government(db,town));}
+    public Optional<String> occupationInfo(long town)throws SQLException {
+        String mother=storage.query(db->com.avrgaming.civcraft.modern.war.OccupationRules.motherName(db,town));
+        return mother==null?Optional.empty():Optional.of("Захваченный город. Исходная цивилизация: "+mother+". Молотки и доход после налога: "+Math.round(storage.capturedPenalty()*100)+"%. Правительство города: "+name(townGovernment(town))+".");
+    }
     public void refreshProduction(long civId)throws SQLException {applyTiming(storage.transaction(db->retimeData(db,civId)));}
     public void refreshQueuedProduction()throws SQLException {
         var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
