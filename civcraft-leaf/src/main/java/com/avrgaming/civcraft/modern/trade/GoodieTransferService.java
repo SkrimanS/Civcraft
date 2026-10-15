@@ -68,7 +68,7 @@ public final class GoodieTransferService implements Listener {
     private void ready(Player player)throws SQLException {
         requireUnlocked(player.getUniqueId());
         if(plugin.isFoundationPending(player.getUniqueId())||plugin.isWarCampPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите размещение постройки.");
-        if(player.getOpenInventory().getTopInventory().getType()!=InventoryType.CRAFTING||!player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Закройте инвентарь перед переносом товара.");
+        if(!Set.of(InventoryType.CRAFTING,InventoryType.CREATIVE,InventoryType.PLAYER).contains(player.getOpenInventory().getTopInventory().getType())||!player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Закройте инвентарь перед переносом товара.");
         plugin.trades().recover(player);
     }
     private ItemStack[] snapshot(Player player) {

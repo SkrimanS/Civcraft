@@ -46,6 +46,8 @@ public final class GoodieFrameService implements Listener {
         try {
             // Remove invalidated identities even when their origin is no longer a complete building.
             for(var world:Bukkit.getWorlds())for(var frame:world.getEntitiesByClass(ItemFrame.class))if(managed(frame)) {
+                boolean retained=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM goodie_frames f JOIN structure_builds b ON b.id=f.build_id WHERE f.frame_key=? AND b.status NOT IN ('DEMOLISHED','CANCELLED')")){s.setString(1,key(frame));try(var r=s.executeQuery()){return r.next();}}});
+                if(!retained){frame.setItem(null,false);frame.remove();continue;}
                 String token=items.token(frame.getItem());
                 if(token!=null && storage.query(db->BonusGoodieStore.token(db,token))==null)frame.setItem(null,false);
             }
