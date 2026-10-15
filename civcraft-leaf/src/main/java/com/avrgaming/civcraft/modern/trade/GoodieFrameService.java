@@ -68,7 +68,7 @@ public final class GoodieFrameService implements Listener {
             if(storage.query(GoodieTransferStore::lockedFrames).contains(frame.key()))continue;
             if(frame.source()&&!towers.contains(building.id())){sourceTower(frame,building);towers.add(building.id());}
             var entity=entity(frame,world);
-            BonusGoodieStore.State item=null;
+            BonusGoodieStore.State item=storage.query(db->BonusGoodieStore.frame(db,frame.key()));
             if(frame.source()) {
                 boolean active=storage.query(db->{
                     try(var s=db.prepareStatement("SELECT 1 FROM towns t JOIN administrative_civilizations a ON a.civ_id=t.civ_id WHERE t.id=?")){s.setLong(1,building.town());try(var r=s.executeQuery()){if(r.next())return true;}}
@@ -76,9 +76,9 @@ public final class GoodieFrameService implements Listener {
                 });
                 if(active) {
                     var source=storage.transaction(db->BonusGoodieStore.ensure(db,catalog,building.id()));
-                    if(source.kind()==BonusGoodieStore.Kind.SOURCE)item=source;
+                    if(source.kind()==BonusGoodieStore.Kind.SOURCE && item==null)item=source;
                 }
-            }else for(var held:storage.query(db->BonusGoodieStore.framed(db,building.town())))if(held.holder().equals(frame.key())){item=held;break;}
+            }
             var current=entity.getItem();
             if(item!=null && !items.matches(current,item)) {
                 if(!current.getType().isAir() && items.token(current)==null)throw new IllegalStateException("Managed frame contains an unrelated item");
@@ -117,7 +117,16 @@ public final class GoodieFrameService implements Listener {
         storage.recordProtectedBlocks(frame.build(),List.of(new BlockPlacement(frame.world(),frame.x(),frame.y(),frame.z(),"AIR",List.of())));
         return entity;
     }
-    private String key(ItemFrame frame){return frame.getPersistentDataContainer().get(identity,PersistentDataType.STRING);}
+    public ItemFrame resolve(String key,boolean create)throws SQLException {
+        var record=storage.query(db->GoodieFrameStore.find(db,key));if(record==null)return null;
+        var world=Bukkit.getWorld(record.world());if(world==null)throw new IllegalStateException("Goodie frame world unavailable");
+        world.getChunkAt(Math.floorDiv(record.x(),16),Math.floorDiv(record.z(),16));
+        if(create)return entity(record,world);
+        if(record.entity()!=null && Bukkit.getEntity(UUID.fromString(record.entity())) instanceof ItemFrame frame && key.equals(key(frame)))return frame;
+        for(var entity:world.getNearbyEntities(new Location(world,record.x()+.5,record.y()+.5,record.z()+.5),1,1,1))if(entity instanceof ItemFrame frame && key.equals(key(frame)))return frame;
+        return null;
+    }
+    public String key(ItemFrame frame){return frame.getPersistentDataContainer().get(identity,PersistentDataType.STRING);}
     private boolean managed(ItemFrame frame){return key(frame)!=null;}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void damage(EntityDamageEvent e){if(e.getEntity() instanceof ItemFrame frame && managed(frame))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void breakFrame(HangingBreakEvent e){if(e.getEntity() instanceof ItemFrame frame && managed(frame))e.setCancelled(true);}

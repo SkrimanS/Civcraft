@@ -65,6 +65,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
     private com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips;
+    private com.avrgaming.civcraft.modern.trade.GoodieTransferService goodieTransfers;
+    public com.avrgaming.civcraft.modern.trade.GoodieTransferService goodieTransfers(){return goodieTransfers;}
     public com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips(){return tradeShips;}
     private com.avrgaming.civcraft.modern.diplomacy.DiplomacyService diplomacy;
     private com.avrgaming.civcraft.modern.war.WarClockService warClock;
@@ -202,7 +204,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             storage.transaction(db->{com.avrgaming.civcraft.modern.trade.TradeDepositStore.install(db);return null;});
             storage.transaction(db->{com.avrgaming.civcraft.modern.trade.BonusGoodieStore.install(db);return null;});
-            new com.avrgaming.civcraft.modern.trade.GoodieFrameService(this,storage);
+            var goodieFrames=new com.avrgaming.civcraft.modern.trade.GoodieFrameService(this,storage);
+            goodieTransfers=new com.avrgaming.civcraft.modern.trade.GoodieTransferService(this,storage,goodieFrames);
             new com.avrgaming.civcraft.modern.trade.TradeGoodWorldService(this,storage);
             var tradeShipChests=new com.avrgaming.civcraft.modern.trade.TradeShipChestService(this,storage);
             try {tradeShips=new com.avrgaming.civcraft.modern.trade.TradeShipService(this,storage,tradeShipChests);}

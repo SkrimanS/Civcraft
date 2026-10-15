@@ -75,4 +75,32 @@ class GoodieTransferStoreTest {
             GoodieTransferStore.complete(db,"take");db.commit();assertEquals(1,BonusGoodieStore.origin(db,1).revision());
         }
     }
+    @Test void ejectionPersistsDropPositionAndPickupCanChangeCarrierAfterReopen()throws Exception {
+        String url="jdbc:sqlite:"+directory.resolve("ground.sqlite");var drop=new GoodieTransferStore.Drop("world",1.25,72.5,3.75);
+        try(var db=DriverManager.getConnection(url)) {
+            schema(db);var source=BonusGoodieStore.ensure(db,catalog,1);
+            assertThrows(IllegalArgumentException.class,()->GoodieTransferStore.prepare(db,"drop",player,source,BonusGoodieStore.Kind.ITEM,"drop",null,new byte[]{1},0));
+            GoodieTransferStore.prepare(db,"drop",player,source,BonusGoodieStore.Kind.ITEM,"drop",null,new byte[]{1},drop,0);db.commit();
+        }
+        try(var db=DriverManager.getConnection(url)) {
+            db.setAutoCommit(false);assertEquals(drop,GoodieTransferStore.pending(db).getFirst().drop());
+            GoodieTransferStore.complete(db,"drop");db.commit();var ground=BonusGoodieStore.origin(db,1);
+            assertEquals(BonusGoodieStore.Kind.ITEM,ground.kind());assertEquals("drop",ground.holder());
+            UUID carrier=UUID.randomUUID();GoodieTransferStore.prepare(db,"pickup",carrier,ground,BonusGoodieStore.Kind.PLAYER,carrier.toString(),null,new byte[]{2},1);
+            GoodieTransferStore.complete(db,"pickup");db.commit();assertEquals(carrier.toString(),BonusGoodieStore.origin(db,1).holder());assertEquals(2,BonusGoodieStore.origin(db,1).revision());
+        }
+    }
+    @Test void marketAndGoodieTransferShareLatestInventoryCheckpoint()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("CREATE TABLE residents(uuid TEXT PRIMARY KEY,coins INTEGER)");
+            try(var s=db.prepareStatement("INSERT INTO residents VALUES(?,100)")){s.setString(1,player.toString());s.executeUpdate();}
+            TradeStore.install(db);var source=BonusGoodieStore.ensure(db,catalog,1);
+            GoodieTransferStore.prepare(db,"goodie",player,source,BonusGoodieStore.Kind.PLAYER,player.toString(),null,new byte[]{7},0);
+            GoodieTransferStore.complete(db,"goodie");TradeStore.saveCheckpoint(db,player.toString(),"goodie",new byte[]{7});db.commit();
+            assertEquals("goodie",TradeStore.checkpoint(db,player.toString()).id());
+            var market=TradeStore.prepare(db,"market",player.toString(),new byte[]{8},0,0,null,0);TradeStore.finish(db,market);db.commit();
+            assertEquals(GoodieTransferStore.Completion.ALREADY_COMPLETE,GoodieTransferStore.complete(db,"goodie"));
+            assertEquals("market",TradeStore.checkpoint(db,player.toString()).id());assertArrayEquals(new byte[]{8},TradeStore.checkpoint(db,player.toString()).inventory());
+        }
+    }
 }

@@ -70,6 +70,9 @@ public final class BonusGoodieStore {
             s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())result.add(read(r));}
         }return List.copyOf(result);
     }
+    public static State frame(Connection db,String key)throws SQLException {
+        try(var s=db.prepareStatement("SELECT * FROM bonus_goodies WHERE holder_kind='FRAME' AND holder_id=?")){s.setString(1,key);try(var r=s.executeQuery()){return r.next()?read(r):null;}}
+    }
     private static State read(ResultSet r)throws SQLException {
         return new State(r.getLong("origin_build"),r.getString("good_id"),r.getString("token"),r.getLong("revision"),Kind.valueOf(r.getString("holder_kind")),r.getString("holder_id"),r.getObject("host_town")==null?null:r.getLong("host_town"));
     }

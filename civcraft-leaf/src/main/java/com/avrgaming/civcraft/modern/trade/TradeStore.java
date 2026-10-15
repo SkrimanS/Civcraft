@@ -113,13 +113,16 @@ public final class TradeStore {
                 }
             }
         }
+        saveCheckpoint(db,receipt.player(),receipt.id(),receipt.inventory());
+        return true;
+    }
+    public static void saveCheckpoint(Connection db,String player,String id,byte[] inventory)throws SQLException {
         try(var update=db.prepareStatement("""
                 INSERT INTO player_trade_checkpoints(player_uuid,trade_id,inventory) VALUES(?,?,?)
                 ON CONFLICT(player_uuid) DO UPDATE SET trade_id=excluded.trade_id,inventory=excluded.inventory
                 """)) {
-            update.setString(1,receipt.player());update.setString(2,receipt.id());update.setBytes(3,receipt.inventory());update.executeUpdate();
+            update.setString(1,player);update.setString(2,id);update.setBytes(3,inventory);update.executeUpdate();
         }
-        return true;
     }
     public static Checkpoint checkpoint(Connection db,String player)throws SQLException {
         try(var query=db.prepareStatement("SELECT trade_id,inventory FROM player_trade_checkpoints WHERE player_uuid=?")) {

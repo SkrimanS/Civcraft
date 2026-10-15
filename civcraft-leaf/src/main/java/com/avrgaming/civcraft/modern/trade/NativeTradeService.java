@@ -72,6 +72,8 @@ public final class NativeTradeService implements Listener {
         Player player=event.getPlayer();
         try {
             var point=point(event.getClickedBlock());if(point==null)return;
+            if(plugin.goodieTransfers()!=null)plugin.goodieTransfers().requireUnlocked(player.getUniqueId());
+            if(plugin.goodieTransfers()!=null&&plugin.goodieTransfers().isGoodie(player.getInventory().getItemInMainHand()))throw new IllegalArgumentException("Торговый товар нельзя обменять как обычный ресурс.");
             event.setCancelled(true);
             long now=System.currentTimeMillis();
             if(now-lastClick.getOrDefault(player.getUniqueId(),0L)<250)return;
@@ -170,6 +172,7 @@ public final class NativeTradeService implements Listener {
         int remaining=quantity;
         for(int slot=0;slot<36 && remaining>0;slot++) {
             ItemStack stack=contents[slot];if(stack==null)continue;
+            if(plugin.goodieTransfers()!=null&&plugin.goodieTransfers().isGoodie(stack))continue;
             boolean matches=entry.customId()==null?items.id(stack)==null && stack.getType()==entry.exemplar().getType():entry.customId().equals(items.id(stack));
             if(matches) {
                 int taken=Math.min(stack.getAmount(),remaining);remaining-=taken;
@@ -201,7 +204,7 @@ public final class NativeTradeService implements Listener {
             throw new IllegalStateException("Injected trade interruption at "+phase);
         }
     }
-    private void recover(Player player)throws SQLException {
+    public void recover(Player player)throws SQLException {
         var pending=storage.query(db->TradeStore.pending(db,player.getUniqueId().toString()));
         if(pending!=null)apply(player,pending);
         else {

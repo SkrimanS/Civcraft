@@ -7,9 +7,15 @@ import java.util.*;
 public final class GoodieTransferStore {
     private GoodieTransferStore() {}
     public record Pending(String id,UUID player,BonusGoodieStore.State before,BonusGoodieStore.State after,
-                          String fromFrame,String toFrame,byte[] inventory) {
+                          String fromFrame,String toFrame,byte[] inventory,Drop drop) {
         public Pending {inventory=inventory.clone();}
         @Override public byte[] inventory(){return inventory.clone();}
+    }
+    public record Drop(String world,double x,double y,double z) {
+        public Drop {
+            if(world==null||world.isBlank()||!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z))
+                throw new IllegalArgumentException("Invalid goodie drop location");
+        }
     }
     public enum Completion { COMPLETE, INVALIDATED, ALREADY_COMPLETE }
     public static void install(Connection db)throws SQLException {
@@ -24,6 +30,9 @@ public final class GoodieTransferStore {
                 """);
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_goodie_transfer ON goodie_transfers(origin_build) WHERE status='PREPARED'");
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_goodie_player ON goodie_transfers(player_uuid) WHERE status='PREPARED'");
+            var columns=new HashSet<String>();try(var r=s.executeQuery("PRAGMA table_info(goodie_transfers)")){while(r.next())columns.add(r.getString("name"));}
+            for(String column:List.of("drop_world","drop_x","drop_y","drop_z"))if(!columns.contains(column))
+                s.executeUpdate("ALTER TABLE goodie_transfers ADD COLUMN "+column+(column.equals("drop_world")?" TEXT":" REAL"));
         }
     }
     private static void transaction(Connection db)throws SQLException {
@@ -45,14 +54,20 @@ public final class GoodieTransferStore {
     }
     public static Pending prepare(Connection db,String id,UUID player,BonusGoodieStore.State before,
                                   BonusGoodieStore.Kind kind,String holder,Long town,byte[] inventory,long now)throws SQLException {
+        return prepare(db,id,player,before,kind,holder,town,inventory,null,now);
+    }
+    public static Pending prepare(Connection db,String id,UUID player,BonusGoodieStore.State before,
+                                  BonusGoodieStore.Kind kind,String holder,Long town,byte[] inventory,Drop drop,long now)throws SQLException {
         transaction(db);
         if(id==null||id.isBlank()||player==null||inventory==null||inventory.length==0||inventory.length>16*1024*1024||now<0)
             throw new IllegalArgumentException("Invalid goodie transfer intent");
         if(!before.equals(BonusGoodieStore.origin(db,before.origin())))throw new IllegalArgumentException("Состояние товара уже изменилось.");
-        boolean taking=kind==BonusGoodieStore.Kind.PLAYER&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME);
+        boolean taking=kind==BonusGoodieStore.Kind.PLAYER&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME||before.kind()==BonusGoodieStore.Kind.ITEM);
         boolean placing=before.kind()==BonusGoodieStore.Kind.PLAYER&&(kind==BonusGoodieStore.Kind.SOURCE||kind==BonusGoodieStore.Kind.FRAME);
-        if(!taking&&!placing)throw new IllegalArgumentException("Перенос требует игрока и рамку.");
-        if((placing&&!before.holder().equals(player.toString()))||(taking&&!player.toString().equals(holder)))throw new IllegalArgumentException("Товар переносит другой игрок.");
+        boolean dropping=kind==BonusGoodieStore.Kind.ITEM&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME||before.kind()==BonusGoodieStore.Kind.PLAYER);
+        if(!taking&&!placing&&!dropping)throw new IllegalArgumentException("Недопустимый перенос торгового товара.");
+        if((before.kind()==BonusGoodieStore.Kind.PLAYER&&!before.holder().equals(player.toString()))||(taking&&!player.toString().equals(holder)))throw new IllegalArgumentException("Товар переносит другой игрок.");
+        if((dropping&&(drop==null||!id.equals(holder)))||(!dropping&&drop!=null))throw new IllegalArgumentException("Выпадение товара требует сохранённой позиции и идентификатора операции.");
         if(holder==null||holder.isBlank()||(town!=null&&kind!=BonusGoodieStore.Kind.FRAME))throw new IllegalArgumentException("Invalid goodie transfer destination");
         if(kind==BonusGoodieStore.Kind.SOURCE&&!holder.equals(Long.toString(before.origin())))throw new IllegalArgumentException("Товар возвращается только в свой исходный пост.");
         var after=new BonusGoodieStore.State(before.origin(),before.good(),before.token(),Math.addExact(before.revision(),1),kind,holder,town);
@@ -60,12 +75,15 @@ public final class GoodieTransferStore {
         if((from!=null&&locked.contains(from))||(to!=null&&locked.contains(to)))throw new IllegalArgumentException("Рамка участвует в незавершённом переносе.");
         if(from!=null&&GoodieFrameStore.find(db,from)==null)throw new IllegalArgumentException("Исходная рамка не найдена.");
         if(to!=null)validateTarget(db,after,to);
-        try(var s=db.prepareStatement("INSERT INTO goodie_transfers VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PREPARED',?)")) {
+        try(var s=db.prepareStatement("INSERT INTO goodie_transfers(id,player_uuid,origin_build,good_id,token,before_revision,before_kind,before_holder,before_town,after_kind,after_holder,after_town,from_frame,to_frame,inventory,drop_world,drop_x,drop_y,drop_z,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PREPARED',?)")) {
             int i=1;s.setString(i++,id);s.setString(i++,player.toString());s.setLong(i++,before.origin());s.setString(i++,before.good());s.setString(i++,before.token());
             s.setLong(i++,before.revision());s.setString(i++,before.kind().name());s.setString(i++,before.holder());nullable(s,i++,before.hostTown());
-            s.setString(i++,kind.name());s.setString(i++,holder);nullable(s,i++,town);s.setString(i++,from);s.setString(i++,to);s.setBytes(i++,inventory);s.setLong(i,now);s.executeUpdate();
+            s.setString(i++,kind.name());s.setString(i++,holder);nullable(s,i++,town);s.setString(i++,from);s.setString(i++,to);s.setBytes(i++,inventory);
+            s.setString(i++,drop==null?null:drop.world());
+            for(double value:drop==null?new double[]{0,0,0}:new double[]{drop.x(),drop.y(),drop.z()}){if(drop==null)s.setNull(i++,Types.DOUBLE);else s.setDouble(i++,value);}
+            s.setLong(i,now);s.executeUpdate();
         }
-        return new Pending(id,player,before,after,from,to,inventory);
+        return new Pending(id,player,before,after,from,to,inventory,drop);
     }
     private static void validateTarget(Connection db,BonusGoodieStore.State after,String key)throws SQLException {
         var target=GoodieFrameStore.find(db,key);if(target==null)throw new IllegalArgumentException("Рамка назначения не найдена.");
@@ -108,6 +126,7 @@ public final class GoodieTransferStore {
         long origin=r.getLong("origin_build"),revision=r.getLong("before_revision");String good=r.getString("good_id"),token=r.getString("token");
         var before=new BonusGoodieStore.State(origin,good,token,revision,BonusGoodieStore.Kind.valueOf(r.getString("before_kind")),r.getString("before_holder"),r.getObject("before_town")==null?null:r.getLong("before_town"));
         var after=new BonusGoodieStore.State(origin,good,token,Math.addExact(revision,1),BonusGoodieStore.Kind.valueOf(r.getString("after_kind")),r.getString("after_holder"),r.getObject("after_town")==null?null:r.getLong("after_town"));
-        return new Pending(r.getString("id"),UUID.fromString(r.getString("player_uuid")),before,after,r.getString("from_frame"),r.getString("to_frame"),r.getBytes("inventory"));
+        Drop drop=r.getString("drop_world")==null?null:new Drop(r.getString("drop_world"),r.getDouble("drop_x"),r.getDouble("drop_y"),r.getDouble("drop_z"));
+        return new Pending(r.getString("id"),UUID.fromString(r.getString("player_uuid")),before,after,r.getString("from_frame"),r.getString("to_frame"),r.getBytes("inventory"),drop);
     }
 }
