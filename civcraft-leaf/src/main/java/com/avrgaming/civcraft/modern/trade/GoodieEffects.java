@@ -15,6 +15,13 @@ public final class GoodieEffects {
         public int count(String good){return goods.getOrDefault(good,0);}
         public double happiness(){return goods.values().stream().mapToInt(Integer::intValue).sum()+value("buff_hedonism");}
         public double culture(){return value("buff_fine_art")+value("buff_art_appreciation");}
+        public double cottageFood(double wonderFactor){return wonderFactor*(buffs.containsKey("buff_preservative")?value("buff_preservative"):1);}
+        public List<com.avrgaming.civcraft.modern.town.ConsumptionPlan.Exchange> cottageExchanges() {
+            double fish=value("buff_fishing");
+            if(fish==0)return List.of();
+            if(fish<1||fish!=Math.rint(fish)||fish>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid fishing food ratio");
+            return List.of(new com.avrgaming.civcraft.modern.town.ConsumptionPlan.Exchange(297,349,(int)fish));
+        }
     }
     private final TradeGoodsCatalog goods;
     private final Map<String,Buff> buffs;

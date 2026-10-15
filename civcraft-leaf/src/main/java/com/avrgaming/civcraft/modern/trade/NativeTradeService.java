@@ -31,6 +31,7 @@ public final class NativeTradeService implements Listener {
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
     private final Map<UUID,Long> lastClick=new HashMap<>();
+    private final Map<Long,Double> bankRates=new HashMap<>();
     private record Point(long build,long town,String structure,String action,String argument) {}
     private record BankItem(Material material,String name,double base) {}
     public NativeTradeService(CivCraftModernPlugin plugin,StorageBootstrap storage,NativeLegacyItems items,CivCraftEconomyService economy)throws SQLException {
@@ -46,6 +47,20 @@ public final class NativeTradeService implements Listener {
         }
         storage.transaction(db->{for(var entry:market.list())TradeStore.price(db,entry.ident(),MarketPrice.initial(entry.base(),market.rate()));return null;});
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        plugin.getServer().getScheduler().runTaskTimer(plugin,this::refreshBankBonuses,20L,20L);
+    }
+    private void refreshBankBonuses() {
+        try {
+            var banks=storage.query(db->{var result=new LinkedHashMap<Long,Long>();
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id FROM structure_builds WHERE structure_id='s_bank' AND status='COMPLETE' AND town_id IS NOT NULL")){while(r.next())result.put(r.getLong(1),r.getLong(2));}
+                return result;
+            });
+            bankRates.keySet().retainAll(banks.keySet());
+            for(var bank:banks.entrySet()) {
+                double rate=exchange(bank.getValue(),(int)bankSettings(bank.getValue())[0]);
+                if(!Objects.equals(bankRates.get(bank.getKey()),rate)){refreshBuild(bank.getKey());bankRates.put(bank.getKey(),rate);}
+            }
+        }catch(SQLException|IllegalArgumentException failure){plugin.getLogger().warning("Bank bonus sign refresh failed: "+failure.getMessage());}
     }
     private Point point(Block block)throws SQLException {
         if(!(block.getState() instanceof Sign))return null;
@@ -104,16 +119,15 @@ public final class NativeTradeService implements Listener {
             }
         });
     }
-    private static double exchange(int level) {
-        if(level<1 || level>10)throw new IllegalArgumentException("Некорректный уровень банка.");
-        return new double[]{0.4,0.5,0.6,0.7,0.8,0.9,1,1.2,1.5,2}[level-1];
+    private double exchange(long town,int level)throws SQLException {
+        return BankExchange.rate(level,storage.townGoodieEffects(town).value("buff_barter"));
     }
     private void bank(Player player,Point point)throws SQLException {
         var resource=bankItem(point.argument());ItemStack hand=player.getInventory().getItemInMainHand();
         if(hand.getType()!=resource.material() || items.id(hand)!=null)throw new IllegalArgumentException("Держите обычный ресурс для обмена: "+resource.name()+".");
         var settings=bankSettings(point.town());
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();
-        long total=(long)(resource.base()*hand.getAmount()*exchange((int)settings[0]));
+        long total=BankExchange.gross(resource.base(),hand.getAmount(),exchange(point.town(),(int)settings[0]));
         long fee=resident.townId()!=null && resident.townId()==point.town()?0:Math.round(total*settings[1]);
         if(fee<0 || fee>total)throw new IllegalArgumentException("Некорректная комиссия банка.");
         ItemStack[] after=copy(player.getInventory().getContents());after[player.getInventory().getHeldItemSlot()]=null;
@@ -253,7 +267,8 @@ public final class NativeTradeService implements Listener {
         List<String> lines;
         if(point.structure().equals("s_bank") && point.action().equals("bank")) {
             var resource=bankItem(point.argument());var settings=bankSettings(point.town());
-            lines=List.of(resource.name(),"Курс: "+Math.round(exchange((int)settings[0])*100)+"%","1 = "+(long)(resource.base()*exchange((int)settings[0]))+" монет","Комиссия: "+Math.round(settings[1]*100)+"%");
+            double rate=exchange(point.town(),(int)settings[0]);
+            lines=List.of(resource.name(),"Курс: "+(int)(rate*100)+"%","1 = "+BankExchange.gross(resource.base(),1,rate)+" монет","Комиссия: "+Math.round(settings[1]*100)+"%");
         } else if(point.structure().equals("s_grocer") && point.action().equals("grocer")) {
             var entry=grocer.require(Integer.parseInt(point.argument())+1);var settings=storage.query(db->GrocerStore.settings(db,point.town()));
             lines=entry.level()>settings.level()?List.of("Нужно улучшение","Бакалея "+entry.level(),"",""):

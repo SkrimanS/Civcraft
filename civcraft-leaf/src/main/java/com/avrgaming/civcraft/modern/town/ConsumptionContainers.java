@@ -38,7 +38,7 @@ public final class ConsumptionContainers {
     }
     /** Preserve each untouched stack's components; ordinary equivalent change is placed explicitly. */
     public static List<Image> after(List<Image> before,Map<Integer,Long> remaining,Map<Integer,Material> materials) {
-        var counts=counts(before,materials);var changed=new ArrayList<ItemStack[]>();
+        var counts=counts(before,materials);var ids=reverse(materials);var changed=new ArrayList<ItemStack[]>();
         for(var image:before)changed.add(image.contents());
         for(var entry:materials.entrySet()) {
             long target=remaining.getOrDefault(entry.getKey(),0L);
@@ -46,7 +46,7 @@ public final class ConsumptionContainers {
             long remove=counts.getOrDefault(entry.getKey(),0L)-target;
             if(remove<=0)continue;
             for(var inventory:changed)for(int slot=0;slot<inventory.length && remove>0;slot++) {
-                var stack=inventory[slot];if(stack==null || stack.getType()!=entry.getValue())continue;
+                var stack=inventory[slot];if(stack==null || !Objects.equals(ids.get(stack.getType()),entry.getKey()))continue;
                 int amount=(int)Math.min(remove,stack.getAmount());remove-=amount;
                 if(amount==stack.getAmount())inventory[slot]=null;else stack.setAmount(stack.getAmount()-amount);
             }
@@ -139,10 +139,15 @@ public final class ConsumptionContainers {
             throw new IllegalStateException("Consumption container is missing: "+position);
         return chest;
     }
-    private static Map<Material,Integer> reverse(Map<Integer,Material> materials) {
+    static Map<Material,Integer> reverse(Map<Integer,Material> materials) {
         var result=new EnumMap<Material,Integer>(Material.class);
         for(var entry:materials.entrySet())if(result.putIfAbsent(entry.getValue(),entry.getKey())!=null)
             throw new IllegalArgumentException("Ambiguous legacy food mapping");
+        // Legacy FISH_RAW (349) used one numeric ID for all four raw fish variants.
+        if(materials.containsKey(349))for(var fish:List.of(Material.COD,Material.SALMON,Material.TROPICAL_FISH,Material.PUFFERFISH)) {
+            var existing=result.putIfAbsent(fish,349);
+            if(existing!=null && existing!=349)throw new IllegalArgumentException("Ambiguous legacy fish mapping");
+        }
         return result;
     }
     private static ItemStack[] copy(ItemStack[] contents) {

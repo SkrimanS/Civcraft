@@ -42,6 +42,7 @@ public final class ConsumptionService implements Listener {
         taxationBonus=YamlConfiguration.loadConfiguration(new File(folder,"techs.yml")).getDouble("taxation_cottage_buff",2);
         if(!Double.isFinite(taxationBonus) || taxationBonus<0)throw new IllegalArgumentException("Invalid taxation cottage bonus");
         var legacy=new LegacyItemMaterials(plugin.getResource("legacy-materials.properties"));
+        materials.put(349,legacy.resolve(349,0));
         for(var type:List.of("s_temple","ti_cottage","ti_mine"))for(var level:catalog.levels(type).values())
             for(var id:level.food().keySet())materials.putIfAbsent(id,legacy.resolve(id,0));
         storage.transaction(db->{ConsumptionStore.install(db);return null;});
@@ -110,7 +111,9 @@ public final class ConsumptionService implements Listener {
         }
         var before=ConsumptionContainers.capture(positions);
         var wonder=storage.townWonderBonuses(building.town());
-        var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),building.type().equals("ti_cottage")?wonder.cottageFood():1,List.of());
+        var goodies=storage.townGoodieEffects(building.town());
+        boolean cottage=building.type().equals("ti_cottage");
+        var cycle=ConsumptionPlan.cycle(catalog.levels(building.type()),state.level(),state.count(),ConsumptionContainers.counts(before,materials),cottage?goodies.cottageFood(wonder.cottageFood()):1,cottage?goodies.cottageExchanges():List.of());
         var after=ConsumptionContainers.after(before,cycle.remaining(),materials);
         boolean poisoned=building.type().equals("ti_cottage") && cycle.state().consumed()
             && storage.query(db->GranaryPoisonStore.remaining(db,building.town()))>0;
