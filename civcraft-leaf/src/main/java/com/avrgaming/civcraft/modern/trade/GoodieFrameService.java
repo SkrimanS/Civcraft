@@ -32,7 +32,7 @@ public final class GoodieFrameService implements Listener {
     public GoodieFrameService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;catalog=new TradeGoodsCatalog(new java.io.File(plugin.getDataFolder(),"civcraft/data/goods.yml"));
         items=new BonusGoodieItems(plugin,catalog);identity=new NamespacedKey(plugin,"goodie-frame");
-        storage.transaction(db->{GoodieFrameStore.install(db);return null;});
+        storage.transaction(db->{GoodieTransferStore.install(db);return null;});
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,60L,20L);
     }
@@ -65,6 +65,7 @@ public final class GoodieFrameService implements Listener {
         for(var marker:markers(building)) {
             int x=building.x()+marker.x(),z=building.z()+marker.z();if(!world.isChunkLoaded(Math.floorDiv(x,16),Math.floorDiv(z,16)))continue;
             var frame=storage.transaction(db->GoodieFrameStore.register(db,building.id(),building.world(),building.x(),building.y(),building.z(),marker));
+            if(storage.query(GoodieTransferStore::lockedFrames).contains(frame.key()))continue;
             if(frame.source()&&!towers.contains(building.id())){sourceTower(frame,building);towers.add(building.id());}
             var entity=entity(frame,world);
             BonusGoodieStore.State item=null;
