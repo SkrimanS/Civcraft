@@ -37,6 +37,9 @@ public final class StorageBootstrap implements AutoCloseable {
     private com.avrgaming.civcraft.modern.town.HappinessRules happinessRules;
     private com.avrgaming.civcraft.modern.town.ConsumptionCatalog consumptionCatalog;
     private com.avrgaming.civcraft.modern.wonder.WonderBonuses wonderBonuses;
+    private com.avrgaming.civcraft.modern.trade.GoodieEffects goodieEffects;
+    public synchronized void setGoodieEffects(com.avrgaming.civcraft.modern.trade.GoodieEffects effects){goodieEffects=effects;}
+    public synchronized com.avrgaming.civcraft.modern.trade.GoodieEffects.Values townGoodieEffects(long town)throws SQLException {return goodieEffects==null?com.avrgaming.civcraft.modern.trade.GoodieEffects.Values.NONE:goodieEffects.town(connection,town);}
     public synchronized void setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses bonuses){wonderBonuses=bonuses;}
     public synchronized com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values townWonderBonuses(long town)throws SQLException {return wonderBonuses==null?com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values.NONE:wonderBonuses.town(connection,town);}
     public synchronized void setConsumptionCatalog(com.avrgaming.civcraft.modern.town.ConsumptionCatalog catalog){consumptionCatalog=catalog;}
@@ -1950,6 +1953,9 @@ public final class StorageBootstrap implements AutoCloseable {
         if(cultureBiomes!=null)try(var query=connection.prepareStatement("SELECT b.biome,COUNT(*) FROM culture_regions cr JOIN culture_biome_cache b ON b.world=cr.world AND b.chunk_x=cr.chunk_x AND b.chunk_z=cr.chunk_z WHERE cr.town_id=? GROUP BY b.biome")) {
             query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;biomeHappiness+=yield.happiness()*count;growth+=yield.growth()*count;}}
         }
+        var goodies=townGoodieEffects(townId);
+        structureHammers+=goodies.value("buff_construction");
+        structureHappiness+=goodies.happiness();
         double happiness = Math.max(0,baseHappiness + structureHappiness + biomeHappiness);
         var mood=happinessRules==null?null:townMood(townId,baseHappiness+structureHappiness+biomeHappiness,structureUnhappiness);
         double multiplier=mood==null?1:mood.state().hammers();
@@ -1967,10 +1973,10 @@ public final class StorageBootstrap implements AutoCloseable {
             query.setLong(1,townId);try(var row=query.executeQuery()){if(row.next()){growth+=row.getDouble(1);fertilizer=row.getBoolean(2);}}
         }
         var wonder=townWonderBonuses(townId);
-        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,wonder.growth());
+        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,wonder.growth()+goodies.value("buff_year_of_plenty"));
         return new TownProduction(
                 Math.max(0.0,(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate * (com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,townId)?capturedPenalty:1)),
-                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate * (1+wonder.science()),
+                (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate * (1+wonder.science()+goodies.value("buff_innovation")),
                 (Math.max(0.0, baseMoneyPerHour) + Math.max(0.0, money)) * coinMultiplier,
                 mood==null?happiness:mood.happy(),
                 mood==null?"Инициализация":mood.state().name(),

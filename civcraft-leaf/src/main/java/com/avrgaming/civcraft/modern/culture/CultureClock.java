@@ -44,6 +44,7 @@ public final class CultureClock {
                     double raw=storage.staticTownCulture(base.town());
                     double rate=plugin.governments().cultureRate(plugin.governments().townGovernment(base.town()))*storage.findTown(base.town()).orElseThrow().cultureMultiplier();
                     rate+=storage.townWonderBonuses(base.town()).culture();
+                    rate+=storage.townGoodieEffects(base.town()).culture();
                     plans.add(new CultureClockStore.Production(base.town(),Math.max(0,raw*rate),base.unused()));
                 }
                 return CultureClockStore.hourly(db,period,hour,plans,conversion);

@@ -1,0 +1,60 @@
+package com.avrgaming.civcraft.modern.trade;
+
+import java.io.File;
+import java.sql.*;
+import java.util.*;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+/** Rebuild effects from canonical ownership, so removal and restart cannot leave cached buffs. */
+public final class GoodieEffects {
+    private record Buff(String id,String parent,double value,boolean stackable) {}
+    public record Values(Map<String,Double> buffs,Map<String,Integer> goods) {
+        public static final Values NONE=new Values(Map.of(),Map.of());
+        public Values {buffs=Map.copyOf(buffs);goods=Map.copyOf(goods);}
+        public double value(String parent){return buffs.getOrDefault(parent,0.0);}
+        public int count(String good){return goods.getOrDefault(good,0);}
+        public double happiness(){return goods.values().stream().mapToInt(Integer::intValue).sum()+value("buff_hedonism");}
+        public double culture(){return value("buff_fine_art")+value("buff_art_appreciation");}
+    }
+    private final TradeGoodsCatalog goods;
+    private final Map<String,Buff> buffs;
+    public GoodieEffects(TradeGoodsCatalog goods,File file) {
+        this.goods=goods;var loaded=new LinkedHashMap<String,Buff>();
+        for(var raw:YamlConfiguration.loadConfiguration(file).getMapList("buffs")) {
+            String id=Objects.toString(raw.get("id"),"");
+            String parent=Objects.toString(raw.get("parent"),id);if(parent.isBlank())parent=id;
+            double value=Double.parseDouble(Objects.toString(raw.get("value"),"NaN"));
+            if(id.isBlank()||!Double.isFinite(value)||value<0||!(raw.get("stackable") instanceof Boolean))throw new IllegalArgumentException("Invalid trade buff: "+id);
+            if(loaded.putIfAbsent(id,new Buff(id,parent,value,(Boolean)raw.get("stackable")))!=null)throw new IllegalArgumentException("Duplicate trade buff: "+id);
+        }
+        for(var good:goods.list())for(String id:good.buffs())if(!loaded.containsKey(id))throw new IllegalArgumentException("Missing trade buff: "+id);
+        buffs=Map.copyOf(loaded);
+    }
+    public Values calculate(Collection<String> heldGoods) {
+        var totals=new HashMap<String,Double>();var counts=new HashMap<String,Integer>();var used=new HashSet<String>();
+        for(String id:heldGoods) {
+            var good=goods.require(id);counts.merge(id,1,Integer::sum);
+            // One source may only apply a given buff ID once, as in the legacy buff-key registry.
+            for(String buffId:new LinkedHashSet<>(good.buffs())) {
+                var buff=buffs.get(buffId);
+                if(buff.stackable()||used.add(buff.id()))totals.merge(buff.parent(),buff.value(),Double::sum);
+            }
+        }
+        return new Values(totals,counts);
+    }
+    public Values town(Connection db,long town)throws SQLException {
+        var held=new ArrayList<String>();
+        try(var s=db.prepareStatement("""
+            SELECT g.good_id FROM bonus_goodies g
+            JOIN goodie_frames f ON f.frame_key=g.holder_id AND f.is_source=0
+            JOIN structure_builds hall ON hall.id=f.build_id AND hall.town_id=g.host_town
+            JOIN structure_builds origin ON origin.id=g.origin_build
+            WHERE g.holder_kind='FRAME' AND g.host_town=? AND hall.status='COMPLETE'
+              AND hall.structure_id IN ('s_capitol','s_townhall') AND origin.status='COMPLETE'
+            ORDER BY g.origin_build
+            """)) {
+            s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())held.add(r.getString(1));}
+        }
+        return calculate(held);
+    }
+}
