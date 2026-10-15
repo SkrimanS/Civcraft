@@ -219,6 +219,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=3&&args[1].equalsIgnoreCase("info")&&args[2].equalsIgnoreCase("trade")){plugin.goodieIncome().info(player);return;}
         if(args.length>=2&&args[1].equalsIgnoreCase("outlaw")){plugin.warPvp().command(player,args);return;}
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("growth")) {
             var resident=game.resident(player);var town=game.town(resident).orElseThrow(()->new IllegalArgumentException("Вы не состоите в городе."));

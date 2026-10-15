@@ -65,6 +65,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
     private com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips;
+    private com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService goodieIncome;
+    public com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService goodieIncome(){return goodieIncome;}
     private com.avrgaming.civcraft.modern.trade.GoodieTransferService goodieTransfers;
     public com.avrgaming.civcraft.modern.trade.GoodieTransferService goodieTransfers(){return goodieTransfers;}
     public com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips(){return tradeShips;}
@@ -241,6 +243,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this,culture::tick,40L,20L);
         try {
             var cultureClock=new com.avrgaming.civcraft.modern.culture.CultureClock(this,storage);
+            goodieIncome=new com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,goodieIncome::tick,40L,20L);
             int scienceSeconds=Integer.getInteger("civcraft.test.culture.minuteSeconds",60);
             if(scienceSeconds<1 || scienceSeconds>60)throw new IllegalArgumentException("Invalid science test interval");
             getServer().getScheduler().runTaskTimer(this,cultureClock::minute,20L*scienceSeconds,20L*scienceSeconds);

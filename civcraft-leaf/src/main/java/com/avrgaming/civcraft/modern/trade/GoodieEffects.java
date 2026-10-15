@@ -58,6 +58,7 @@ public final class GoodieEffects {
             JOIN structure_builds origin ON origin.id=g.origin_build
             WHERE g.holder_kind='FRAME' AND g.host_town=? AND hall.status='COMPLETE'
               AND hall.structure_id IN ('s_capitol','s_townhall') AND origin.status='COMPLETE'
+              AND NOT EXISTS(SELECT 1 FROM goodie_transfers transfer WHERE transfer.origin_build=g.origin_build AND transfer.status='PREPARED')
             ORDER BY g.origin_build
             """)) {
             s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())held.add(r.getString(1));}

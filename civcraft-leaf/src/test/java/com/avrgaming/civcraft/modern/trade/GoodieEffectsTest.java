@@ -37,7 +37,16 @@ class GoodieEffectsTest {
             s.execute("CREATE TABLE goodie_frames(frame_key TEXT PRIMARY KEY,build_id INTEGER,is_source INTEGER)");
             s.execute("INSERT INTO goodie_frames VALUES('1:-1',1,1),('2:0',2,0),('3:0',3,0)");
             s.execute("CREATE TABLE bonus_goodies(origin_build INTEGER,good_id TEXT,holder_kind TEXT,holder_id TEXT,host_town INTEGER)");
+            s.execute("CREATE TABLE goodie_transfers(origin_build INTEGER,status TEXT)");
             s.execute("INSERT INTO bonus_goodies VALUES(1,'good_silver','SOURCE','1',NULL)");
+        }
+    }
+    @Test void unfinishedTransferCannotKeepProvidingCityBonusesWhileItsActorIsOffline()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("UPDATE bonus_goodies SET holder_kind='FRAME',holder_id='2:0',host_town=2");
+            assertEquals(4,effects.town(db,2).happiness());
+            db.createStatement().execute("INSERT INTO goodie_transfers VALUES(1,'PREPARED')");assertEquals(GoodieEffects.Values.NONE,effects.town(db,2));
+            db.createStatement().execute("UPDATE goodie_transfers SET status='COMPLETE'");assertEquals(4,effects.town(db,2).happiness());
         }
     }
     @Test void onlyMatchingCompleteHallFramesApplyAndRemovalSurvivesReopen()throws Exception {

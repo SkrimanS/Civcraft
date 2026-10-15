@@ -23,6 +23,7 @@ public final class GovernmentService {
     public double upkeepRate(String stored){return definitions.require(stored).upkeep();}
     public double maximumTax(String stored){return definitions.require(stored).maximumTax();}
     public double cultureRate(String stored){return definitions.require(stored).culture();}
+    public double tradeRate(String stored){return definitions.require(stored).trade();}
     public double cottageRate(String stored){return definitions.require(stored).cottages();}
     public String townGovernment(long town)throws SQLException {return storage.query(db->com.avrgaming.civcraft.modern.war.OccupationRules.government(db,town));}
     public Optional<String> occupationInfo(long town)throws SQLException {
