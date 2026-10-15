@@ -58,7 +58,7 @@ public final class UpgradeStore {
                 query.setLong(1,town);query.setString(2,required);try(var rows=query.executeQuery()){if(!rows.next())throw new IllegalArgumentException("Требуется завершённая постройка: "+required);}
             }
         }
-        if(upgrade.action().equals("set_fish_hatchery_level") || upgrade.action().equals("set_trommel_level"))ProductionStore.requireTownUnlocked(db,town);
+        if(upgrade.action().equals("set_fish_hatchery_level") || upgrade.action().equals("set_trommel_level") || upgrade.action().equals("set_quarry_level"))ProductionStore.requireTownUnlocked(db,town);
         try(var debit=db.prepareStatement("UPDATE towns SET coins=coins-? WHERE id=? AND coins>=?")) {
             debit.setLong(1,upgrade.cost());debit.setLong(2,town);debit.setLong(3,upgrade.cost());
             if(debit.executeUpdate()!=1)throw new IllegalArgumentException("В казне города недостаточно монет: требуется "+upgrade.cost()+".");
@@ -80,6 +80,7 @@ public final class UpgradeStore {
             case "set_library_level" -> com.avrgaming.civcraft.modern.trade.LibraryStore.level(db,town,Integer.parseInt(upgrade.value()));
             case "set_fish_hatchery_level" -> ProductionStore.fisheryLevel(db,town,Integer.parseInt(upgrade.value()));
             case "set_trommel_level" -> ProductionStore.trommelLevel(db,town,Integer.parseInt(upgrade.value()));
+            case "set_quarry_level" -> ProductionStore.quarryLevel(db,town,Integer.parseInt(upgrade.value()));
             case "enable_library_enchantment" -> com.avrgaming.civcraft.modern.trade.LibraryStore.add(db,town,com.avrgaming.civcraft.modern.trade.LibraryOffer.parse(upgrade.value()));
             case "set_tradeship_upgrade_level" -> com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,town,Integer.parseInt(upgrade.value()));
             default -> throw new IllegalArgumentException("Unknown upgrade action");

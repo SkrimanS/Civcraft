@@ -23,10 +23,11 @@ public final class ProductionService implements Listener {
     private final StorageBootstrap storage;
     private final FisheryLoot loot;
     private final TrommelLoot trommel;
+    private final QuarryLoot quarry;
     private final BiomePotential biomes;
     private final Set<Position> locked=new HashSet<>();
     private final NamespacedKey applied;
-    private final long fisheryPeriod,trommelPeriod;
+    private final long fisheryPeriod,trommelPeriod,quarryPeriod;
     private boolean ready,paused;
     private long lastWarning;
     private record Farm(long id,long town,String world,int x,int y,int z,String type) {}
@@ -35,8 +36,10 @@ public final class ProductionService implements Listener {
         this.plugin=plugin;this.storage=storage;applied=new NamespacedKey(plugin,"last-resource-production");
         fisheryPeriod=Long.getLong("civcraft.test.fishery.periodMillis",20000L);if(fisheryPeriod<1000 || fisheryPeriod>20000)throw new IllegalArgumentException("Invalid fishery period");
         trommelPeriod=Long.getLong("civcraft.test.trommel.periodMillis",1000L);if(trommelPeriod<1000 || trommelPeriod>60000)throw new IllegalArgumentException("Invalid trommel period");
+        quarryPeriod=Long.getLong("civcraft.test.quarry.periodMillis",1000L);if(quarryPeriod<1000 || quarryPeriod>60000)throw new IllegalArgumentException("Invalid quarry period");
         loot=new FisheryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         trommel=new TrommelLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
+        quarry=new QuarryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));plugin.nativeItems().require("mat_tungsten_ore");
         for(String item:trommel.items())plugin.nativeItems().require(item);
         biomes=new BiomePotential(YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getMapList("culture_biomes"));
         // Fail at startup if a migrated native fish definition is missing, before any rod is spent.
@@ -56,23 +59,24 @@ public final class ProductionService implements Listener {
     public Optional<String> description(long town,String type)throws SQLException {
         if(type.equals("ti_fish_hatchery"))return Optional.of("Рыбная ферма: уровень "+storage.query(db->ProductionStore.fisheryLevel(db,town))+". Один цикл за 20 секунд; удочки в бассейнах, улов в общем сундуке.");
         if(type.equals("s_trommel"))return Optional.of("Дробилка: уровень "+storage.query(db->ProductionStore.trommelLevel(db,town))+". Один блок за секунду; входной и выходной сундуки.");
+        if(type.equals("ti_quarry"))return Optional.of("Карьер: уровень "+storage.query(db->ProductionStore.quarryLevel(db,town))+". Цикл: 1 секунда. Кирки во входной сундук; Эффективность увеличивает выход и износ.");
         return Optional.empty();
     }
     public void tick() {
         if(paused)return;
         try {
             for(var operation:storage.query(ProductionStore::pending))finish(operation);
-            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);return null;});ready=true;}
+            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);ProductionStore.start(db,"ti_quarry",quarryPeriod,System.currentTimeMillis()/quarryPeriod);return null;});ready=true;}
             var farms=storage.query(db->{var result=new ArrayList<Farm>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
             });
-            for(var farm:farms)try{long period=farm.type().equals("s_trommel")?trommelPeriod:fisheryPeriod;produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
+            for(var farm:farms)try{long period=switch(farm.type()){case "s_trommel"->trommelPeriod;case "ti_quarry"->quarryPeriod;default->fisheryPeriod;};produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
         }catch(SQLException|IOException|RuntimeException failure){warn("Resource production recovery failed",failure);}
     }
     private void warn(String message,Exception failure){if(System.currentTimeMillis()-lastWarning>30000){lastWarning=System.currentTimeMillis();plugin.getLogger().severe(message+": "+failure.getMessage());}}
     private void produce(Farm farm,long tick,long period)throws SQLException,IOException {
         var before=storage.transaction(db->ProductionStore.initialize(db,farm.id(),period,tick));if(before.tick()>=tick)return;
-        if(farm.type().equals("s_trommel")){crush(farm,before,tick);return;}
+        if(farm.type().equals("s_trommel") || farm.type().equals("ti_quarry")){extract(farm,before,tick);return;}
         var inputs=new ArrayList<Input>();var destinations=new ArrayList<Position>();
         storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z,chest_id FROM structure_chests WHERE build_id=? ORDER BY chest_id,x,y,z")) {
             s.setLong(1,farm.id());try(var r=s.executeQuery()){while(r.next()) {
@@ -113,10 +117,11 @@ public final class ProductionService implements Listener {
         var pending=storage.transaction(db->ProductionStore.prepare(db,UUID.randomUUID().toString(),before,next,count,payload));
         lock(pending);if(produced>0)interrupt("prepared",farm.id());finish(pending);
     }
-    private void crush(Farm farm,ProductionStore.Clock before,long tick)throws SQLException,IOException {
+    private void extract(Farm farm,ProductionStore.Clock before,long tick)throws SQLException,IOException {
+        boolean isQuarry=farm.type().equals("ti_quarry");int sourceGroup=isQuarry?0:1;
         var sources=new ArrayList<Position>();var destinations=new ArrayList<Position>();
         storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z,chest_id FROM structure_chests WHERE build_id=? ORDER BY chest_id,x,y,z")) {
-            s.setLong(1,farm.id());try(var r=s.executeQuery()){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));if(r.getInt(5)==1)sources.add(p);else if(r.getInt(5)==2)destinations.add(p);}}
+            s.setLong(1,farm.id());try(var r=s.executeQuery()){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));if(r.getInt(5)==sourceGroup)sources.add(p);else if(r.getInt(5)==sourceGroup+1)destinations.add(p);}}
         }return null;});
         if(sources.size()!=2 || destinations.size()!=2)return;
         var all=new LinkedHashSet<>(sources);all.addAll(destinations);if(all.size()!=4)throw new IllegalStateException("Trommel chest groups overlap");
@@ -126,16 +131,26 @@ public final class ProductionService implements Listener {
         var health=storage.query(db->com.avrgaming.civcraft.modern.war.BuildingDamageStore.health(db,farm.id()));
         boolean active=health!=null && health.hitpoints()>0;
         boolean space=output.stream().anyMatch(i->Arrays.stream(i.contents()).anyMatch(s->s==null || s.getType().isAir()));
-        int level=storage.query(db->ProductionStore.trommelLevel(db,farm.town()));double extraction=storage.townGoodieEffects(farm.town()).value("buff_extraction");
+        int level=storage.query(db->isQuarry?ProductionStore.quarryLevel(db,farm.town()):ProductionStore.trommelLevel(db,farm.town()));double extraction=storage.townGoodieEffects(farm.town()).value("buff_extraction");
+        String government=isQuarry?plugin.governments().townGovernment(farm.town()):"";
         int produced=0;long until=active && space?Math.min(tick,before.tick()+64):tick;
         if(active && space)for(long cycle=before.tick();cycle<until;cycle++) {
             boolean consumed=false;
             for(var inventory:contents){for(int slot=0;slot<inventory.length;slot++) {
-                var stack=inventory[slot];if(stack==null || !TrommelLoot.accepts(stack.getType().name(),level))continue;
-                String result=trommel.roll(stack.getType().name(),extraction,java.util.concurrent.ThreadLocalRandom.current());
-                if(stack.getAmount()==1)inventory[slot]=null;else stack.setAmount(stack.getAmount()-1);
-                output=ConsumptionContainers.addBestEffort(output,result.startsWith("mat_")?plugin.nativeItems().create(result,1):new ItemStack(Material.valueOf(result)));
-                produced++;consumed=true;break;
+                var stack=inventory[slot];if(stack==null)continue;String material=stack.getType().name();
+                if(!(isQuarry?QuarryLoot.accepts(material,level):TrommelLoot.accepts(material,level)))continue;
+                String result;int quantity=1;
+                if(isQuarry) {
+                    int efficiency=stack.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.EFFICIENCY);
+                    var reward=quarry.roll(material,efficiency,extraction,government,java.util.concurrent.ThreadLocalRandom.current());result=reward.item();quantity=reward.amount();
+                    var meta=(Damageable)stack.getItemMeta();int damage=QuarryLoot.damageAfterUse(material,meta.getDamage(),QuarryLoot.modifier(efficiency),stack.getAmount());inventory[slot]=null;
+                    if(damage>=0){meta.setDamage(damage);stack.setItemMeta(meta);boolean returned=false;for(var target:contents){for(int free=0;free<target.length;free++)if(target[free]==null || target[free].getType().isAir()){target[free]=stack;returned=true;break;}if(returned)break;}}
+                } else {
+                    result=trommel.roll(material,extraction,java.util.concurrent.ThreadLocalRandom.current());
+                    if(stack.getAmount()==1)inventory[slot]=null;else stack.setAmount(stack.getAmount()-1);
+                }
+                for(int remaining=quantity;remaining>0;remaining-=64){int amount=Math.min(64,remaining);output=ConsumptionContainers.addBestEffort(output,result.startsWith("mat_")?plugin.nativeItems().create(result,amount):new ItemStack(Material.valueOf(result),amount));}
+                produced=Math.addExact(produced,quantity);consumed=true;break;
             }if(consumed)break;}
             if(!consumed)break;
         }
