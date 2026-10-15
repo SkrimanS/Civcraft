@@ -32,6 +32,7 @@ class GoodieEffectsTest {
     }
     void schema(Connection db)throws Exception {
         try(var s=db.createStatement()) {
+            s.execute("CREATE TABLE towns(id INTEGER PRIMARY KEY,civ_id INTEGER)");s.execute("INSERT INTO towns VALUES(1,1),(2,2),(3,2)");
             s.execute("CREATE TABLE structure_builds(id INTEGER PRIMARY KEY,town_id INTEGER,structure_id TEXT,status TEXT)");
             s.execute("INSERT INTO structure_builds VALUES(1,1,'ti_trade_outpost','COMPLETE'),(2,2,'s_townhall','COMPLETE'),(3,3,'s_capitol','COMPLETE')");
             s.execute("CREATE TABLE goodie_frames(frame_key TEXT PRIMARY KEY,build_id INTEGER,is_source INTEGER)");
@@ -39,6 +40,18 @@ class GoodieEffectsTest {
             s.execute("CREATE TABLE bonus_goodies(origin_build INTEGER,good_id TEXT,holder_kind TEXT,holder_id TEXT,host_town INTEGER)");
             s.execute("CREATE TABLE goodie_transfers(origin_build INTEGER,status TEXT)");
             s.execute("INSERT INTO bonus_goodies VALUES(1,'good_silver','SOURCE','1',NULL)");
+        }
+    }
+    @Test void medicineInAnyTownBenefitsItsCivilizationOnceAndFollowsTownOwnership()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("UPDATE bonus_goodies SET good_id='good_herbs',holder_kind='FRAME',holder_id='2:0',host_town=2");
+            assertEquals(50,effects.medicine(db,2));assertEquals(0,effects.medicine(db,1));
+            assertEquals(10,com.avrgaming.civcraft.modern.war.WarRespawnStore.delaySeconds(30,30,1,false,10,effects.medicine(db,2)));
+            assertEquals(610,com.avrgaming.civcraft.modern.war.WarRespawnStore.delaySeconds(30,30,1,true,10,effects.medicine(db,2)));
+            assertEquals(1,com.avrgaming.civcraft.modern.war.WarRespawnStore.delaySeconds(30,30,0,false,10,effects.medicine(db,2)));
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(4,1,'ti_trade_outpost','COMPLETE')");db.createStatement().execute("INSERT INTO bonus_goodies VALUES(4,'good_guarana','FRAME','3:0',3)");assertEquals(50,effects.medicine(db,2));
+            db.createStatement().execute("UPDATE towns SET civ_id=1 WHERE id IN (2,3)");assertEquals(0,effects.medicine(db,2));assertEquals(50,effects.medicine(db,1));
+            db.createStatement().execute("UPDATE bonus_goodies SET holder_kind='PLAYER'");assertEquals(0,effects.medicine(db,1));
         }
     }
     @Test void unfinishedTransferCannotKeepProvidingCityBonusesWhileItsActorIsOffline()throws Exception {

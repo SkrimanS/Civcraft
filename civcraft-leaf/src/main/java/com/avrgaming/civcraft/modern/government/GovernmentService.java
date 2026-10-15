@@ -118,17 +118,18 @@ public final class GovernmentService {
             long now=System.currentTimeMillis();
             for(var build:builds) {
                 var town=storage.findTown(build[1]).orElseThrow();
-                try(var query=db.prepareStatement("SELECT total_hammers,started_at,finish_at,hammers_per_hour FROM structure_builds WHERE id=?")) {
+                try(var query=db.prepareStatement("SELECT total_hammers,started_at,finish_at,hammers_per_hour,structure_id,base_hammers FROM structure_builds WHERE id=?")) {
                     query.setLong(1,build[0]);try(var result=query.executeQuery()) {
                         if(!result.next())continue;
-                        if(Math.abs(result.getDouble(4)-town.hammersPerHour())<1e-9)continue;
+                        double hammers=storage.buildHammerCost(build[1],result.getString(5),result.getDouble(6));
+                        if(Math.abs(result.getDouble(4)-town.hammersPerHour())<1e-9&&Math.abs(result.getDouble(1)-hammers)<1e-9)continue;
                         if(town.hammersPerHour()<=0)throw new SQLException("Government change would stop construction without production");
                         long previousStart=result.getLong(2),previousFinish=result.getLong(3);
                         double progress=previousFinish<=previousStart?1:Math.max(0,Math.min(1,(now-previousStart)/(double)(previousFinish-previousStart)));
-                        long duration=(long)Math.ceil(result.getDouble(1)/town.hammersPerHour()*3_600_000);
+                        long duration=(long)Math.ceil(hammers/town.hammersPerHour()*3_600_000);
                         long start=now-(long)(progress*duration);
-                        try(var update=db.prepareStatement("UPDATE structure_builds SET started_at=?,finish_at=?,hammers_per_hour=? WHERE id=?")) {
-                            update.setLong(1,start);update.setLong(2,start+duration);update.setDouble(3,town.hammersPerHour());update.setLong(4,build[0]);update.executeUpdate();
+                        try(var update=db.prepareStatement("UPDATE structure_builds SET started_at=?,finish_at=?,hammers_per_hour=?,total_hammers=? WHERE id=?")) {
+                            update.setLong(1,start);update.setLong(2,start+duration);update.setDouble(3,town.hammersPerHour());update.setDouble(4,hammers);update.setLong(5,build[0]);update.executeUpdate();
                         }
                         changes.put(build[0],duration);
                     }

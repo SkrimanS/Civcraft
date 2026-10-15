@@ -38,7 +38,11 @@ public final class StorageBootstrap implements AutoCloseable {
     private com.avrgaming.civcraft.modern.town.ConsumptionCatalog consumptionCatalog;
     private com.avrgaming.civcraft.modern.wonder.WonderBonuses wonderBonuses;
     private com.avrgaming.civcraft.modern.trade.GoodieEffects goodieEffects;
+    private com.avrgaming.civcraft.modern.build.HammerCosts hammerCosts;
+    public synchronized void setHammerCosts(com.avrgaming.civcraft.modern.build.HammerCosts costs){hammerCosts=costs;}
+    public synchronized double buildHammerCost(long town,String type,double base)throws SQLException {return hammerCosts==null?base:hammerCosts.cost(connection,town,type,base,townGoodieEffects(town).value("buff_rush"));}
     public synchronized void setGoodieEffects(com.avrgaming.civcraft.modern.trade.GoodieEffects effects){goodieEffects=effects;}
+    public synchronized int civilizationMedicine(long civilization)throws SQLException {return goodieEffects==null?0:goodieEffects.medicine(connection,civilization);}
     public synchronized com.avrgaming.civcraft.modern.trade.GoodieEffects.Values townGoodieEffects(long town)throws SQLException {return goodieEffects==null?com.avrgaming.civcraft.modern.trade.GoodieEffects.Values.NONE:goodieEffects.town(connection,town);}
     public synchronized void setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses bonuses){wonderBonuses=bonuses;}
     public synchronized com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values townWonderBonuses(long town)throws SQLException {return wonderBonuses==null?com.avrgaming.civcraft.modern.wonder.WonderBonuses.Values.NONE:wonderBonuses.town(connection,town);}
@@ -391,6 +395,8 @@ public final class StorageBootstrap implements AutoCloseable {
         addColumnIfMissing("towns", "base_happiness", "INTEGER NOT NULL DEFAULT 0");
         addColumnIfMissing("structure_builds", "town_id", "INTEGER");
         addColumnIfMissing("structure_builds", "total_hammers", "REAL NOT NULL DEFAULT 0");
+        addColumnIfMissing("structure_builds", "base_hammers", "REAL");
+        try(var statement=connection.createStatement()){statement.executeUpdate("UPDATE structure_builds SET base_hammers=total_hammers WHERE base_hammers IS NULL");}
         addColumnIfMissing("structure_builds", "hammers_per_hour", "REAL NOT NULL DEFAULT 0");
         addColumnIfMissing("structure_builds", "production_hammers_per_hour", "REAL NOT NULL DEFAULT 0");
         addColumnIfMissing("structure_builds", "beakers_per_hour", "REAL NOT NULL DEFAULT 0");
@@ -1051,10 +1057,12 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     public synchronized long recordStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt) throws SQLException {
+        double baseHammers=totalHammers;
+        if(townId!=null)totalHammers=buildHammerCost(townId,structureId,baseHammers);
         long now = System.currentTimeMillis();
         try (PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO structure_builds(builder_uuid, town_id, type, template, direction, world, x, y, z, template_path, queued_blocks, structure_id, display_name, cost, max_hitpoints, total_hammers, hammers_per_hour, production_hammers_per_hour, beakers_per_hour, money_per_hour, happiness, started_at, finish_at, status, journal_started, created_at)
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 1, ?)
+                INSERT INTO structure_builds(builder_uuid, town_id, type, template, direction, world, x, y, z, template_path, queued_blocks, structure_id, display_name, cost, max_hitpoints, total_hammers, hammers_per_hour, production_hammers_per_hour, beakers_per_hour, money_per_hour, happiness, started_at, finish_at, status, journal_started, created_at,base_hammers)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 1, ?, ?)
                 """, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, builder.toString());
             if (townId == null) {
@@ -1084,6 +1092,7 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.setLong(22, startedAt);
             statement.setLong(23, finishAt);
             statement.setLong(24, now);
+            statement.setDouble(25,baseHammers);
             statement.executeUpdate();
             long buildId=generatedId(statement);
             com.avrgaming.civcraft.modern.war.TowerHealthStore.initialize(connection,buildId);

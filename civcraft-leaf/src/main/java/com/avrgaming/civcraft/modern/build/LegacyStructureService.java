@@ -54,6 +54,7 @@ public final class LegacyStructureService {
         this.definitions = new StructureDefinitionService(plugin, settings);
         this.tradeGoods=new com.avrgaming.civcraft.modern.trade.TradeGoodsCatalog(new java.io.File(plugin.getDataFolder(),"civcraft/data/goods.yml"));
         storage.setStructureDefinitions(definitions);
+        storage.setHammerCosts(new HammerCosts(new java.io.File(plugin.getDataFolder(),"civcraft/data")));
         this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick(), storage::persistStructureSnapshot);
         warmupTemplateCacheAsync();
     }
@@ -537,6 +538,8 @@ public final class LegacyStructureService {
     }
 
     private QueuedLegacyBuild startBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, LegacyDefTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
+        double baseHammers=totalHammers;
+        if(town!=null)totalHammers=storage.buildHammerCost(town.id(),structureId,baseHammers);
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
         validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
@@ -582,7 +585,7 @@ public final class LegacyStructureService {
                     displayName,
                     cost,
                     maxHitpoints,
-                    totalHammers,
+                    baseHammers,
                     hammersPerHour,
                     productionHammersPerHour,
                     beakersPerHour,
@@ -619,6 +622,8 @@ public final class LegacyStructureService {
     }
 
     private QueuedLegacyBuild startSchematicBuild(Player player, TownRecord town, String type, String templateName, String direction, Path templatePath, WorldEditSchematicTemplate template, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happinessDelta, Location origin, boolean showPreview) throws SQLException {
+        double baseHammers=totalHammers;
+        if(town!=null)totalHammers=storage.buildHammerCost(town.id(),structureId,baseHammers);
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
         validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
@@ -664,7 +669,7 @@ public final class LegacyStructureService {
                     displayName,
                     cost,
                     maxHitpoints,
-                    totalHammers,
+                    baseHammers,
                     hammersPerHour,
                     productionHammersPerHour,
                     beakersPerHour,

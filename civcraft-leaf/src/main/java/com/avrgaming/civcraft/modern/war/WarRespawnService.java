@@ -99,7 +99,8 @@ public final class WarRespawnService implements Listener {
             if(options.isEmpty())throw new IllegalArgumentException("Нет доступных мест возрождения.");
             if(selected>=options.size()){WarRespawnStore.select(db,build,0);return null;}
             var validity=HallValidationStore.state(db,build);
-            int seconds=WarRespawnStore.delaySeconds(baseDelay,controlDelay,WarRespawnStore.destroyedControls(db,build,now),validity.validated()&&!validity.valid(),invalidMinutes,0);
+            int medicine=storage.civilizationMedicine(WarRespawnStore.owner(db,build));
+            int seconds=WarRespawnStore.delaySeconds(baseDelay,controlDelay,WarRespawnStore.destroyedControls(db,build,now),validity.validated()&&!validity.valid(),invalidMinutes,medicine);
             long remaining=WarRespawnStore.remainingMillis(WarRespawnStore.lastKilled(db,player.getUniqueId()),seconds,now);
             if(remaining>0)throw new IllegalArgumentException("До выхода из военной комнаты: "+remaining/1000+" сек.");
             return options.get(selected);

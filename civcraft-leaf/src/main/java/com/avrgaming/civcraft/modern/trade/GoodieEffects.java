@@ -65,4 +65,16 @@ public final class GoodieEffects {
         }
         return calculate(held);
     }
+    /** TownHall checks all towns of its civilization; the nonstacking medicine buff applies once. */
+    public int medicine(Connection db,long civilization)throws SQLException {
+        var towns=new ArrayList<Long>();
+        try(var s=db.prepareStatement("SELECT id FROM towns WHERE civ_id=? ORDER BY id")){s.setLong(1,civilization);try(var r=s.executeQuery()){while(r.next())towns.add(r.getLong(1));}}
+        int result=0;
+        for(long town:towns) {
+            double value=town(db,town).value("buff_medicine");
+            if(value<0||value!=Math.rint(value)||value>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid medicine respawn bonus");
+            result=Math.max(result,(int)value);
+        }
+        return result;
+    }
 }
