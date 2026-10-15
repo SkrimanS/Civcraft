@@ -22,6 +22,9 @@ class FarmPlotsTest {
         try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
             schema(db);db.createStatement().execute("INSERT INTO structure_builds VALUES(1,'world',-17,-1,1,'ti_farm','COMPLETE'),(2,'world',-1,-1,1,'ti_farm','COMPLETE'),(3,'world',0,-1,1,'ti_farm','BUILDING'),(4,'world',-1,0,1,'ti_farm','WAR_DESTROYED'),(5,'world',-17,-1,2,'ti_farm','COMPLETE'),(6,'world',-1,-17,1,'ti_cottage','COMPLETE')");
             assertEquals(List.of(new FarmPlots.Plot(5,"world",-2,-1)),FarmPlots.adjacent(db,"world",-1,-1));
+            assertEquals(Optional.of(new FarmPlots.Plot(5,"world",-2,-1)),FarmPlots.registered(db,"world",-17,-1));
+            assertEquals(Optional.of(new FarmPlots.Plot(2,"world",-1,-1)),FarmPlots.registered(db,"world",-16,-16));
+            assertTrue(FarmPlots.registered(db,"world",0,-1).isEmpty());assertTrue(FarmPlots.registered(db,"nether",-17,-1).isEmpty());
         }
     }
 }

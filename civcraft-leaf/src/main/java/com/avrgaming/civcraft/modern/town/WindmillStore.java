@@ -31,6 +31,7 @@ public final class WindmillStore {
         if(!beds.isEmpty())try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>?")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Во время боевого периода мельница не сажает урожай.");}}
         var farms=new HashMap<Long,FarmPlots.Plot>();for(var farm:FarmPlots.adjacent(db,world,x,z))farms.put(farm.farm(),farm);
         for(var bed:beds){var farm=farms.get(bed.spot().farm());if(farm==null || !farm.world().equals(bed.spot().world()) || farm.x()!=Math.floorDiv(bed.spot().x(),16) || farm.z()!=Math.floorDiv(bed.spot().z(),16))throw new IllegalArgumentException("Грядка находится вне соседней завершённой фермы.");}
+        for(var bed:beds){var p=bed.spot();try(var s=db.prepareStatement("SELECT 1 FROM farm_growth_cells WHERE world=? AND x=? AND y=? AND z=?")){s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());try(var r=s.executeQuery()){if(r.next())throw new SQLException("Farm growth is pending");}}}
         var pending=ProductionStore.prepare(db,id,before,tick,beds.size(),containers);
         try(var s=db.prepareStatement("INSERT INTO resource_production_plantings VALUES(?,?,?,?,?,?,?,?)")) {
             for(var bed:beds){s.setString(1,id);s.setLong(2,bed.spot().farm());s.setString(3,bed.spot().world());s.setInt(4,bed.spot().x());s.setInt(5,bed.spot().y());s.setInt(6,bed.spot().z());s.setString(7,bed.crop().name());s.setString(8,bed.before());s.addBatch();}s.executeBatch();

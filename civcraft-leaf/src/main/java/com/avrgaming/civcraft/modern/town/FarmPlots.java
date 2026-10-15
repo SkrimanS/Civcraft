@@ -9,6 +9,13 @@ public final class FarmPlots {
     public record Plot(long farm,String world,int x,int z) {}
     private record Key(int x,int z) {}
     private static final int[][] OFFSETS={{-1,0},{1,0},{0,-1},{0,1},{1,1},{-1,-1},{-1,1},{1,-1}};
+    public static Optional<Plot> registered(Connection db,String world,int blockX,int blockZ)throws SQLException {
+        int x=Math.floorDiv(blockX,16),z=Math.floorDiv(blockZ,16);
+        try(var s=db.prepareStatement("SELECT id FROM structure_builds WHERE structure_id='ti_farm' AND status='COMPLETE' AND world=? AND x>=? AND x<? AND z>=? AND z<? ORDER BY id DESC LIMIT 1")){
+            s.setString(1,world);s.setLong(2,(long)x*16);s.setLong(3,((long)x+1)*16);s.setLong(4,(long)z*16);s.setLong(5,((long)z+1)*16);
+            try(var r=s.executeQuery()){return r.next()?Optional.of(new Plot(r.getLong(1),world,x,z)):Optional.empty();}
+        }
+    }
     public static List<Plot> adjacent(Connection db,String world,int blockX,int blockZ)throws SQLException {
         int x=Math.floorDiv(blockX,16),z=Math.floorDiv(blockZ,16);var plots=new HashMap<Key,Plot>();
         try(var s=db.prepareStatement("SELECT id,x,z FROM structure_builds WHERE structure_id='ti_farm' AND status='COMPLETE' AND world=? AND x>=? AND x<? AND z>=? AND z<? ORDER BY id")) {
