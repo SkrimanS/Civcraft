@@ -549,7 +549,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin, template);
         validateChunkSolidSupport(origin, template, chunks);
-        rejectExistingTileEntities(origin, template.sizeY(), chunks);
+        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ());
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -631,7 +631,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin.getWorld().getName(), origin.getBlockX(), origin.getBlockZ(), template.sizeX(), template.sizeZ());
         validateChunkSolidSupport(origin, template.sizeY(), chunks);
-        rejectExistingTileEntities(origin, template.sizeY(), chunks);
+        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ());
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -785,7 +785,7 @@ public final class LegacyStructureService {
      * Later versions can allow them once an NBT-aware journal exists.
      */
     private void rejectExistingTileEntities(Location origin, int sizeY,
-                                            List<StructureChunkCoord> chunks) {
+                                            List<StructureChunkCoord> chunks,String type,int width,int depth)throws SQLException {
         if (!plugin.getConfig().getBoolean("structures.protect-existing-tile-entities", true)) {
             return;
         }
@@ -795,10 +795,17 @@ public final class LegacyStructureService {
         }
         int minY = origin.getBlockY();
         int maxY = minY + sizeY - 1;
+        java.util.Set<com.avrgaming.civcraft.modern.trade.TradeMarkerStore.Position> permitted=java.util.Set.of();
+        if(com.avrgaming.civcraft.modern.trade.TradeDepositStore.outpost(type)) {
+            var job=storage.query(db->{var deposit=com.avrgaming.civcraft.modern.trade.TradeDepositStore.require(db,tradeGoods,type,world.getName(),origin.getBlockX(),minY,origin.getBlockZ(),width,sizeY,depth);
+                return com.avrgaming.civcraft.modern.trade.TradeMarkerStore.completed(db,deposit.id());});
+            if(job!=null)permitted=java.util.Set.copyOf(com.avrgaming.civcraft.modern.trade.TradeMarkerStore.positions(job));
+        }
         for (StructureChunkCoord coord : chunks) {
             for (BlockState state : world.getChunkAt(coord.chunkX(), coord.chunkZ()).getTileEntities()) {
                 int y = state.getY();
                 if (y >= minY && y <= maxY) {
+                    if(state instanceof org.bukkit.block.Sign && permitted.contains(new com.avrgaming.civcraft.modern.trade.TradeMarkerStore.Position(world.getName(),state.getX(),y,state.getZ())))continue;
                     throw new IllegalArgumentException(
                             "В области постройки находится блок с сохраняемыми данными: "
                                     + state.getBlock().getType() + " (" + state.getX()
