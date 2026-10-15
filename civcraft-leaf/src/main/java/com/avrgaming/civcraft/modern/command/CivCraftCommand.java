@@ -566,7 +566,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
 
     private void sendConsumptionInfo(Player player,StorageBootstrap.StructureBuildView info) {
         if(!info.status().equals("COMPLETE") || plugin.consumption()==null)return;
-        try{plugin.consumption().description(info.id(),info.structureId()).ifPresent(text->send(player,text));}
+        try{plugin.consumption().description(info.id(),info.structureId()).ifPresent(text->send(player,text));
+            if(plugin.fisheries()!=null && info.townId()!=null)plugin.fisheries().description(info.townId(),info.structureId()).ifPresent(text->send(player,text));}
         catch(SQLException failure){plugin.getLogger().warning("Building meal information failed: "+failure.getMessage());}
     }
 

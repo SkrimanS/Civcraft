@@ -18,6 +18,7 @@ public final class OccupationActionsStore {
     }
     private static void move(Connection db,long town,long civ,long now)throws SQLException {
         com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireTownUnlocked(db,town);
+        com.avrgaming.civcraft.modern.town.ProductionStore.requireTownUnlocked(db,town);
         try(var s=db.prepareStatement("UPDATE towns SET civ_id=? WHERE id=?")){s.setLong(1,civ);s.setLong(2,town);if(s.executeUpdate()!=1)throw new SQLException("Liberation town disappeared");}
         try(var s=db.prepareStatement("UPDATE town_claims SET civ_id=? WHERE town_id=?")){s.setLong(1,civ);s.setLong(2,town);s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE residents SET civ_id=?,updated_at=? WHERE town_id=?")){s.setLong(1,civ);s.setLong(2,now);s.setLong(3,town);s.executeUpdate();}

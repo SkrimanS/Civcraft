@@ -8,6 +8,7 @@ public final class UpgradeStore {
     public static void install(Connection db)throws SQLException {
         com.avrgaming.civcraft.modern.trade.GrocerStore.install(db);
         com.avrgaming.civcraft.modern.trade.LibraryStore.install(db);
+        ProductionStore.install(db);
         com.avrgaming.civcraft.modern.trade.TradeShipStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
@@ -57,6 +58,7 @@ public final class UpgradeStore {
                 query.setLong(1,town);query.setString(2,required);try(var rows=query.executeQuery()){if(!rows.next())throw new IllegalArgumentException("Требуется завершённая постройка: "+required);}
             }
         }
+        if(upgrade.action().equals("set_fish_hatchery_level"))ProductionStore.requireTownUnlocked(db,town);
         try(var debit=db.prepareStatement("UPDATE towns SET coins=coins-? WHERE id=? AND coins>=?")) {
             debit.setLong(1,upgrade.cost());debit.setLong(2,town);debit.setLong(3,upgrade.cost());
             if(debit.executeUpdate()!=1)throw new IllegalArgumentException("В казне города недостаточно монет: требуется "+upgrade.cost()+".");
@@ -76,6 +78,7 @@ public final class UpgradeStore {
             }
             case "set_grocer_level" -> com.avrgaming.civcraft.modern.trade.GrocerStore.level(db,town,Integer.parseInt(upgrade.value()));
             case "set_library_level" -> com.avrgaming.civcraft.modern.trade.LibraryStore.level(db,town,Integer.parseInt(upgrade.value()));
+            case "set_fish_hatchery_level" -> ProductionStore.fisheryLevel(db,town,Integer.parseInt(upgrade.value()));
             case "enable_library_enchantment" -> com.avrgaming.civcraft.modern.trade.LibraryStore.add(db,town,com.avrgaming.civcraft.modern.trade.LibraryOffer.parse(upgrade.value()));
             case "set_tradeship_upgrade_level" -> com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,town,Integer.parseInt(upgrade.value()));
             default -> throw new IllegalArgumentException("Unknown upgrade action");

@@ -6,6 +6,18 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UpgradeStoreTest {
+    @Test void hatcheryUpgradeRequiresTechnologyAndCompletionAndRollsBackWithTreasury()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);var upgrade=new TownCatalog(new java.io.File("src/main/resources/civcraft/data/town.yml")).require("upgrade_fish_hatchery_level_2");assertTrue(upgrade.supported());
+            db.createStatement().execute("UPDATE towns SET coins=100000 WHERE id=1");
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,upgrade,0));
+            db.createStatement().execute("INSERT INTO civ_technologies VALUES(1,'tech_trade')");db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'ti_fish_hatchery','BUILDING')");
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,upgrade,0));assertEquals(100000,coins(db));
+            db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE'");db.setAutoCommit(false);UpgradeStore.buy(db,1,mayor,upgrade,0);db.rollback();assertEquals(1,ProductionStore.fisheryLevel(db,1));assertEquals(100000,coins(db));
+            UpgradeStore.buy(db,1,mayor,upgrade,0);db.commit();assertEquals(2,ProductionStore.fisheryLevel(db,1));assertEquals(75000,coins(db));
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,upgrade,0));db.rollback();assertEquals(75000,coins(db));
+        }
+    }
     @Test void libraryResetRequiresAuthorityKeepsLevelAndDoesNotRefundResearch()throws Exception {
         try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
             schema(db);db.createStatement().execute("CREATE TABLE town_assistants(town_id INTEGER,player_uuid TEXT)");

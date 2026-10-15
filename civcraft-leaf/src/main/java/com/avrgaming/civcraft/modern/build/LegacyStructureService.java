@@ -765,6 +765,8 @@ public final class LegacyStructureService {
             modern.consumption().requireUnlocked(build.id());
         if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern && modern.tradeShips()!=null)
             modern.tradeShips().requireUnlocked(build.id());
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern && modern.fisheries()!=null)
+            modern.fisheries().requireUnlocked(build.id());
         long refund = Math.max(0L, Math.round(Math.floor(build.cost() * 0.50)));
         // Never remove a building with missing backups: BlockData-only
         // demolition would otherwise irreversibly destroy the old terrain.

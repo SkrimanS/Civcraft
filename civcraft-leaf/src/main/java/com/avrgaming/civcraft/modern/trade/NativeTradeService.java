@@ -70,7 +70,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library') AND tp.action='grocer'))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','ti_fish_hatchery') AND tp.action='grocer'))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -93,12 +93,13 @@ public final class NativeTradeService implements Listener {
             long now=System.currentTimeMillis();
             if(now-lastClick.getOrDefault(player.getUniqueId(),0L)<250)return;
             lastClick.put(player.getUniqueId(),now);
-            if(economy.usesExternalProvider())throw new IllegalArgumentException("Для этого обмена требуется внутренний баланс CivCraft.");
+            if(economy.usesExternalProvider() && !point.structure().equals("ti_fish_hatchery"))throw new IllegalArgumentException("Для этого обмена требуется внутренний баланс CivCraft.");
             if(!player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Закройте инвентарь перед обменом.");
             recover(player);
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
+            else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.fisheries().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
             render(event.getClickedBlock(),point);
         } catch(IllegalArgumentException exception){player.sendMessage(Component.text(exception.getMessage()));}
@@ -288,6 +289,8 @@ public final class NativeTradeService implements Listener {
             var entry=grocer.require(Integer.parseInt(point.argument())+1);var settings=storage.query(db->GrocerStore.settings(db,point.town()));
             lines=entry.level()>settings.level()?List.of("Нужно улучшение","Бакалея "+entry.level(),"",""):
                 List.of("Купить "+entry.amount()+" шт.",entry.name(),entry.price()+" монет","Гостям: +"+Math.round(settings.fee()*100)+"%");
+        } else if(point.structure().equals("ti_fish_hatchery") && plugin.fisheries()!=null) {
+            lines=plugin.fisheries().poolLines(point.town(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_library")) {
             var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->LibraryStore.fee(db,point.town()));

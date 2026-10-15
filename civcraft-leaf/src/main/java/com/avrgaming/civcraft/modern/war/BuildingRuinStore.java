@@ -24,6 +24,7 @@ public final class BuildingRuinStore {
     }
     public static void prepare(Connection db,long build,List<Change> changes)throws SQLException {
         com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,build);
+        com.avrgaming.civcraft.modern.town.ProductionStore.requireBuildUnlocked(db,build);
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds b JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.status='WAR_DESTROY_PENDING' AND h.hitpoints=0 AND h.phase='DESTROY_PENDING'")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Building no longer awaits destruction");}
         }
@@ -40,6 +41,7 @@ public final class BuildingRuinStore {
     }
     public static boolean complete(Connection db,long build)throws SQLException {
         com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireBuildUnlocked(db,build);
+        com.avrgaming.civcraft.modern.town.ProductionStore.requireBuildUnlocked(db,build);
         try(var s=db.prepareStatement("SELECT state FROM building_ruin_jobs WHERE build_id=?")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing ruin plan");if(r.getString(1).equals("COMPLETE"))return false;}
         }
