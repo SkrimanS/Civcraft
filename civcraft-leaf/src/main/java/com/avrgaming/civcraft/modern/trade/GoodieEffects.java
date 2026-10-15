@@ -49,6 +49,11 @@ public final class GoodieEffects {
         }
         return new Values(totals,counts);
     }
+    public Map<String,Double> goodsForBuff(String parent) {
+        var result=new LinkedHashMap<String,Double>();
+        for(var good:goods.list()){double value=calculate(List.of(good.id())).value(parent);if(value>0)result.put(good.id(),value);}
+        return Map.copyOf(result);
+    }
     public Values town(Connection db,long town)throws SQLException {
         var held=new ArrayList<String>();
         try(var s=db.prepareStatement("""

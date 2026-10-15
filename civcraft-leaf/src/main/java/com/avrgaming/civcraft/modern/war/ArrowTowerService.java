@@ -75,7 +75,9 @@ public final class ArrowTowerService implements Listener {
                 if(cannon){if(cannonClock.ready(tower.id()))cannonProjectiles.launch(turret,target.getLocation());continue;}
                 var targetLocation=target.getLocation().add(0,1,0);turret.add(2*Integer.compare(targetLocation.getBlockX(),turret.getBlockX()),0,2*Integer.compare(targetLocation.getBlockZ(),turret.getBlockZ()));
                 var direction=targetLocation.toVector().subtract(turret.toVector());if(direction.lengthSquared()==0)continue;direction.normalize();
-                var arrow=world.spawnArrow(turret,direction,(float)power,0);arrow.setVelocity(direction.multiply(power));arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);arrow.getPersistentDataContainer().set(identity,PersistentDataType.LONG,tower.id());flights.put(arrow.getUniqueId(),new Flight(arrow,target,tower.town(),now));
+                var arrow=world.spawnArrow(turret,direction,(float)power,0);arrow.setVelocity(direction.multiply(power));arrow.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);arrow.getPersistentDataContainer().set(identity,PersistentDataType.LONG,tower.id());
+                if(storage.townGoodieEffects(tower.town()).buffs().containsKey("buff_fire_bomb"))arrow.setFireTicks(1000);
+                flights.put(arrow.getUniqueId(),new Flight(arrow,target,tower.town(),now));
                 }
             }
         }catch(Exception failure){plugin.getLogger().severe("Arrow tower firing failed: "+failure.getMessage());}
@@ -92,7 +94,7 @@ public final class ArrowTowerService implements Listener {
     public void damage(EntityDamageByEntityEvent event) {
         if(!(event.getDamager() instanceof Arrow arrow)||!arrow.getPersistentDataContainer().has(identity,PersistentDataType.LONG))return;
         var flight=flights.remove(arrow.getUniqueId());arrow.remove();if(flight==null){event.setCancelled(true);return;}
-        try{if(event.getEntity() instanceof Player player&&storage.query(db->TowerTargetStore.friendly(db,flight.town,player.getUniqueId()))){event.setCancelled(true);return;}event.setDamage(damage);}
+        try{if(event.getEntity() instanceof Player player&&storage.query(db->TowerTargetStore.friendly(db,flight.town,player.getUniqueId()))){event.setCancelled(true);return;}event.setDamage(TowerCombat.arrowDamage(damage,storage.townGoodieEffects(flight.town).value("buff_fire_bomb")));}
         catch(java.sql.SQLException failure){event.setCancelled(true);plugin.getLogger().severe("Arrow tower damage failed: "+failure.getMessage());}
     }
     @EventHandler public void hit(ProjectileHitEvent event){if(event.getEntity() instanceof Arrow arrow&&event.getHitBlock()!=null&&arrow.getPersistentDataContainer().has(identity,PersistentDataType.LONG)){flights.remove(arrow.getUniqueId());arrow.remove();}}

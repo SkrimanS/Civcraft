@@ -207,9 +207,11 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             storage.transaction(db->{com.avrgaming.civcraft.modern.trade.TradeDepositStore.install(db);return null;});
             storage.transaction(db->{com.avrgaming.civcraft.modern.trade.BonusGoodieStore.install(db);return null;});
             var goodieFrames=new com.avrgaming.civcraft.modern.trade.GoodieFrameService(this,storage);
-            storage.setGoodieEffects(new com.avrgaming.civcraft.modern.trade.GoodieEffects(
+            var goodieEffects=new com.avrgaming.civcraft.modern.trade.GoodieEffects(
                 new com.avrgaming.civcraft.modern.trade.TradeGoodsCatalog(new java.io.File(getDataFolder(),"civcraft/data/goods.yml")),
-                new java.io.File(getDataFolder(),"civcraft/data/buffs.yml")));
+                new java.io.File(getDataFolder(),"civcraft/data/buffs.yml"));
+            storage.setGoodieEffects(goodieEffects);
+            storage.transaction(db->{com.avrgaming.civcraft.modern.war.TowerHealthStore.configureBarricade(db,goodieEffects.goodsForBuff("buff_barricade"));return null;});
             goodieTransfers=new com.avrgaming.civcraft.modern.trade.GoodieTransferService(this,storage,goodieFrames);
             new com.avrgaming.civcraft.modern.trade.TradeGoodWorldService(this,storage);
             var tradeShipChests=new com.avrgaming.civcraft.modern.trade.TradeShipChestService(this,storage);
