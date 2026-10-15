@@ -510,7 +510,7 @@ upgrades:
       category: "Библиотека"
   
     - id: 'research_silk_touch_1'
-      name: "Шёковое касание"
+      name: "Шёлковое касание"
       action: 'enable_library_enchantment, Silk_Touch, 1, 1000'
       cost: 2500.0
       require_upgrade: 'upgrade_library_level_2'

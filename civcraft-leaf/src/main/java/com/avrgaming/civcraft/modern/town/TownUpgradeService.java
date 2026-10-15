@@ -26,6 +26,14 @@ public final class TownUpgradeService {
     }
     public TownCatalog.Level level(int number){return catalog.level(number);}
     public TownCatalog catalog(){return catalog;}
+    public void resetLibrary(Player player)throws SQLException {
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        if(resident.townId()==null)throw new IllegalArgumentException("Вы не состоите в городе.");
+        var ids=catalog.upgrades().stream().filter(u->u.action().equals("enable_library_enchantment")).map(UpgradeDefinition::id).toList();
+        storage.transaction(db->{com.avrgaming.civcraft.modern.trade.LibraryStore.reset(db,resident.townId(),player.getUniqueId(),ids);return null;});
+        refreshBanks(resident.townId());
+        player.sendMessage(Component.text("Исследования библиотеки сброшены. Четыре места освобождены; уровень сохранён. Монеты за прежние исследования не возвращаются."));
+    }
     public List<String> ids(){return catalog.upgrades().stream().filter(UpgradeDefinition::supported).map(UpgradeDefinition::id).toList();}
     public void command(Player player,String[] args)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();
@@ -83,7 +91,7 @@ public final class TownUpgradeService {
     private void refreshBanks(long town)throws SQLException {
         var ids=storage.query(db->{
             List<Long> result=new ArrayList<>();
-            try(var query=db.prepareStatement("SELECT id FROM structure_builds WHERE town_id=? AND structure_id IN ('s_bank','s_grocer') AND status='COMPLETE'")) {
+            try(var query=db.prepareStatement("SELECT id FROM structure_builds WHERE town_id=? AND structure_id IN ('s_bank','s_grocer','s_library') AND status='COMPLETE'")) {
                 query.setLong(1,town);try(var rows=query.executeQuery()){while(rows.next())result.add(rows.getLong(1));}
             }
             return result;

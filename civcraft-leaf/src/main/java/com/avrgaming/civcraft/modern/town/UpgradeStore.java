@@ -7,6 +7,7 @@ public final class UpgradeStore {
     private UpgradeStore() {}
     public static void install(Connection db)throws SQLException {
         com.avrgaming.civcraft.modern.trade.GrocerStore.install(db);
+        com.avrgaming.civcraft.modern.trade.LibraryStore.install(db);
         com.avrgaming.civcraft.modern.trade.TradeShipStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
@@ -74,6 +75,8 @@ public final class UpgradeStore {
                 try(var update=db.prepareStatement("INSERT INTO bank_interest_accounts(town_id,interest_rate,principal) SELECT id,?,coins FROM towns WHERE id=? ON CONFLICT(town_id) DO UPDATE SET interest_rate=MAX(interest_rate,excluded.interest_rate)")){update.setDouble(1,rate);update.setLong(2,town);update.executeUpdate();}
             }
             case "set_grocer_level" -> com.avrgaming.civcraft.modern.trade.GrocerStore.level(db,town,Integer.parseInt(upgrade.value()));
+            case "set_library_level" -> com.avrgaming.civcraft.modern.trade.LibraryStore.level(db,town,Integer.parseInt(upgrade.value()));
+            case "enable_library_enchantment" -> com.avrgaming.civcraft.modern.trade.LibraryStore.add(db,town,com.avrgaming.civcraft.modern.trade.LibraryOffer.parse(upgrade.value()));
             case "set_tradeship_upgrade_level" -> com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,town,Integer.parseInt(upgrade.value()));
             default -> throw new IllegalArgumentException("Unknown upgrade action");
         }

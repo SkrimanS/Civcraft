@@ -6,6 +6,54 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UpgradeStoreTest {
+    @Test void libraryResetRequiresAuthorityKeepsLevelAndDoesNotRefundResearch()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("CREATE TABLE town_assistants(town_id INTEGER,player_uuid TEXT)");
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'s_library','COMPLETE')");
+            db.createStatement().execute("INSERT INTO civ_technologies VALUES(1,'tech_artillery')");
+            var catalog=new TownCatalog(new java.io.File("src/main/resources/civcraft/data/town.yml"));
+            db.setAutoCommit(false);UpgradeStore.buy(db,1,mayor,catalog.require("upgrade_library_level_2"),0);UpgradeStore.buy(db,1,mayor,catalog.require("research_efficiency_1"),0);db.commit();
+            var ids=catalog.upgrades().stream().filter(u->u.action().equals("enable_library_enchantment")).map(UpgradeDefinition::id).toList();
+            long before=coins(db);var assistant=UUID.randomUUID();
+            assertThrows(IllegalArgumentException.class,()->com.avrgaming.civcraft.modern.trade.LibraryStore.reset(db,1,assistant,ids));db.rollback();
+            assertNotNull(com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,0));
+            db.createStatement().execute("INSERT INTO town_assistants VALUES(1,'"+assistant+"')");db.commit();
+            com.avrgaming.civcraft.modern.trade.LibraryStore.reset(db,1,assistant,ids);db.rollback();assertNotNull(com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,0));
+            com.avrgaming.civcraft.modern.trade.LibraryStore.reset(db,1,assistant,ids);db.commit();
+            assertEquals(before,coins(db));assertNull(com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,0));assertEquals(java.util.Set.of("upgrade_library_level_2"),UpgradeStore.purchased(db,1));
+            UpgradeStore.buy(db,1,mayor,catalog.require("research_efficiency_1"),0);db.commit();assertEquals(before-75,coins(db));
+        }
+    }
+    @Test void libraryResearchUsesFourOrderedSlotsAndFifthPurchaseRollsBack()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'s_library','COMPLETE')");
+            var catalog=new TownCatalog(new java.io.File("src/main/resources/civcraft/data/town.yml"));
+            var first=catalog.require("research_efficiency_1");
+            assertTrue(first.supported());
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,UUID.randomUUID(),first,0));
+            db.setAutoCommit(false);UpgradeStore.buy(db,1,mayor,first,0);db.commit();
+            assertEquals("efficiency",com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,0).enchantment());
+            assertEquals(19925,coins(db));
+            // Level II unlocks research but does not restrict or increase the four sign slots.
+            db.createStatement().execute("INSERT INTO civ_technologies VALUES(1,'tech_artillery')");
+            UpgradeStore.buy(db,1,mayor,catalog.require("upgrade_library_level_2"),0);
+            for(String id:java.util.List.of("research_looting_1","research_fortune_1","research_soulbound"))UpgradeStore.buy(db,1,mayor,catalog.require(id),0);
+            db.commit();long before=coins(db);
+            assertEquals("loreenhancementsoulbound",com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,3).enchantment());
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,catalog.require("research_silk_touch_1"),0));db.rollback();
+            assertEquals(before,coins(db));assertFalse(UpgradeStore.purchased(db,1).contains("research_silk_touch_1"));
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,first,0));db.rollback();assertEquals(before,coins(db));
+        }
+    }
+    @Test void libraryRequiresFinishedBuildingAndLevelResearchBeforeTakingMoney()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);var catalog=new TownCatalog(new java.io.File("src/main/resources/civcraft/data/town.yml"));
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,catalog.require("research_efficiency_1"),0));
+            db.createStatement().execute("INSERT INTO structure_builds VALUES(1,1,'s_library','COMPLETE')");
+            assertThrows(IllegalArgumentException.class,()->UpgradeStore.buy(db,1,mayor,catalog.require("research_efficiency_2"),0));
+            assertEquals(20000,coins(db));assertNull(com.avrgaming.civcraft.modern.trade.LibraryStore.offer(db,1,0));
+        }
+    }
     final UUID mayor=UUID.fromString("11111111-1111-1111-1111-111111111111");
     UpgradeDefinition bank=new UpgradeDefinition("bank2","Банк II",4000,"set_bank_level","2","","code","s_bank","Банк");
     UpgradeDefinition interest=new UpgradeDefinition("interest1","Проценты",2000,"set_bank_interest","0.0075","bank2","writing","s_bank","Банк");

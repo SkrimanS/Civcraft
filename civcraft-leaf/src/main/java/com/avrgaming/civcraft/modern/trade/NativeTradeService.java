@@ -70,7 +70,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id='s_grocer' AND tp.action='grocer'))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library') AND tp.action='grocer'))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -98,6 +98,7 @@ public final class NativeTradeService implements Listener {
             recover(player);
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
+            else if(point.structure().equals("s_library"))library(player,point);
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
             render(event.getClickedBlock(),point);
         } catch(IllegalArgumentException exception){player.sendMessage(Component.text(exception.getMessage()));}
@@ -165,6 +166,20 @@ public final class NativeTradeService implements Listener {
         ItemStack[] after=copy(player.getInventory().getContents());add(after,items.vanilla(entry.item(),entry.data(),1),entry.amount());
         var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
         apply(player,receipt);player.sendMessage(Component.text("Куплено: "+entry.amount()+" × "+entry.name()+", "+total+" монет. Комиссия городу: "+fee+"."));
+    }
+    private void library(Player player,Point point)throws SQLException {
+        var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
+        if(offer==null)throw new IllegalArgumentException("Это место библиотеки пока пусто. Сначала купите исследование через /town upgrade.");
+        ItemStack[] after=copy(player.getInventory().getContents());
+        int slot=player.getInventory().getHeldItemSlot();
+        after[slot]=LibraryEnchantments.apply(after[slot],offer,new NamespacedKey(plugin,"soulbound"));
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        boolean member=resident.townId()!=null && resident.townId()==point.town();
+        long fee=member?0:Math.round(offer.price()*storage.query(db->LibraryStore.fee(db,point.town())));
+        long total=Math.addExact(offer.price(),fee);
+        var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
+        apply(player,receipt);
+        player.sendMessage(Component.text("Добавлено зачарование: "+offer.name()+" "+offer.level()+". Оплачено "+total+" монет. Комиссия городу: "+fee+"."));
     }
     private static ItemStack[] copy(ItemStack[] contents) {
         ItemStack[] result=new ItemStack[contents.length];for(int i=0;i<contents.length;i++)result[i]=contents[i]==null?null:contents[i].clone();return result;
@@ -273,6 +288,11 @@ public final class NativeTradeService implements Listener {
             var entry=grocer.require(Integer.parseInt(point.argument())+1);var settings=storage.query(db->GrocerStore.settings(db,point.town()));
             lines=entry.level()>settings.level()?List.of("Нужно улучшение","Бакалея "+entry.level(),"",""):
                 List.of("Купить "+entry.amount()+" шт.",entry.name(),entry.price()+" монет","Гостям: +"+Math.round(settings.fee()*100)+"%");
+        } else if(point.structure().equals("s_library")) {
+            var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
+            double fee=storage.query(db->LibraryStore.fee(db,point.town()));
+            lines=offer==null?List.of("Библиотека","Пустое место","Исследования:","/town upgrade"):
+                List.of(offer.name(),"Уровень "+offer.level(),offer.price()+" монет","Гостям: +"+Math.round(fee*100)+"%");
         } else if(point.structure().equals("s_market") && !point.action().equals("bank")) {
             var entry=market.find(Integer.parseInt(point.argument())).orElse(null);
             if(entry==null)lines=List.of("Нет товара","","","");

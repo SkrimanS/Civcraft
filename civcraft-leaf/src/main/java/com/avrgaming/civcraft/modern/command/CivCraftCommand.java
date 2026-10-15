@@ -229,6 +229,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}
+        if(args.length>=2 && args[1].equalsIgnoreCase("reset")) {
+            if(args.length!=3 || !args[2].equalsIgnoreCase("library"))throw new IllegalArgumentException("Использование: /town reset library (исследования удаляются без возврата монет)");
+            plugin.townUpgrades().resetLibrary(player);return;
+        }
         if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
             for (String line : lang.list("commands.help.town", List.of(
                     "&6Город: /town info, members, invite <ник>, join, leave",
@@ -734,6 +738,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes");
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("revolution"))return List.of("yes");
         if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("outlaw"))return List.of("list","add","remove","addall","removeall","addallciv","removeallciv");
+        if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("reset"))return List.of("library");
         if(List.of("town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("flattax","taxrate");
         if(List.of("civ","town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("upkeep"))return List.of("pay");
         if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {
@@ -757,7 +762,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return List.of("help", "create", "info", "gov", "dip", "advisor", "set", "upkeep", "revolution", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("help", "create", "info", "upgrade", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("help", "create", "info", "upgrade", "reset", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {
