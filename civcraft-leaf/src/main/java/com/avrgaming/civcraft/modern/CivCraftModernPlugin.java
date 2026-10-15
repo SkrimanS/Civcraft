@@ -201,6 +201,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,diplomacy::tick,20L,20L);
             this.townUpgrades=new com.avrgaming.civcraft.modern.town.TownUpgradeService(this,storage);
             storage.transaction(db->{com.avrgaming.civcraft.modern.trade.TradeDepositStore.install(db);return null;});
+            storage.transaction(db->{com.avrgaming.civcraft.modern.trade.BonusGoodieStore.install(db);return null;});
             new com.avrgaming.civcraft.modern.trade.TradeGoodWorldService(this,storage);
             var tradeShipChests=new com.avrgaming.civcraft.modern.trade.TradeShipChestService(this,storage);
             try {tradeShips=new com.avrgaming.civcraft.modern.trade.TradeShipService(this,storage,tradeShipChests);}
