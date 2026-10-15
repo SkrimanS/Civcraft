@@ -12,6 +12,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.data.Directional;
 import org.bukkit.event.*;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import net.kyori.adventure.text.Component;
@@ -22,22 +23,31 @@ public final class TradeGoodWorldService implements Listener {
     private final StorageBootstrap storage;
     private final TradeGoodsCatalog catalog;
     private final TradeGoodGeneration generator;
-    private final String worldName;
+    private String worldName;
     private final Set<TradeMarkerStore.Position> protectedMarkers=new HashSet<>();
     private final Set<TradeGoodGeneration.Chunk> queued=new LinkedHashSet<>();
     private long lastWarning;
     public TradeGoodWorldService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;var file=new File(plugin.getDataFolder(),"civcraft/data/goods.yml");
         catalog=new TradeGoodsCatalog(file);generator=TradeGoodGeneration.load(file,catalog);
-        worldName=plugin.getServer().getWorlds().getFirst().getName();
-        storage.transaction(db->{TradeMarkerStore.install(db);if(!TradeGenerationStore.initialized(db,worldName))
-            TradeGenerationStore.initialize(db,worldName,generator.settings().seed(),generator.plan());return null;});
+        storage.transaction(db->{TradeMarkerStore.install(db);return null;});
         for(var job:storage.query(db->TradeMarkerStore.jobs(db,false)))protectedMarkers.addAll(TradeMarkerStore.positions(job));
-        queued.addAll(storage.query(db->TradeGenerationStore.requests(db,worldName)));
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        for(var world:plugin.getServer().getWorlds())if(world.getEnvironment()==World.Environment.NORMAL){initialize(world);break;}
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,40L,1L);
     }
+    private void initialize(World world)throws SQLException {
+        if(worldName!=null)return;
+        String name=world.getName();
+        storage.transaction(db->{if(!TradeGenerationStore.initialized(db,name))TradeGenerationStore.initialize(db,name,generator.settings().seed(),generator.plan());return null;});
+        worldName=name;queued.addAll(storage.query(db->TradeGenerationStore.requests(db,name)));
+    }
+    @EventHandler public void initialize(WorldInitEvent event) {
+        if(event.getWorld().getEnvironment()!=World.Environment.NORMAL)return;
+        try {initialize(event.getWorld());}catch(SQLException failure){plugin.getLogger().severe("Unable to initialize trade generation world: "+failure.getMessage());}
+    }
     @EventHandler public void load(ChunkLoadEvent event) {
+        if(Boolean.getBoolean("civcraft.test.tradeGoods.disableNewChunks"))return;
         if(event.isNewChunk() && event.getWorld().getName().equals(worldName)) {
             int x=event.getChunk().getX(),z=event.getChunk().getZ();
             try {
@@ -49,6 +59,10 @@ public final class TradeGoodWorldService implements Listener {
     }
     private void tick() {
         try {
+            if(worldName==null) {
+                for(var world:plugin.getServer().getWorlds())if(world.getEnvironment()==World.Environment.NORMAL){initialize(world);break;}
+                if(worldName==null)return;
+            }
             var pending=storage.query(db->TradeMarkerStore.jobs(db,true));
             if(!pending.isEmpty()){finish(pending.getFirst());return;}
             if(queued.isEmpty())return;var chunk=queued.iterator().next();
