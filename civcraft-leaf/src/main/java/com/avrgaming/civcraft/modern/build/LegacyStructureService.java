@@ -40,6 +40,7 @@ public final class LegacyStructureService {
     private final Map<Path, WorldEditSchematicTemplate> schematicCache = new ConcurrentHashMap<>();
     private final Map<UUID, PendingStructurePreview> pendingPreviews = new ConcurrentHashMap<>();
     private final StructureDefinitionService definitions;
+    private final com.avrgaming.civcraft.modern.trade.TradeGoodsCatalog tradeGoods;
     private final BuildQueue buildQueue;
     private ModernCivCraftSettings settings;
     private Lang fallbackLang;
@@ -51,6 +52,7 @@ public final class LegacyStructureService {
         this.game = game;
         this.settings = settings;
         this.definitions = new StructureDefinitionService(plugin, settings);
+        this.tradeGoods=new com.avrgaming.civcraft.modern.trade.TradeGoodsCatalog(new java.io.File(plugin.getDataFolder(),"civcraft/data/goods.yml"));
         storage.setStructureDefinitions(definitions);
         this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick(), storage::persistStructureSnapshot);
         warmupTemplateCacheAsync();
@@ -117,6 +119,7 @@ public final class LegacyStructureService {
         validateDefinedHeight(origin, resolved.sizeY(),definition.id());
 
         validateSpacing(town,definition.id(),origin,resolved.sizeX(),resolved.sizeY(),resolved.sizeZ());
+        validateTradeDeposit(definition.id(),origin,resolved.sizeX(),resolved.sizeY(),resolved.sizeZ());
 
         cancelPreview(player, true);
 
@@ -537,6 +540,7 @@ public final class LegacyStructureService {
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
         validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
+        validateTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -588,6 +592,7 @@ public final class LegacyStructureService {
                     finishAt
             );
             structureRecorded = true;
+            claimTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ(),buildId);
             storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
             buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
@@ -617,6 +622,7 @@ public final class LegacyStructureService {
         WaterPlacementRules.requireHeight(structureId,player.getLocation().getBlockY());
         validateDefinedHeight(origin, template.sizeY(),structureId);
         validateSpacing(town,structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
+        validateTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ());
         if (town != null && town.hammersPerHour() <= 0.0) {
             throw new IllegalArgumentException("У города нет производства молотков.");
         }
@@ -668,6 +674,7 @@ public final class LegacyStructureService {
                     finishAt
             );
             structureRecorded = true;
+            claimTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ(),buildId);
             storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
             buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
@@ -1233,10 +1240,20 @@ public final class LegacyStructureService {
     }
 
     private Location definedOrigin(Player player,Location requested,StructureDefinition definition,String direction,int sizeX,int sizeZ) {
+        if(definition.id().equals("ti_trade_outpost"))return new Location(requested.getWorld(),Math.floorDiv(requested.getBlockX(),16)*16,requested.getBlockY(),Math.floorDiv(requested.getBlockZ(),16)*16);
         if(!WaterPlacementRules.water(definition.id()))return nextChunkOrigin(player,requested,sizeX,sizeZ);
         WaterPlacementRules.requireHeight(definition.id(),player.getLocation().getBlockY());
         var origin=WaterPlacementRules.origin(definition.id(),definitions.templateYShift(definition.id()),requested.getX(),requested.getY(),requested.getZ(),sizeX,sizeZ,direction);
         return new Location(requested.getWorld(),origin.x(),origin.y(),origin.z());
+    }
+    private void validateTradeDeposit(String type,Location origin,int width,int height,int depth)throws SQLException {
+        if(!com.avrgaming.civcraft.modern.trade.TradeDepositStore.outpost(type))return;
+        storage.query(db->com.avrgaming.civcraft.modern.trade.TradeDepositStore.require(db,tradeGoods,type,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),width,height,depth));
+    }
+    private void claimTradeDeposit(String type,Location origin,int width,int height,int depth,long build)throws SQLException {
+        if(!com.avrgaming.civcraft.modern.trade.TradeDepositStore.outpost(type))return;
+        storage.transaction(db->{var deposit=com.avrgaming.civcraft.modern.trade.TradeDepositStore.require(db,tradeGoods,type,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),width,height,depth);
+            com.avrgaming.civcraft.modern.trade.TradeDepositStore.claim(db,deposit,build);return null;});
     }
 
     private Location nextChunkOrigin(Player player, Location location, int sizeX, int sizeZ) {
