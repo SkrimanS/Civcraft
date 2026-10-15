@@ -2,10 +2,10 @@ package com.avrgaming.civcraft.modern.build;
 import java.util.Set;
 public final class WaterPlacementRules {
     private WaterPlacementRules() {}
-    private static final Set<String> TYPES=Set.of("s_shipyard","s_arrowship","s_cannonship","s_scoutship","ti_trade_ship");
+    private static final Set<String> TYPES=Set.of("s_shipyard","s_arrowship","s_cannonship","s_scoutship","ti_trade_ship","ti_fishing_boat");
     public record Origin(int x,int y,int z) {}
     public static boolean water(String id){return id!=null&&TYPES.contains(id);}
-    public static void requireHeight(String id,int playerY){if(water(id)&&playerY>82)throw new IllegalArgumentException("Корабли и верфь строятся у уровня моря. Спуститесь до Y=82 или ниже.");}
+    public static void requireHeight(String id,int playerY){if(water(id)&&playerY>82)throw new IllegalArgumentException("Корабли, лодки и верфь строятся у уровня моря. Спуститесь до Y=82 или ниже.");}
     public static Origin origin(String id,int shift,double x,double y,double z,int sizeX,int sizeZ,String direction) {
         if(!water(id)||sizeX<1||sizeZ<1)throw new IllegalArgumentException("Invalid water structure placement");
         double ox=x,oz=z;

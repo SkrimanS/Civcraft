@@ -6,5 +6,14 @@ class WaterPlacementRulesTest {
     @Test void tradeShipUsesContainingChunkIncludingNegativeCoordinates(){assertEquals(new WaterPlacementRules.Origin(-16,57,-32),WaterPlacementRules.origin("ti_trade_ship",-5,-.1,100,-16.1,32,16,"east"));}
     @Test void commandAnglesMatchCompassDirections(){for(String[] pair:new String[][]{{"0","north"},{"90","east"},{"180","south"},{"270","west"}})assertEquals(WaterPlacementRules.origin("s_scoutship",-5,10.5,80,10.5,15,31,pair[1]),WaterPlacementRules.origin("s_scoutship",-5,10.5,80,10.5,15,31,pair[0]));}
     @Test void seaAnchorUsesDefinitionShiftButZeroShiftRetainsRequestedHeight(){assertEquals(59,WaterPlacementRules.origin("s_shipyard",-3,0,80,0,16,16,"east").y());assertEquals(80,WaterPlacementRules.origin("s_shipyard",0,0,80.9,0,16,16,"east").y());}
-    @Test void playerHeightGateIncludes82AndDoesNotApplyToFishingBoatOrOtherStructures(){assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",82));assertThrows(IllegalArgumentException.class,()->WaterPlacementRules.requireHeight("s_arrowship",83));assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",-64));assertDoesNotThrow(()->WaterPlacementRules.requireHeight("ti_fishing_boat",200));assertFalse(WaterPlacementRules.water("w_grand_ship_ingermanland"));}
+    @Test void playerHeightGateIncludes82AndDoesNotApplyToOtherStructures(){assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",82));assertThrows(IllegalArgumentException.class,()->WaterPlacementRules.requireHeight("s_arrowship",83));assertDoesNotThrow(()->WaterPlacementRules.requireHeight("s_arrowship",-64));assertFalse(WaterPlacementRules.water("w_grand_ship_ingermanland"));}
+    @Test void fishingBoatHasItsOwnSeaAnchoringOverrideDespiteExtendingTradeOutpost(){
+        assertTrue(WaterPlacementRules.water("ti_fishing_boat"));
+        assertDoesNotThrow(()->WaterPlacementRules.requireHeight("ti_fishing_boat",82));
+        assertThrows(IllegalArgumentException.class,()->WaterPlacementRules.requireHeight("ti_fishing_boat",83));
+        for(String direction:new String[]{"east","west","north","south"})
+            assertEquals(new WaterPlacementRules.Origin(-16,59,-32),WaterPlacementRules.origin("ti_fishing_boat",-3,-.1,80,-16.1,16,16,direction));
+        assertEquals(80,WaterPlacementRules.origin("ti_fishing_boat",0,10,80.9,10,16,16,"east").y());
+        assertFalse(WaterPlacementRules.water("ti_trade_outpost"));
+    }
 }
