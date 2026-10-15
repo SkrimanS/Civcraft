@@ -24,10 +24,12 @@ public final class ProductionService implements Listener {
     private final FisheryLoot loot;
     private final TrommelLoot trommel;
     private final QuarryLoot quarry;
+    private final WindmillPlan windmill;
+    private static final Map<Integer,Material> SEEDS=Map.of(295,Material.WHEAT_SEEDS,391,Material.CARROT,392,Material.POTATO);
     private final BiomePotential biomes;
     private final Set<Position> locked=new HashSet<>();
     private final NamespacedKey applied;
-    private final long fisheryPeriod,trommelPeriod,quarryPeriod;
+    private final long fisheryPeriod,trommelPeriod,quarryPeriod,windmillPeriod;
     private boolean ready,paused;
     private long lastWarning;
     private record Farm(long id,long town,String world,int x,int y,int z,String type) {}
@@ -37,9 +39,11 @@ public final class ProductionService implements Listener {
         fisheryPeriod=Long.getLong("civcraft.test.fishery.periodMillis",20000L);if(fisheryPeriod<1000 || fisheryPeriod>20000)throw new IllegalArgumentException("Invalid fishery period");
         trommelPeriod=Long.getLong("civcraft.test.trommel.periodMillis",1000L);if(trommelPeriod<1000 || trommelPeriod>60000)throw new IllegalArgumentException("Invalid trommel period");
         quarryPeriod=Long.getLong("civcraft.test.quarry.periodMillis",1000L);if(quarryPeriod<1000 || quarryPeriod>60000)throw new IllegalArgumentException("Invalid quarry period");
+        windmillPeriod=Long.getLong("civcraft.test.windmill.periodMillis",60000L);if(windmillPeriod<1000 || windmillPeriod>60000)throw new IllegalArgumentException("Invalid windmill period");
         loot=new FisheryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         trommel=new TrommelLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         quarry=new QuarryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));plugin.nativeItems().require("mat_tungsten_ore");
+        windmill=new WindmillPlan(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         for(String item:trommel.items())plugin.nativeItems().require(item);
         biomes=new BiomePotential(YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getMapList("culture_biomes"));
         // Fail at startup if a migrated native fish definition is missing, before any rod is spent.
@@ -60,22 +64,24 @@ public final class ProductionService implements Listener {
         if(type.equals("ti_fish_hatchery"))return Optional.of("Рыбная ферма: уровень "+storage.query(db->ProductionStore.fisheryLevel(db,town))+". Один цикл за 20 секунд; удочки в бассейнах, улов в общем сундуке.");
         if(type.equals("s_trommel"))return Optional.of("Дробилка: уровень "+storage.query(db->ProductionStore.trommelLevel(db,town))+". Один блок за секунду; входной и выходной сундуки.");
         if(type.equals("ti_quarry"))return Optional.of("Карьер: уровень "+storage.query(db->ProductionStore.quarryLevel(db,town))+". Цикл: 1 секунда. Кирки во входной сундук; Эффективность увеличивает выход и износ.");
+        if(type.equals("ti_windmill"))return Optional.of("Мельница засевает до "+windmill.capacity(machinery(town))+" грядок в минуту на восьми соседних участках ферм. Семена, морковь и картофель положите в сундук мельницы. Во время войны посев приостановлен.");
         return Optional.empty();
     }
     public void tick() {
         if(paused)return;
         try {
             for(var operation:storage.query(ProductionStore::pending))finish(operation);
-            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);ProductionStore.start(db,"ti_quarry",quarryPeriod,System.currentTimeMillis()/quarryPeriod);return null;});ready=true;}
+            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);ProductionStore.start(db,"ti_quarry",quarryPeriod,System.currentTimeMillis()/quarryPeriod);ProductionStore.start(db,"ti_windmill",windmillPeriod,System.currentTimeMillis()/windmillPeriod);return null;});ready=true;}
             var farms=storage.query(db->{var result=new ArrayList<Farm>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
             });
-            for(var farm:farms)try{long period=switch(farm.type()){case "s_trommel"->trommelPeriod;case "ti_quarry"->quarryPeriod;default->fisheryPeriod;};produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
+            for(var farm:farms)try{long period=switch(farm.type()){case "s_trommel"->trommelPeriod;case "ti_quarry"->quarryPeriod;case "ti_windmill"->windmillPeriod;default->fisheryPeriod;};produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
         }catch(SQLException|IOException|RuntimeException failure){warn("Resource production recovery failed",failure);}
     }
     private void warn(String message,Exception failure){if(System.currentTimeMillis()-lastWarning>30000){lastWarning=System.currentTimeMillis();plugin.getLogger().severe(message+": "+failure.getMessage());}}
     private void produce(Farm farm,long tick,long period)throws SQLException,IOException {
         var before=storage.transaction(db->ProductionStore.initialize(db,farm.id(),period,tick));if(before.tick()>=tick)return;
+        if(farm.type().equals("ti_windmill")){plant(farm,before,tick);return;}
         if(farm.type().equals("s_trommel") || farm.type().equals("ti_quarry")){extract(farm,before,tick);return;}
         var inputs=new ArrayList<Input>();var destinations=new ArrayList<Position>();
         storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z,chest_id FROM structure_chests WHERE build_id=? ORDER BY chest_id,x,y,z")) {
@@ -159,11 +165,51 @@ public final class ProductionService implements Listener {
         byte[] payload=ConsumptionContainers.encode(produced==0?List.of():after);int count=produced;long next=until;
         var pending=storage.transaction(db->ProductionStore.prepare(db,UUID.randomUUID().toString(),before,next,count,payload));lock(pending);if(produced>0)interrupt("prepared",farm.id());finish(pending);
     }
-    private void lock(ProductionStore.Pending operation)throws IOException{for(var image:ConsumptionContainers.decode(operation.containers()))locked.add(image.position());}
+    private boolean machinery(long town)throws SQLException {
+        return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM towns t JOIN civ_technologies c ON c.civ_id=t.civ_id WHERE t.id=? AND c.tech_id='tech_machinery'")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}}});
+    }
+    private void plant(Farm farm,ProductionStore.Clock before,long tick)throws SQLException,IOException {
+        long now=System.currentTimeMillis();boolean war=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>?")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){return r.next();}}});
+        var health=storage.query(db->com.avrgaming.civcraft.modern.war.BuildingDamageStore.health(db,farm.id()));
+        var beds=new ArrayList<WindmillStore.Bed>();List<Image> after=List.of();
+        if(!war && health!=null && health.hitpoints()>0) {
+            var positions=storage.query(db->{var result=new ArrayList<Position>();try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=? AND chest_id=0 ORDER BY x,y,z")){s.setLong(1,farm.id());try(var r=s.executeQuery()){while(r.next())result.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}}return result;});
+            if(positions.size()!=2 || positions.stream().anyMatch(locked::contains))return;
+            var source=ConsumptionContainers.capture(positions);var counts=ConsumptionContainers.counts(source,SEEDS);
+            var stock=Map.of(WindmillPlan.Crop.WHEAT,counts.getOrDefault(295,0L),WindmillPlan.Crop.CARROTS,counts.getOrDefault(391,0L),WindmillPlan.Crop.POTATOES,counts.getOrDefault(392,0L));
+            var candidates=new ArrayList<WindmillPlan.Spot>();
+            if(stock.values().stream().anyMatch(v->v>0)) {
+                var world=Bukkit.getWorld(farm.world());if(world==null)throw new IllegalStateException("Windmill world unavailable");
+                for(var plot:storage.query(db->FarmPlots.adjacent(db,farm.world(),farm.x(),farm.z()))) {
+                    var snapshot=world.getChunkAt(plot.x(),plot.z()).getChunkSnapshot();
+                    for(int x=0;x<16;x++)for(int z=0;z<16;z++)for(int y=world.getMinHeight();y<world.getMaxHeight()-1;y++) {
+                        int bx=plot.x()*16+x,bz=plot.z()*16+z;
+                        if(snapshot.getBlockType(x,y,z)==Material.FARMLAND && snapshot.getBlockType(x,y+1,z).isAir() && !locked.contains(new Position(farm.world(),bx,y+1,bz)) && !locked.contains(new Position(farm.world(),bx,y,bz)))candidates.add(new WindmillPlan.Spot(plot.farm(),farm.world(),bx,y+1,bz));
+                    }
+                }
+            }
+            var plan=windmill.plan(candidates,stock,machinery(farm.town()),false,java.util.concurrent.ThreadLocalRandom.current());
+            for(var seed:plan.plants()){var p=seed.spot();var world=Bukkit.getWorld(p.world());beds.add(new WindmillStore.Bed(p,seed.crop(),world.getBlockAt(p.x(),p.y(),p.z()).getBlockData().getAsString()));}
+            if(!beds.isEmpty())after=ConsumptionContainers.after(source,Map.of(295,plan.remaining().get(WindmillPlan.Crop.WHEAT),391,plan.remaining().get(WindmillPlan.Crop.CARROTS),392,plan.remaining().get(WindmillPlan.Crop.POTATOES)),SEEDS);
+        }
+        byte[] payload=ConsumptionContainers.encode(after);
+        var pending=storage.transaction(db->WindmillStore.prepare(db,UUID.randomUUID().toString(),before,tick,beds,payload,System.currentTimeMillis()));lock(pending);if(!beds.isEmpty())interrupt("prepared",farm.id());finish(pending);
+    }
+    private void lock(ProductionStore.Pending operation)throws IOException,SQLException {
+        for(var image:ConsumptionContainers.decode(operation.containers()))locked.add(image.position());
+        for(var bed:storage.query(db->WindmillStore.beds(db,operation.id()))){var p=bed.spot();locked.add(new Position(p.world(),p.x(),p.y(),p.z()));locked.add(new Position(p.world(),p.x(),p.y()-1,p.z()));}
+    }
     private void finish(ProductionStore.Pending operation)throws SQLException,IOException {
         var images=ConsumptionContainers.decode(operation.containers());lock(operation);
-        if(operation.produced()>0){for(var world:ConsumptionContainers.apply(images,operation.id(),applied))world.save(true);interrupt("world-saved",operation.before().build());}
+        var beds=storage.query(db->WindmillStore.beds(db,operation.id()));var worlds=new LinkedHashSet<World>();
+        for(var bed:beds) {
+            var p=bed.spot();var world=Bukkit.getWorld(p.world());if(world==null)throw new IllegalStateException("Planting world is unavailable");var block=world.getBlockAt(p.x(),p.y(),p.z());String current=block.getBlockData().getAsString();
+            if((!current.equals(bed.before()) && !current.equals(bed.after())) || block.getRelative(0,-1,0).getType()!=Material.FARMLAND)throw new IllegalStateException("Prepared planting bed changed: "+p);
+        }
+        for(var bed:beds){var p=bed.spot();var world=Bukkit.getWorld(p.world());var block=world.getBlockAt(p.x(),p.y(),p.z());if(!block.getBlockData().getAsString().equals(bed.after()))block.setBlockData(Bukkit.createBlockData(bed.after()),false);worlds.add(world);}
+        if(operation.produced()>0){worlds.addAll(ConsumptionContainers.apply(images,operation.id(),applied));for(var world:worlds)world.save(true);interrupt("world-saved",operation.before().build());}
         storage.transaction(db->ProductionStore.complete(db,operation.id()));for(var image:images)locked.remove(image.position());
+        for(var bed:beds){var p=bed.spot();locked.remove(new Position(p.world(),p.x(),p.y(),p.z()));locked.remove(new Position(p.world(),p.x(),p.y()-1,p.z()));}
     }
     private void interrupt(String phase,long build){if((build==Long.getLong("civcraft.test.production.build",-1) && phase.equals(System.getProperty("civcraft.test.production.interruption"))) || (build==Long.getLong("civcraft.test.fishery.build",-1) && phase.equals(System.getProperty("civcraft.test.fishery.interruption")))){paused=true;throw new IllegalStateException("Injected production interruption at "+phase);}}
     private boolean locked(Block b){return locked.contains(new Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()));}
@@ -177,4 +223,16 @@ public final class ProductionService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void burn(BlockBurnEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){e.blockList().removeIf(this::locked);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){e.blockList().removeIf(this::locked);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void grow(BlockGrowEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void fade(BlockFadeEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void physics(BlockPhysicsEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void flow(BlockFromToEvent e){if(locked(e.getToBlock()) || locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void place(BlockPlaceEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void interact(org.bukkit.event.player.PlayerInteractEvent e){if(e.getClickedBlock()!=null && locked(e.getClickedBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void entityInteract(org.bukkit.event.entity.EntityInteractEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void entityChange(org.bukkit.event.entity.EntityChangeBlockEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void fertilize(BlockFertilizeEvent e){e.getBlocks().removeIf(b->locked(b.getBlock()));}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void structureGrow(org.bukkit.event.world.StructureGrowEvent e){e.getBlocks().removeIf(b->locked(b.getBlock()));}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonExtendEvent e){if(e.getBlocks().stream().anyMatch(b->locked(b)||locked(b.getRelative(e.getDirection()))))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonRetractEvent e){if(e.getBlocks().stream().anyMatch(b->locked(b)||locked(b.getRelative(e.getDirection()))||locked(b.getRelative(e.getDirection().getOppositeFace()))))e.setCancelled(true);}
 }
