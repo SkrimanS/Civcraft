@@ -16,6 +16,7 @@ public final class StructureDefinitionService {
     private final Map<String, StructureDefinition> definitions = new LinkedHashMap<>();
     private ModernCivCraftSettings settings;
     private final Map<String,StaticAttributes> attributes=new LinkedHashMap<>();
+    private final Map<String,TradeGoodAttributes> tradeAttributes=new LinkedHashMap<>();
     private final Map<String,Integer> templateYShifts=new LinkedHashMap<>();
     private final Map<String,String> requiredStructures=new LinkedHashMap<>();
     private final Map<String,String> requiredUpgrades=new LinkedHashMap<>();
@@ -34,6 +35,7 @@ public final class StructureDefinitionService {
     public void reload() {
         definitions.clear();
         attributes.clear();
+        tradeAttributes.clear();
         templateYShifts.clear();
         requiredStructures.clear();
         requiredUpgrades.clear();
@@ -62,6 +64,7 @@ public final class StructureDefinitionService {
             }
             StaticAttributes stats=StaticAttributes.parse(raw.get("components"));
             attributes.put(id.toLowerCase(Locale.ROOT),stats);
+            tradeAttributes.put(id.toLowerCase(Locale.ROOT),TradeGoodAttributes.parse(raw.get("components")));
             templateYShifts.put(id.toLowerCase(Locale.ROOT),(int)number(raw.get("template_y_shift"),0));
             requiredStructures.put(id.toLowerCase(Locale.ROOT),string(raw.get("require_structure")));
             requiredUpgrades.put(id.toLowerCase(Locale.ROOT),string(raw.get("require_upgrade")));
@@ -90,6 +93,7 @@ public final class StructureDefinitionService {
         return Optional.ofNullable(definitions.get(id.toLowerCase(Locale.ROOT)));
     }
     public StaticAttributes attributes(String id){return id==null?new StaticAttributes(Map.of()):attributes.getOrDefault(id.toLowerCase(Locale.ROOT),new StaticAttributes(Map.of()));}
+    public TradeGoodAttributes tradeAttributes(String id){return id==null?TradeGoodAttributes.NONE:tradeAttributes.getOrDefault(id.toLowerCase(Locale.ROOT),TradeGoodAttributes.NONE);}
     public int templateYShift(String id){return templateYShifts.getOrDefault(id.toLowerCase(Locale.ROOT),0);}
     public String requiredStructure(String id){return requiredStructures.getOrDefault(id.toLowerCase(Locale.ROOT),"");}
     public String requiredUpgrade(String id){return requiredUpgrades.getOrDefault(id.toLowerCase(Locale.ROOT),"");}

@@ -52,8 +52,9 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized double townBaseHammers(double fallback){return legacyTownBaseHammers==null?fallback:legacyTownBaseHammers;}
     public synchronized double staticTownCulture(long town)throws SQLException {
         double total=0;
+        var goodies=townGoodieEffects(town);
         try(var s=connection.prepareStatement("SELECT structure_id,COUNT(*) FROM structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id")) {
-            s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())if(structureDefinitions!=null)total+=structureDefinitions.attributes(r.getString(1)).get("CULTURE")*r.getInt(2);}
+            s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())if(structureDefinitions!=null)total+=(structureDefinitions.attributes(r.getString(1)).get("CULTURE")+structureDefinitions.tradeAttributes(r.getString(1)).calculate(goodies.goods()).get("CULTURE"))*r.getInt(2);}
         }
         return total+(wonderBonuses==null?0:wonderBonuses.globeCulture(connection,town));
     }
@@ -1905,6 +1906,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     private TownProduction townProduction(long townId, double baseHammersPerHour, double baseBeakersPerHour, double baseMoneyPerHour, double baseHappiness) throws SQLException {
+        var goodies=townGoodieEffects(townId);
         double structureHammers = 0.0;
         double beakers = 0.0;
         double money = 0.0;
@@ -1944,14 +1946,15 @@ public final class StorageBootstrap implements AutoCloseable {
                         String id=rows.getString(1);int count=rows.getInt(2);
                         var definition=structureDefinitions.find(id).orElse(null);
                         if(definition!=null) {
-                            structureHammers+=definition.hammersPerHourBonus()*count;beakers+=definition.beakersPerHour()*count;
-                            money+=definition.moneyPerHour()*count;
+                            var dynamic=structureDefinitions.tradeAttributes(id).calculate(goodies.goods());
+                            structureHammers+=(definition.hammersPerHourBonus()+dynamic.get("HAMMERS"))*count;beakers+=(definition.beakersPerHour()+dynamic.get("BEAKERS"))*count;
+                            money+=(definition.moneyPerHour()+dynamic.get("MONEY"))*count;
                             var attributes=structureDefinitions.attributes(id);
                             double scalar=definition.happiness()-attributes.happiness();
-                            structureHappiness+=(attributes.get("HAPPINESS")+Math.max(0,scalar))*count;
-                            structureUnhappiness+=(attributes.get("UNHAPPINESS")+Math.max(0,-scalar))*count;
-                            education+=structureDefinitions.attributes(id).education(id,residents)*count;
-                            growth+=structureDefinitions.attributes(id).get("GROWTH")*count;
+                            structureHappiness+=(attributes.get("HAPPINESS")+dynamic.get("HAPPINESS")+Math.max(0,scalar))*count;
+                            structureUnhappiness+=(attributes.get("UNHAPPINESS")+dynamic.get("UNHAPPINESS")+Math.max(0,-scalar))*count;
+                            education+=(attributes.education(id,residents)+dynamic.education(id,residents))*count;
+                            growth+=(attributes.get("GROWTH")+dynamic.get("GROWTH"))*count;
                         } else {
                             structureHammers+=rows.getDouble(3);beakers+=rows.getDouble(4);money+=rows.getDouble(5);structureHappiness+=Math.max(0,rows.getDouble(6));structureUnhappiness+=Math.max(0,-rows.getDouble(6));
                         }
@@ -1962,7 +1965,6 @@ public final class StorageBootstrap implements AutoCloseable {
         if(cultureBiomes!=null)try(var query=connection.prepareStatement("SELECT b.biome,COUNT(*) FROM culture_regions cr JOIN culture_biome_cache b ON b.world=cr.world AND b.chunk_x=cr.chunk_x AND b.chunk_z=cr.chunk_z WHERE cr.town_id=? GROUP BY b.biome")) {
             query.setLong(1,townId);try(var rows=query.executeQuery()){while(rows.next()){var yield=cultureBiomes.yield(rows.getString(1));int count=rows.getInt(2);structureHammers+=yield.hammers()*count;beakers+=yield.beakers()*count;money+=yield.coins()*count;biomeHappiness+=yield.happiness()*count;growth+=yield.growth()*count;}}
         }
-        var goodies=townGoodieEffects(townId);
         structureHammers+=goodies.value("buff_construction");
         structureHappiness+=goodies.happiness();
         double happiness = Math.max(0,baseHappiness + structureHappiness + biomeHappiness);
@@ -1982,7 +1984,7 @@ public final class StorageBootstrap implements AutoCloseable {
             query.setLong(1,townId);try(var row=query.executeQuery()){if(row.next()){growth+=row.getDouble(1);fertilizer=row.getBoolean(2);}}
         }
         var wonder=townWonderBonuses(townId);
-        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,wonder.growth()+goodies.value("buff_year_of_plenty"));
+        growth=com.avrgaming.civcraft.modern.town.GrowthRules.total(growth,growthRate,fertilizer,wonder.growth()+goodies.value("buff_year_of_plenty")+wonder.grapeGrowth()*goodies.count("good_grapes"));
         return new TownProduction(
                 Math.max(0.0,(Math.max(0.0, baseHammersPerHour) + Math.max(0.0, structureHammers)) * multiplier * hammerRate * (com.avrgaming.civcraft.modern.war.OccupationRules.captured(connection,townId)?capturedPenalty:1)),
                 (Math.max(0.0, baseBeakersPerHour) + Math.max(0.0, beakers)) * Math.max(0,1+education) * scienceMultiplier * beakerRate * (1+wonder.science()+goodies.value("buff_innovation")),
