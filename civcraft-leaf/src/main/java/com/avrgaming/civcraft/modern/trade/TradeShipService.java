@@ -108,7 +108,7 @@ public final class TradeShipService implements Listener {
         images.addAll(target);byte[] payload=ConsumptionContainers.encode(images);
         var operation=storage.transaction(db->{var payment=TradeShipIncomeStore.plan(db,ship.town(),outcome.money(),outcome.culture(),rates);
             return TradeShipOperations.prepare(db,UUID.randomUUID().toString(),before,hour,outcome,payment,payload);});
-        lock(operation);interrupt("prepared",ship.id());finish(operation);
+        lock(operation);if(operation.consumed()>0)interrupt("prepared",ship.id());finish(operation);
     }
     private void lock(TradeShipOperations.Pending operation)throws IOException {
         for(var image:ConsumptionContainers.decode(operation.containers()))locked.add(image.position());
