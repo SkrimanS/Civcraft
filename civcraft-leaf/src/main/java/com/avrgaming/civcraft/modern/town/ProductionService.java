@@ -75,6 +75,7 @@ public final class ProductionService implements Listener {
         if(type.equals("ti_quarry"))return Optional.of("Карьер: уровень "+storage.query(db->ProductionStore.quarryLevel(db,town))+". Цикл: 1 секунда. Кирки во входной сундук; Эффективность увеличивает выход и износ.");
         if(type.equals("ti_windmill"))return Optional.of("Мельница засевает до "+windmill.capacity(machinery(town))+" грядок в минуту на восьми соседних участках ферм. Семена, морковь и картофель положите в сундук мельницы. Во время войны посев приостановлен.");
         if(type.equals("ti_farm"))return Optional.of("Ферма выращивает культуры в своём чанке. Рост зависит от показателя города; на равнине действует множитель "+farmBiomeRates.getOrDefault("PLAINS",1.0)+". Цикл: "+farmGrowthPeriod/1000+" сек. Пропущенные при выгрузке чанка циклы сохраняются.");
+        if(type.equals("ti_pasture"))return Optional.of("Пастбище позволяет разводить животных. Лимит: "+plugin.pastures().maximum()+" рождённых животных на пастбище, общий для всех видов. Смерть потомка освобождает место. Родителей нужно привести самостоятельно.");
         return Optional.empty();
     }
     public void tick() {
