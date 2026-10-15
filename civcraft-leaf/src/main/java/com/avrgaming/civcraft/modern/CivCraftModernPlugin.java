@@ -64,8 +64,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
-    private com.avrgaming.civcraft.modern.town.FisheryService fisheries;
-    public com.avrgaming.civcraft.modern.town.FisheryService fisheries(){return fisheries;}
+    private com.avrgaming.civcraft.modern.town.ProductionService production;
+    public com.avrgaming.civcraft.modern.town.ProductionService production(){return production;}
     private com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips;
     private com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService goodieIncome;
     public com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService goodieIncome(){return goodieIncome;}
@@ -255,8 +255,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,cultureClock::tick,40L,20L);
             consumption=new com.avrgaming.civcraft.modern.town.ConsumptionService(this,storage);
             getServer().getScheduler().runTaskTimer(this,consumption::tick,80L,20L);
-            fisheries=new com.avrgaming.civcraft.modern.town.FisheryService(this,storage);
-            getServer().getScheduler().runTaskTimer(this,fisheries::tick,80L,20L);
+            production=new com.avrgaming.civcraft.modern.town.ProductionService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,production::tick,80L,20L);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
         getServer().getScheduler().runTaskTimer(this,research::tick,20L*60L,20L*60L);

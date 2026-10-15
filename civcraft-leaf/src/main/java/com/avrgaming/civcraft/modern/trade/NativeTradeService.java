@@ -99,7 +99,7 @@ public final class NativeTradeService implements Listener {
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
-            else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.fisheries().poolLines(point.town(),Integer.parseInt(point.argument())))));
+            else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
             render(event.getClickedBlock(),point);
         } catch(IllegalArgumentException exception){player.sendMessage(Component.text(exception.getMessage()));}
@@ -289,8 +289,8 @@ public final class NativeTradeService implements Listener {
             var entry=grocer.require(Integer.parseInt(point.argument())+1);var settings=storage.query(db->GrocerStore.settings(db,point.town()));
             lines=entry.level()>settings.level()?List.of("Нужно улучшение","Бакалея "+entry.level(),"",""):
                 List.of("Купить "+entry.amount()+" шт.",entry.name(),entry.price()+" монет","Гостям: +"+Math.round(settings.fee()*100)+"%");
-        } else if(point.structure().equals("ti_fish_hatchery") && plugin.fisheries()!=null) {
-            lines=plugin.fisheries().poolLines(point.town(),Integer.parseInt(point.argument()));
+        } else if(point.structure().equals("ti_fish_hatchery") && plugin.production()!=null) {
+            lines=plugin.production().poolLines(point.town(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_library")) {
             var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->LibraryStore.fee(db,point.town()));

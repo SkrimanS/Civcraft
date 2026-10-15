@@ -48,6 +48,7 @@ public final class BuildingRuinStore {
         try(var s=db.prepareStatement("UPDATE building_combat_health SET phase='DESTROYED' WHERE build_id=? AND hitpoints=0 AND phase='DESTROY_PENDING'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Building health changed before ruin completion");}
         try(var s=db.prepareStatement("UPDATE structure_builds SET status='WAR_DESTROYED' WHERE id=? AND status='WAR_DESTROY_PENDING'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Building changed before ruin completion");}
         com.avrgaming.civcraft.modern.trade.TradeShipOperations.resetDestroyed(db,build);
+        com.avrgaming.civcraft.modern.town.ProductionStore.resetDestroyed(db,build);
         try(var s=db.prepareStatement("UPDATE building_ruin_jobs SET state='COMPLETE' WHERE build_id=?")){s.setLong(1,build);s.executeUpdate();}return true;
     }
 }

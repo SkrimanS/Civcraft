@@ -14,6 +14,8 @@ public final class ProductionStore {
     public static void install(Connection db)throws SQLException {
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS town_production_settings(town_id INTEGER PRIMARY KEY REFERENCES towns(id) ON DELETE CASCADE,fishery_level INTEGER NOT NULL DEFAULT 1 CHECK(fishery_level BETWEEN 1 AND 4))");
+            boolean trommel=false;try(var r=s.executeQuery("PRAGMA table_info(town_production_settings)")){while(r.next())if(r.getString("name").equals("trommel_level"))trommel=true;}
+            if(!trommel)s.executeUpdate("ALTER TABLE town_production_settings ADD COLUMN trommel_level INTEGER NOT NULL DEFAULT 1 CHECK(trommel_level BETWEEN 1 AND 4)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS resource_production_clock(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE,period INTEGER NOT NULL,last_tick INTEGER NOT NULL)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS resource_production_operations(id TEXT PRIMARY KEY,build_id INTEGER NOT NULL,town_id INTEGER NOT NULL,period INTEGER NOT NULL,before_tick INTEGER NOT NULL,tick INTEGER NOT NULL,produced INTEGER NOT NULL,containers BLOB NOT NULL,status TEXT NOT NULL DEFAULT 'PREPARED',UNIQUE(build_id,period,tick))");
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_resource_production ON resource_production_operations(build_id) WHERE status='PREPARED'");
@@ -31,16 +33,19 @@ public final class ProductionStore {
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO resource_production_clock VALUES(?,?,?)")){s.setLong(1,build);s.setLong(2,period);s.setLong(3,tick);s.executeUpdate();}return clock(db,build);
     }
     public static void start(Connection db,long period,long tick)throws SQLException {
+        start(db,null,period,tick);
+    }
+    public static void start(Connection db,String type,long period,long tick)throws SQLException {
         transaction(db);if(period<1000 || tick<0)throw new IllegalArgumentException("Invalid production clock");
         if(!pending(db).isEmpty())throw new SQLException("Production recovery must finish before clock starts");
-        try(var s=db.prepareStatement("UPDATE resource_production_clock SET period=?,last_tick=CASE WHEN period<>? THEN ? ELSE MAX(last_tick,?) END")){s.setLong(1,period);s.setLong(2,period);s.setLong(3,tick);s.setLong(4,tick);s.executeUpdate();}
+        try(var s=db.prepareStatement("UPDATE resource_production_clock SET period=?,last_tick=CASE WHEN period<>? THEN ? ELSE MAX(last_tick,?) END"+(type==null?"":" WHERE build_id IN (SELECT id FROM structure_builds WHERE structure_id=?)"))){s.setLong(1,period);s.setLong(2,period);s.setLong(3,tick);s.setLong(4,tick);if(type!=null)s.setString(5,type);s.executeUpdate();}
     }
     public static Pending prepare(Connection db,String id,Clock before,long tick,int produced,byte[] containers)throws SQLException {
         transaction(db);
         if(id==null || id.isBlank() || tick<=before.tick() || produced<0 || containers==null || containers.length==0)throw new IllegalArgumentException("Invalid production operation");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Production clock changed");
         long town;
-        try(var s=db.prepareStatement("SELECT town_id FROM structure_builds WHERE id=? AND structure_id='ti_fish_hatchery' AND status='COMPLETE' AND town_id IS NOT NULL")) {
+        try(var s=db.prepareStatement("SELECT town_id FROM structure_builds WHERE id=? AND structure_id IN ('ti_fish_hatchery','s_trommel') AND status='COMPLETE' AND town_id IS NOT NULL")) {
             s.setLong(1,before.build());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Producer is not complete");town=r.getLong(1);}
         }
         try(var s=db.prepareStatement("INSERT INTO resource_production_operations VALUES(?,?,?,?,?,?,?,?,'PREPARED')")) {
@@ -60,6 +65,11 @@ public final class ProductionStore {
         try(var s=db.prepareStatement("UPDATE resource_production_operations SET status='COMPLETE',containers=X'' WHERE id=? AND status='PREPARED'")){s.setString(1,id);if(s.executeUpdate()!=1)throw new SQLException("Production operation changed");}return true;
     }
     public static void requireBuildUnlocked(Connection db,long build)throws SQLException {requireUnlocked(db,"build_id",build);}
+    public static void resetDestroyed(Connection db,long build)throws SQLException {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='resource_production_clock'")){if(!r.next())return;}
+        requireBuildUnlocked(db,build);
+        try(var s=db.prepareStatement("DELETE FROM resource_production_clock WHERE build_id=? AND EXISTS(SELECT 1 FROM structure_builds WHERE id=? AND status='WAR_DESTROYED')")){s.setLong(1,build);s.setLong(2,build);s.executeUpdate();}
+    }
     public static void requireTownUnlocked(Connection db,long town)throws SQLException {requireUnlocked(db,"town_id",town);}
     private static void requireUnlocked(Connection db,String column,long id)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='resource_production_operations'")){if(!r.next())return;}
@@ -71,6 +81,14 @@ public final class ProductionStore {
     public static void fisheryLevel(Connection db,long town,int level)throws SQLException {
         if(level<1 || level>4)throw new IllegalArgumentException("Некорректный уровень рыбной фермы.");
         requireTownUnlocked(db,town);
-        try(var s=db.prepareStatement("INSERT INTO town_production_settings VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET fishery_level=MAX(fishery_level,excluded.fishery_level)")){s.setLong(1,town);s.setInt(2,level);s.executeUpdate();}
+        try(var s=db.prepareStatement("INSERT INTO town_production_settings(town_id,fishery_level) VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET fishery_level=MAX(fishery_level,excluded.fishery_level)")){s.setLong(1,town);s.setInt(2,level);s.executeUpdate();}
+    }
+    public static int trommelLevel(Connection db,long town)throws SQLException {
+        try(var s=db.prepareStatement("SELECT trommel_level FROM town_production_settings WHERE town_id=?")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?r.getInt(1):1;}}
+    }
+    public static void trommelLevel(Connection db,long town,int level)throws SQLException {
+        if(level<1 || level>4)throw new IllegalArgumentException("Некорректный уровень дробилки.");
+        requireTownUnlocked(db,town);
+        try(var s=db.prepareStatement("INSERT INTO town_production_settings(town_id,trommel_level) VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET trommel_level=MAX(trommel_level,excluded.trommel_level)")){s.setLong(1,town);s.setInt(2,level);s.executeUpdate();}
     }
 }

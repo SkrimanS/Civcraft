@@ -7,6 +7,28 @@ import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProductionStoreTest {
+    @Test void repairedProducerStartsFreshInsteadOfCatchingUpTheTimeSpentDestroyed()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);ProductionStore.initialize(db,1,20000,10);db.commit();ProductionStore.resetDestroyed(db,1);assertNotNull(ProductionStore.clock(db,1));
+            db.createStatement().execute("UPDATE structure_builds SET status='WAR_DESTROYED' WHERE id=1");ProductionStore.resetDestroyed(db,1);db.commit();assertNull(ProductionStore.clock(db,1));
+            db.createStatement().execute("UPDATE structure_builds SET status='COMPLETE' WHERE id=1");assertEquals(100,ProductionStore.initialize(db,1,20000,100).tick());db.commit();
+        }
+    }
+    @Test void producerTypesRetainIndependentClocksAndExistingFisherySettingsDuringMigration()throws Exception {
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            schema(db);db.createStatement().execute("INSERT INTO structure_builds VALUES(2,1,'s_trommel','COMPLETE')");
+            ProductionStore.initialize(db,1,60000,10);ProductionStore.initialize(db,2,1000,600);db.commit();
+            ProductionStore.start(db,"ti_fish_hatchery",20000,30);ProductionStore.start(db,"s_trommel",1000,601);db.commit();
+            assertEquals(new ProductionStore.Clock(1,20000,30),ProductionStore.clock(db,1));assertEquals(new ProductionStore.Clock(2,1000,601),ProductionStore.clock(db,2));
+            ProductionStore.fisheryLevel(db,1,4);ProductionStore.trommelLevel(db,1,3);ProductionStore.trommelLevel(db,1,2);db.commit();assertEquals(4,ProductionStore.fisheryLevel(db,1));assertEquals(3,ProductionStore.trommelLevel(db,1));
+            var clock=ProductionStore.clock(db,2);ProductionStore.prepare(db,"crusher",clock,602,1,new byte[]{42});db.commit();assertThrows(IllegalArgumentException.class,()->ProductionStore.trommelLevel(db,1,4));ProductionStore.complete(db,"crusher");db.commit();
+        }
+        try(var db=DriverManager.getConnection("jdbc:sqlite::memory:")) {
+            db.createStatement().execute("CREATE TABLE towns(id INTEGER PRIMARY KEY,civ_id INTEGER)");db.createStatement().execute("CREATE TABLE structure_builds(id INTEGER PRIMARY KEY,town_id INTEGER,structure_id TEXT)");db.createStatement().execute("INSERT INTO towns VALUES(1,1)");
+            db.createStatement().execute("CREATE TABLE town_production_settings(town_id INTEGER PRIMARY KEY,fishery_level INTEGER)");db.createStatement().execute("INSERT INTO town_production_settings VALUES(1,4)");ProductionStore.install(db);
+            assertEquals(4,ProductionStore.fisheryLevel(db,1));assertEquals(1,ProductionStore.trommelLevel(db,1));
+        }
+    }
     @TempDir Path directory;
     void schema(Connection db)throws SQLException {
         db.createStatement().execute("PRAGMA foreign_keys=ON");
