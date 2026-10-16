@@ -40,6 +40,13 @@ public final class GoodieTransferService implements Listener {
         if(frozen.contains(player))throw new IllegalArgumentException("Перенос торгового товара ещё сохраняется.");
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
+    public GoodieTransferStore.Pending preparePiracy(Connection db,Player player,long build,byte[] inventory,String id)throws SQLException {
+        var before=BonusGoodieStore.origin(db,build);if(before==null || before.kind()!=BonusGoodieStore.Kind.SOURCE)throw new IllegalArgumentException("В исходной рамке больше нет товара.");
+        var at=player.getLocation();return GoodieTransferStore.prepare(db,id,player.getUniqueId(),before,BonusGoodieStore.Kind.ITEM,id,null,inventory,new GoodieTransferStore.Drop(at.getWorld().getName(),at.getX(),at.getY(),at.getZ()),System.currentTimeMillis());
+    }
+    public void applyPiracy(Player player,GoodieTransferStore.Pending pending)throws SQLException {
+        frozen.add(player.getUniqueId());interrupt("prepared",player);finish(player,pending);
+    }
     private void tick() {
         if(paused)return;
         try {

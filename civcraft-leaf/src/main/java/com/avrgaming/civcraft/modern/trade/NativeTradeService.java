@@ -37,6 +37,7 @@ public final class NativeTradeService implements Listener {
     private final Map<UUID,RepairOffer> repairOffers=new java.util.concurrent.ConcurrentHashMap<>();
     private final Set<Long> componentMarkersIndexed=new HashSet<>();
     public void stableSettings(Player player,String[] args)throws SQLException{stable.settings(player,args);}
+    public void applyPrepared(Player player,TradeStore.Pending pending)throws SQLException{apply(player,pending);}
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
     private final Map<UUID,Long> lastClick=new HashMap<>();

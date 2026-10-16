@@ -265,6 +265,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,pastures::tick,80L,20L);
             buildingActivity=new com.avrgaming.civcraft.modern.build.BuildingActivityService(this,storage);
             getServer().getScheduler().runTaskTimer(this,buildingActivity::tick,20L,20L);
+            new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
         getServer().getScheduler().runTaskTimer(this,research::tick,20L*60L,20L*60L);

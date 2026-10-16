@@ -19,6 +19,10 @@ softdepend:
   - FancyNpcs
   - ItemsAdder
 commands:
+  spy:
+    description: Шпионаж, книги миссий и состояние раскрытия.
+    usage: /<command> [list|equip|start <ID>|confirm yes|status|cancel]
+    permission: civcraft.use
   plot:
     description: Покупка, продажа и права участка города.
     usage: /<command> [info|fs <цена>|nfs|buy|setowner <ник>|perm set]
