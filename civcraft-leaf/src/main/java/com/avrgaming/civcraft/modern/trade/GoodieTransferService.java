@@ -25,6 +25,7 @@ public final class GoodieTransferService implements Listener {
     private final NamespacedKey applied,dropKey;
     private final Set<UUID> frozen=ConcurrentHashMap.newKeySet();
     private final Map<UUID,Long> clicks=new HashMap<>();
+    private final Set<UUID> requestedDrops=new HashSet<>();
     private boolean paused;
     private long lastWarning;
     public GoodieTransferService(CivCraftModernPlugin plugin,StorageBootstrap storage,GoodieFrameService frames)throws SQLException {
@@ -181,7 +182,54 @@ public final class GoodieTransferService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drag(InventoryDragEvent e){if(frozen.contains(e.getWhoClicked().getUniqueId())||items.token(e.getOldCursor())!=null)e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent e){if(frozen.contains(e.getPlayer().getUniqueId()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void swap(PlayerSwapHandItemsEvent e){if(frozen.contains(e.getPlayer().getUniqueId()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drop(PlayerDropItemEvent e){if(frozen.contains(e.getPlayer().getUniqueId())||items.token(e.getItemDrop().getItemStack())!=null)e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drop(PlayerDropItemEvent e) {
+        var player=e.getPlayer();if(frozen.contains(player.getUniqueId())){e.setCancelled(true);return;}
+        String token=items.token(e.getItemDrop().getItemStack());if(token==null)return;
+        // Cancellation restores the item first. The next tick journals the real inventory,
+        // instead of recording Bukkit's transient inventory during PlayerDropItemEvent.
+        e.setCancelled(true);if(!requestedDrops.add(player.getUniqueId()))return;
+        var at=e.getItemDrop().getLocation();var where=new GoodieTransferStore.Drop(at.getWorld().getName(),at.getX(),at.getY(),at.getZ());
+        plugin.getServer().getScheduler().runTask(plugin,()->{
+            requestedDrops.remove(player.getUniqueId());if(!player.isOnline() || player.isDead() || paused)return;
+            try {
+                ready(player);var before=storage.query(db->BonusGoodieStore.token(db,token));
+                if(before==null || before.kind()!=BonusGoodieStore.Kind.PLAYER || !before.holder().equals(player.getUniqueId().toString()))throw new IllegalArgumentException("Этот торговый товар больше не принадлежит вашему инвентарю.");
+                var inventory=snapshot(player);int slot=-1;
+                for(int i=0;i<inventory.length;i++)if(token.equals(items.token(inventory[i]))){if(slot>=0 || !items.matches(inventory[i],before))throw new IllegalArgumentException("Обнаружена недействительная копия торгового товара.");slot=i;}
+                if(slot<0)throw new IllegalArgumentException("Торгового товара больше нет в инвентаре.");
+                inventory[slot]=null;String id=UUID.randomUUID().toString();submit(player,before,BonusGoodieStore.Kind.ITEM,id,null,inventory,where,id);
+            }catch(IllegalArgumentException failure){player.sendMessage(Component.text(failure.getMessage()));}catch(Exception failure){fail(player,failure);}
+        });
+    }
+    /** Rotating the canonical token first makes an old saved ground entity harmless. */
+    private boolean returnGround(Item item)throws SQLException {
+        String token=items.token(item.getItemStack());if(token==null)return true;
+        return storage.transaction(db->{
+            var before=BonusGoodieStore.token(db,token);if(before==null)return true;
+            if(GoodieTransferStore.pending(db).stream().anyMatch(p->p.before().origin()==before.origin()))return false;
+            if(items.matches(item.getItemStack(),before) && before.kind()==BonusGoodieStore.Kind.ITEM && before.holder().equals(item.getPersistentDataContainer().get(dropKey,PersistentDataType.STRING)))BonusGoodieStore.returnHome(db,before);
+            return true;
+        });
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void despawn(ItemDespawnEvent e) {
+        if(items.token(e.getEntity().getItemStack())==null)return;
+        try{if(!returnGround(e.getEntity()))e.setCancelled(true);}catch(SQLException failure){e.setCancelled(true);warn("Goodie despawn recovery failed",failure);}
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void combust(EntityCombustEvent e) {
+        if(!(e.getEntity() instanceof Item item) || items.token(item.getItemStack())==null)return;
+        e.setCancelled(true);try{if(returnGround(item))item.remove();}catch(SQLException failure){warn("Goodie fire recovery failed",failure);}
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void groundDamage(EntityDamageEvent e) {
+        if(e.getCause()!=EntityDamageEvent.DamageCause.VOID || !(e.getEntity() instanceof Item item) || items.token(item.getItemStack())==null)return;
+        e.setCancelled(true);try{if(returnGround(item))item.remove();}catch(SQLException failure){warn("Goodie void recovery failed",failure);}
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void unload(org.bukkit.event.world.ChunkUnloadEvent e) {
+        for(var entity:e.getChunk().getEntities())if(entity instanceof Item item && items.token(item.getItemStack())!=null)try {
+            if(returnGround(item))item.remove();else e.setCancelled(true);
+        }catch(SQLException failure){e.setCancelled(true);warn("Goodie chunk unload recovery failed",failure);}
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void merge(ItemMergeEvent e){if(items.token(e.getEntity().getItemStack())!=null || items.token(e.getTarget().getItemStack())!=null)e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void hopper(InventoryPickupItemEvent e){if(items.token(e.getItem().getItemStack())!=null)e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void command(PlayerCommandPreprocessEvent e){if(frozen.contains(e.getPlayer().getUniqueId()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void use(PlayerInteractEvent e){if(frozen.contains(e.getPlayer().getUniqueId())||items.token(e.getItem())!=null)e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void consume(PlayerItemConsumeEvent e){if(frozen.contains(e.getPlayer().getUniqueId())||items.token(e.getItem())!=null)e.setCancelled(true);}
