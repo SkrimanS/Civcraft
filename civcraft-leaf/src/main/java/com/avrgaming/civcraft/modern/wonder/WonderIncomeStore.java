@@ -22,7 +22,8 @@ public final class WonderIncomeStore {
                 (SELECT COUNT(*) FROM culture_regions cr JOIN towns ct ON ct.id=cr.town_id WHERE ct.civ_id=t.civ_id)
               ELSE (SELECT COUNT(*) FROM towns) END
             FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id
-            WHERE b.structure_id IN ('w_colossus','w_colosseum') AND b.status IN ('QUEUED','BUILDING','COMPLETE') ORDER BY b.id
+            WHERE b.structure_id IN ('w_colossus','w_colosseum') AND b.status IN ('QUEUED','BUILDING','COMPLETE')
+              AND NOT EXISTS(SELECT 1 FROM structure_activity a WHERE a.build_id=b.id AND a.enabled=0) ORDER BY b.id
             """)) {
             while(r.next()){String type=r.getString(4);long units=r.getLong(5);planned.add(new Credit(r.getLong(1),r.getLong(2),r.getLong(3),type,units,WonderEconomy.coins(type.equals("w_colossus")?economy.cultureCoins():economy.worldTownCoins(),units)));}
         }

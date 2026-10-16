@@ -14,7 +14,7 @@ public final class WonderBonuses {
     }
     public Values town(Connection db,long town)throws SQLException {
         var civilization=new HashSet<String>();var local=new HashSet<String>();
-        try(var s=db.prepareStatement("SELECT b.structure_id,b.town_id FROM structure_builds b JOIN towns source ON source.id=b.town_id JOIN towns target ON target.civ_id=source.civ_id WHERE target.id=? AND b.status='COMPLETE' AND b.structure_id IN ('w_greatlibrary','w_hanginggardens','w_mother_tree','w_pyramid')")){
+        try(var s=db.prepareStatement("SELECT b.structure_id,b.town_id FROM active_structure_builds b JOIN towns source ON source.id=b.town_id JOIN towns target ON target.civ_id=source.civ_id WHERE target.id=? AND b.status='COMPLETE' AND b.structure_id IN ('w_greatlibrary','w_hanginggardens','w_mother_tree','w_pyramid')")){
             s.setLong(1,town);try(var r=s.executeQuery()){while(r.next()){civilization.add(r.getString(1));if(r.getLong(2)==town)local.add(r.getString(1));}}
         }
         return new Values(civilization.contains("w_greatlibrary")?value("buff_greatlibrary_extra_beakers"):0,
@@ -25,7 +25,7 @@ public final class WonderBonuses {
     }
     private double value(String id){var value=values.get(id);if(value==null)throw new IllegalArgumentException("Missing wonder buff: "+id);return value;}
     public double globeCulture(Connection db,long town)throws SQLException {
-        try(var s=db.prepareStatement("SELECT (SELECT COUNT(*) FROM towns) FROM structure_builds WHERE town_id=? AND structure_id='w_globe_theatre' AND status='COMPLETE' LIMIT 1")) {
+        try(var s=db.prepareStatement("SELECT (SELECT COUNT(*) FROM towns) FROM active_structure_builds WHERE town_id=? AND structure_id='w_globe_theatre' AND status='COMPLETE' LIMIT 1")) {
             s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?r.getLong(1)*value("buff_globe_theatre_culture_from_towns"):0;}
         }
     }

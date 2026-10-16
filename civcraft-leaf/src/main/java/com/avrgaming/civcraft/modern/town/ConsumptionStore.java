@@ -75,7 +75,7 @@ public final class ConsumptionStore {
             throw new IllegalArgumentException("Poisoned meals must consume food and cannot earn production");
         if(!before.equals(state(db,before.build())))throw new SQLException("Consumption state changed before prepare");
         long town,civ;
-        try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.status='COMPLETE'")) {
+        try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM active_structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.status='COMPLETE'")) {
             s.setLong(1,before.build());try(var r=s.executeQuery()) {
                 if(!r.next())throw new SQLException("Consuming building is not complete or has no town");
                 town=r.getLong(1);civ=r.getLong(2);

@@ -53,7 +53,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized double staticTownCulture(long town)throws SQLException {
         double total=0;
         var goodies=townGoodieEffects(town);
-        try(var s=connection.prepareStatement("SELECT structure_id,COUNT(*) FROM structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id")) {
+        try(var s=connection.prepareStatement("SELECT structure_id,COUNT(*) FROM active_structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id")) {
             s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())if(structureDefinitions!=null)total+=(structureDefinitions.attributes(r.getString(1)).get("CULTURE")+structureDefinitions.tradeAttributes(r.getString(1)).calculate(goodies.goods()).get("CULTURE"))*r.getInt(2);}
         }
         return total+(wonderBonuses==null?0:wonderBonuses.globeCulture(connection,town));
@@ -137,6 +137,7 @@ public final class StorageBootstrap implements AutoCloseable {
             applySqlitePragmas(connection);
             createBootstrapSchema();
             migrateBootstrapSchema();
+            com.avrgaming.civcraft.modern.build.BuildingActivityStore.install(connection);
             WonderUniqueness.install(connection);
             com.avrgaming.civcraft.modern.trade.TradeStore.install(connection);
             com.avrgaming.civcraft.modern.build.StructureChestStore.install(connection);
@@ -1918,7 +1919,7 @@ public final class StorageBootstrap implements AutoCloseable {
                     COALESCE(SUM(beakers_per_hour), 0) AS beakers,
                     COALESCE(SUM(money_per_hour), 0) AS money,
                     COALESCE(SUM(happiness), 0) AS happiness
-                FROM structure_builds
+                FROM active_structure_builds
                 WHERE town_id = ? AND status = 'COMPLETE'
                 """)) {
             statement.setLong(1, townId);
@@ -1939,7 +1940,7 @@ public final class StorageBootstrap implements AutoCloseable {
             }
             try(var query=connection.prepareStatement("""
                     SELECT structure_id,COUNT(*),SUM(production_hammers_per_hour),SUM(beakers_per_hour),SUM(money_per_hour),SUM(happiness)
-                    FROM structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id
+                    FROM active_structure_builds WHERE town_id=? AND status='COMPLETE' GROUP BY structure_id
                     """)) {
                 query.setLong(1,townId);try(var rows=query.executeQuery()) {
                     while(rows.next()) {

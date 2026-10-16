@@ -65,7 +65,7 @@ public final class StableService implements Listener {
         var offer=selected(build,group);double fee=storage.query(db->StableStore.fee(db,town));return List.of(offer.name(),"Купить",offer.price()+" монет","Гостям: +"+Math.round(fee*100)+"%");
     }
     public void validate(long build,long town,StableCatalog.Offer offer)throws SQLException{
-        boolean complete=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.town_id=? AND b.structure_id='s_stable' AND b.status='COMPLETE' AND COALESCE(h.hitpoints,b.max_hitpoints)>0")){s.setLong(1,build);s.setLong(2,town);try(var r=s.executeQuery()){return r.next();}}});
+        boolean complete=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM active_structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.town_id=? AND b.structure_id='s_stable' AND b.status='COMPLETE' AND COALESCE(h.hitpoints,b.max_hitpoints)>0")){s.setLong(1,build);s.setLong(2,town);try(var r=s.executeQuery()){return r.next();}}});
         if(!complete)throw new IllegalArgumentException("Конюшня не работает или разрушена.");
         if(offer.horse()>=5 || offer.item()>=417 && offer.item()<=419){
             boolean tech=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM towns t JOIN civ_technologies c ON c.civ_id=t.civ_id WHERE t.id=? AND c.tech_id='tech_military_science'")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}}});

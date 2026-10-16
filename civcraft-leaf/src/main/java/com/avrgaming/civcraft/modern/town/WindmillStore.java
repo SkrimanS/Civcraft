@@ -25,7 +25,7 @@ public final class WindmillStore {
     }
     public static ProductionStore.Pending prepare(Connection db,String id,ProductionStore.Clock before,long tick,List<Bed> beds,byte[] containers,long now)throws SQLException {
         String world;int x,z;
-        try(var s=db.prepareStatement("SELECT world,x,z FROM structure_builds WHERE id=? AND structure_id='ti_windmill' AND status='COMPLETE'")) {
+        try(var s=db.prepareStatement("SELECT world,x,z FROM active_structure_builds WHERE id=? AND structure_id='ti_windmill' AND status='COMPLETE'")) {
             s.setLong(1,before.build());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Мельница не завершена.");world=r.getString(1);x=r.getInt(2);z=r.getInt(3);}
         }
         if(!beds.isEmpty())try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>?")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Во время боевого периода мельница не сажает урожай.");}}

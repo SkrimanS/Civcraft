@@ -77,7 +77,7 @@ public final class ConsumptionService implements Listener {
             }
             var buildings=storage.query(db->{
                 var result=new ArrayList<Building>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,structure_id FROM structure_builds WHERE status='COMPLETE' AND town_id IS NOT NULL AND structure_id IN ('s_temple','ti_cottage','ti_mine') ORDER BY id")) {
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,structure_id FROM active_structure_builds WHERE status='COMPLETE' AND town_id IS NOT NULL AND structure_id IN ('s_temple','ti_cottage','ti_mine') ORDER BY id")) {
                     while(r.next())result.add(new Building(r.getLong(1),r.getLong(2),r.getString(3)));
                 }return result;
             });

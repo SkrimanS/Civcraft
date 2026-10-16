@@ -26,7 +26,7 @@ public final class TradeGoodIncomeStore {
     }
     public static double structureRate(Connection db,long town,TradeGoodIncome income)throws SQLException {
         double total=0;
-        try(var s=db.prepareStatement("SELECT b.structure_id,COUNT(*) FROM structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.town_id=? AND b.status='COMPLETE' AND (b.max_hitpoints=0 OR COALESCE(h.hitpoints,b.max_hitpoints)>0) GROUP BY b.structure_id")) {
+        try(var s=db.prepareStatement("SELECT b.structure_id,COUNT(*) FROM active_structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.town_id=? AND b.status='COMPLETE' AND (b.max_hitpoints=0 OR COALESCE(h.hitpoints,b.max_hitpoints)>0) GROUP BY b.structure_id")) {
             s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())total+=income.structureRate(r.getString(1))*r.getInt(2);}
         }
         return total;
@@ -36,8 +36,8 @@ public final class TradeGoodIncomeStore {
         try(var s=db.prepareStatement("""
             SELECT g.good_id FROM bonus_goodies g
             JOIN goodie_frames f ON f.frame_key=g.holder_id AND f.is_source=0
-            JOIN structure_builds hall ON hall.id=f.build_id AND hall.town_id=g.host_town
-            JOIN structure_builds origin ON origin.id=g.origin_build
+            JOIN active_structure_builds hall ON hall.id=f.build_id AND hall.town_id=g.host_town
+            JOIN active_structure_builds origin ON origin.id=g.origin_build
             LEFT JOIN building_combat_health h ON h.build_id=origin.id
             WHERE g.holder_kind='FRAME' AND g.host_town=? AND hall.status='COMPLETE'
               AND hall.structure_id IN ('s_capitol','s_townhall') AND origin.status='COMPLETE'

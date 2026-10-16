@@ -1143,6 +1143,7 @@ public final class LegacyStructureService {
             }
         }
         // In legacy CivCraft configuration, limit: 0 means unlimited.
+        if(town!=null && plugin instanceof CivCraftModernPlugin modern && modern.buildingActivity()!=null)storage.query(db->{modern.buildingActivity().requireCapacity(db,town.id(),definition.id(),true);return null;});
         // Count unfinished and completed structures; cancelled/demolished free a slot.
         if (town == null || definition.maxPerTown() <= 0) {
             return;

@@ -66,6 +66,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
     private com.avrgaming.civcraft.modern.town.ProductionService production;
     private com.avrgaming.civcraft.modern.town.PastureService pastures;
+    private com.avrgaming.civcraft.modern.build.BuildingActivityService buildingActivity;
+    public com.avrgaming.civcraft.modern.build.BuildingActivityService buildingActivity(){return buildingActivity;}
     public com.avrgaming.civcraft.modern.town.PastureService pastures(){return pastures;}
     public com.avrgaming.civcraft.modern.town.ProductionService production(){return production;}
     private com.avrgaming.civcraft.modern.trade.TradeShipService tradeShips;
@@ -261,6 +263,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,production::tick,80L,20L);
             pastures=new com.avrgaming.civcraft.modern.town.PastureService(this,storage);
             getServer().getScheduler().runTaskTimer(this,pastures::tick,80L,20L);
+            buildingActivity=new com.avrgaming.civcraft.modern.build.BuildingActivityService(this,storage);
+            getServer().getScheduler().runTaskTimer(this,buildingActivity::tick,20L,20L);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
         getServer().getScheduler().runTaskTimer(this,research::tick,20L*60L,20L*60L);

@@ -219,6 +219,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("structures")){plugin.buildingActivity().info(player);return;}
+        if(args.length>=2 && args[1].equalsIgnoreCase("enablestructure")){if(args.length!=3)throw new IllegalArgumentException("/town enablestructure <ID или мир,x,y,z>");plugin.buildingActivity().enable(player,args[2]);return;}
         if(args.length>=3&&args[1].equalsIgnoreCase("info")&&args[2].equalsIgnoreCase("trade")){plugin.goodieIncome().info(player);return;}
         if(args.length>=2&&args[1].equalsIgnoreCase("outlaw")){plugin.warPvp().command(player,args);return;}
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("growth")) {
@@ -246,6 +248,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&e/town set flattax [монеты], set taxrate [процент] &7- налоги жителей");
             send(player,"&e/res taxes, /res paydebt &7- ваш налоговый долг и его погашение");
             send(player,"&e/town info culture / info growth &7- культурная территория и рост");
+            send(player,"&e/town info structures / enablestructure <ID или мир,x,y,z> &7- активность построек");
             send(player,"&e/town outlaw list|add|remove <ник> &7- преступники города");
             return;
         }

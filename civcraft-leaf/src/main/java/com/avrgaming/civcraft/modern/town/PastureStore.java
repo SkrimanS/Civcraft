@@ -18,13 +18,13 @@ public final class PastureStore {
         }
     }
     public static OptionalLong at(Connection db,String world,int x,int z)throws SQLException{
-        try(var s=db.prepareStatement("SELECT b.id FROM structure_chunks c JOIN structure_builds b ON b.id=c.build_id WHERE c.world=? AND c.chunk_x=? AND c.chunk_z=? AND b.structure_id='ti_pasture' AND b.status='COMPLETE' ORDER BY b.id DESC LIMIT 1")){s.setString(1,world);s.setInt(2,x);s.setInt(3,z);try(var r=s.executeQuery()){return r.next()?OptionalLong.of(r.getLong(1)):OptionalLong.empty();}}
+        try(var s=db.prepareStatement("SELECT b.id FROM structure_chunks c JOIN active_structure_builds b ON b.id=c.build_id WHERE c.world=? AND c.chunk_x=? AND c.chunk_z=? AND b.structure_id='ti_pasture' AND b.status='COMPLETE' ORDER BY b.id DESC LIMIT 1")){s.setString(1,world);s.setInt(2,x);s.setInt(3,z);try(var r=s.executeQuery()){return r.next()?OptionalLong.of(r.getLong(1)):OptionalLong.empty();}}
     }
     public static boolean exists(Connection db,long pasture)throws SQLException{
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE id=? AND structure_id='ti_pasture' AND status<>'DEMOLISHED'")){s.setLong(1,pasture);try(var r=s.executeQuery()){return r.next();}}
     }
     public static boolean active(Connection db,long pasture)throws SQLException{
-        try(var s=db.prepareStatement("SELECT 1 FROM structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.structure_id='ti_pasture' AND b.status='COMPLETE' AND COALESCE(h.hitpoints,b.max_hitpoints)>0")){s.setLong(1,pasture);try(var r=s.executeQuery()){return r.next();}}
+        try(var s=db.prepareStatement("SELECT 1 FROM active_structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.id=? AND b.structure_id='ti_pasture' AND b.status='COMPLETE' AND COALESCE(h.hitpoints,b.max_hitpoints)>0")){s.setLong(1,pasture);try(var r=s.executeQuery()){return r.next();}}
     }
     public static long count(Connection db,long pasture)throws SQLException{
         try(var s=db.prepareStatement("SELECT count(*) FROM pasture_animals WHERE build_id=?")){s.setLong(1,pasture);try(var r=s.executeQuery()){r.next();return r.getLong(1);}}

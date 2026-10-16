@@ -19,7 +19,7 @@ public final class HammerCosts {
     public double cost(Connection db,long town,String type,double base,double rush)throws SQLException {
         boolean mother=false;
         if(type!=null&&improvements.contains(type))try(var s=db.prepareStatement("""
-            SELECT 1 FROM structure_builds b JOIN towns source ON source.id=b.town_id
+            SELECT 1 FROM active_structure_builds b JOIN towns source ON source.id=b.town_id
             JOIN towns target ON target.civ_id=source.civ_id LEFT JOIN building_combat_health h ON h.build_id=b.id
             WHERE target.id=? AND b.structure_id='w_mother_tree' AND b.status='COMPLETE'
               AND (b.max_hitpoints=0 OR COALESCE(h.hitpoints,b.max_hitpoints)>0) LIMIT 1

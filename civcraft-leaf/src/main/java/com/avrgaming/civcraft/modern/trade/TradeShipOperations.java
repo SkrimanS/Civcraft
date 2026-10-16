@@ -76,7 +76,7 @@ public final class TradeShipOperations {
             throw new IllegalArgumentException("Invalid trade ship intent");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Trade ship progress changed before preparation");
         long town,civ;
-        try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.structure_id='ti_trade_ship' AND b.status='COMPLETE'")) {
+        try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM active_structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.structure_id='ti_trade_ship' AND b.status='COMPLETE'")) {
             s.setLong(1,before.build());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Trade ship is not complete");town=r.getLong(1);civ=r.getLong(2);}
         }
         if(civ!=payment.civilization())throw new SQLException("Trade ship owner changed before preparation");

@@ -14,7 +14,7 @@ public final class HangingGardensHealing {
             SELECT 1 FROM residents r JOIN towns home ON home.id=r.town_id AND home.civ_id=r.civ_id
             JOIN town_claims claim ON claim.world=? AND claim.chunk_x=? AND claim.chunk_z=?
             JOIN towns host ON host.id=claim.town_id AND host.civ_id=home.civ_id
-            JOIN structure_builds wonder ON wonder.town_id=host.id
+            JOIN active_structure_builds wonder ON wonder.town_id=host.id
             WHERE r.uuid=? AND wonder.structure_id='w_hanginggardens' AND wonder.status IN ('QUEUED','BUILDING','COMPLETE') LIMIT 1
             """)) {
             s.setString(1,world);s.setInt(2,chunkX);s.setInt(3,chunkZ);s.setString(4,player.toString());try(var r=s.executeQuery()){return r.next();}

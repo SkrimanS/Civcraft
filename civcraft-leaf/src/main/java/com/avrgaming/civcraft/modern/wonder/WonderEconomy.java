@@ -10,7 +10,7 @@ public record WonderEconomy(double upkeepReduction,double cultureCoins,double wo
         return new WonderEconomy(values.get("buff_colossus_reduce_upkeep"),values.get("buff_colossus_coins_from_culture"),values.get("buff_colosseum_coins_from_towns"),values.get("debuff_colossus_leech_upkeep"),values.get("buff_notre_dame_coins_from_peace"));
     }
     public double upkeep(Connection db,long town,double base)throws SQLException {
-        try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE town_id=? AND structure_id='w_colossus' AND status='COMPLETE' LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*(1-upkeepReduction):base;}}
+        try(var s=db.prepareStatement("SELECT 1 FROM active_structure_builds WHERE town_id=? AND structure_id='w_colossus' AND status='COMPLETE' LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*(1-upkeepReduction):base;}}
     }
     public static long coins(double rate,long units)throws SQLException {double amount=rate*units;if(!Double.isFinite(amount)||amount<0||amount>=0x1p63)throw new SQLException("Wonder income overflow");return (long)Math.floor(amount);}
 }

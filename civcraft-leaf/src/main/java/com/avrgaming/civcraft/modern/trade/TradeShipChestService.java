@@ -25,7 +25,7 @@ public final class TradeShipChestService {
     }
     public List<Ship> ships()throws SQLException {
         return storage.query(db->{var result=new ArrayList<Ship>();
-            try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,template_path,x,y,z FROM structure_builds WHERE structure_id='ti_trade_ship' AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")) {
+            try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,template_path,x,y,z FROM active_structure_builds WHERE structure_id='ti_trade_ship' AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")) {
                 while(r.next())result.add(new Ship(r.getLong(1),r.getLong(2),r.getString(3),r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7)));
             }return result;
         });

@@ -55,7 +55,7 @@ public final class NativeTradeService implements Listener {
     private void refreshBankBonuses() {
         try {
             var banks=storage.query(db->{var result=new LinkedHashMap<Long,Long>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id FROM structure_builds WHERE structure_id='s_bank' AND status='COMPLETE' AND town_id IS NOT NULL")){while(r.next())result.put(r.getLong(1),r.getLong(2));}
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id FROM active_structure_builds WHERE structure_id='s_bank' AND status='COMPLETE' AND town_id IS NOT NULL")){while(r.next())result.put(r.getLong(1),r.getLong(2));}
                 return result;
             });
             bankRates.keySet().retainAll(banks.keySet());
@@ -70,7 +70,7 @@ public final class NativeTradeService implements Listener {
         return storage.query(db->{
             try(var query=db.prepareStatement("""
                     SELECT sb.id,sb.town_id,sb.structure_id,tp.action,tp.argument
-                    FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id
+                    FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
                     AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
@@ -283,7 +283,7 @@ public final class NativeTradeService implements Listener {
         try {
             var locations=storage.query(db->{
                 List<Location> result=new ArrayList<>();
-                try(var query=db.prepareStatement("SELECT tp.world,tp.x,tp.y,tp.z FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id WHERE sb.status='COMPLETE' AND sb.structure_id='s_market' AND tp.argument=?")) {
+                try(var query=db.prepareStatement("SELECT tp.world,tp.x,tp.y,tp.z FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id WHERE sb.status='COMPLETE' AND sb.structure_id='s_market' AND tp.argument=?")) {
                     query.setString(1,String.valueOf(id));try(var rows=query.executeQuery()){while(rows.next()){World world=plugin.getServer().getWorld(rows.getString(1));if(world!=null)result.add(new Location(world,rows.getInt(2),rows.getInt(3),rows.getInt(4)));}}
                 }
                 return result;
