@@ -71,6 +71,7 @@ public final class ConsumptionStore {
                 || townCoins<0 || civCoins<0 || culture<0 || containers==null || containers.length==0
                 || (!after.consumed() && (townCoins!=0 || civCoins!=0 || culture!=0)))
             throw new IllegalArgumentException("Invalid consumption intent");
+        com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
         if(poisoned && (!after.consumed() || townCoins!=0 || civCoins!=0 || culture!=0))
             throw new IllegalArgumentException("Poisoned meals must consume food and cannot earn production");
         if(!before.equals(state(db,before.build())))throw new SQLException("Consumption state changed before prepare");

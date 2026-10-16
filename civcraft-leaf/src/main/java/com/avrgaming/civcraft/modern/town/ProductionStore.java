@@ -46,6 +46,7 @@ public final class ProductionStore {
     }
     public static Pending prepare(Connection db,String id,Clock before,long tick,int produced,byte[] containers)throws SQLException {
         transaction(db);
+        com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
         if(id==null || id.isBlank() || tick<=before.tick() || produced<0 || containers==null || containers.length==0)throw new IllegalArgumentException("Invalid production operation");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Production clock changed");
         long town;
@@ -71,14 +72,14 @@ public final class ProductionStore {
         try(var s=db.prepareStatement("UPDATE resource_production_operations SET status='COMPLETE',containers=X'' WHERE id=? AND status='PREPARED'")){s.setString(1,id);if(s.executeUpdate()!=1)throw new SQLException("Production operation changed");}
         try(var s=db.prepareStatement("DELETE FROM resource_production_plantings WHERE operation_id=?")){s.setString(1,id);s.executeUpdate();}return true;
     }
-    public static void requireBuildUnlocked(Connection db,long build)throws SQLException {requireUnlocked(db,"build_id",build);}
+    public static void requireBuildUnlocked(Connection db,long build)throws SQLException {com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireStructureUnlocked(db,build,false);requireUnlocked(db,"build_id",build);}
     public static void resetDestroyed(Connection db,long build)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='resource_production_clock'")){if(!r.next())return;}
         requireBuildUnlocked(db,build);
         try(var s=db.prepareStatement("DELETE FROM farm_growth_state WHERE build_id=? AND EXISTS(SELECT 1 FROM structure_builds WHERE id=? AND status='WAR_DESTROYED')")){s.setLong(1,build);s.setLong(2,build);s.executeUpdate();}
         try(var s=db.prepareStatement("DELETE FROM resource_production_clock WHERE build_id=? AND EXISTS(SELECT 1 FROM structure_builds WHERE id=? AND status='WAR_DESTROYED')")){s.setLong(1,build);s.setLong(2,build);s.executeUpdate();}
     }
-    public static void requireTownUnlocked(Connection db,long town)throws SQLException {requireUnlocked(db,"town_id",town);}
+    public static void requireTownUnlocked(Connection db,long town)throws SQLException {com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireStructureUnlocked(db,town,true);requireUnlocked(db,"town_id",town);}
     private static void requireUnlocked(Connection db,String column,long id)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='resource_production_operations'")){if(!r.next())return;}
         String target=column.equals("build_id")?"p.farm_id":"f.town_id";

@@ -21,6 +21,7 @@ public final class GoodieDepartureStore {
         var out=new ArrayList<BonusGoodieStore.State>();for(long id:ids)out.add(BonusGoodieStore.origin(db,id));return out;
     }
     public static boolean waiting(Connection db,UUID player)throws SQLException {
+        if(GoodieChestStore.pendingPlayer(db,player))return true;
         try(var s=db.prepareStatement("SELECT 1 FROM trade_receipts WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_transfers WHERE player_uuid=? AND status='PREPARED'")){s.setString(1,player.toString());s.setString(2,player.toString());try(var r=s.executeQuery()){return r.next();}}
     }
     public static boolean request(Connection db,UUID player,GoodieTransferStore.Drop at,String reason,long now)throws SQLException {

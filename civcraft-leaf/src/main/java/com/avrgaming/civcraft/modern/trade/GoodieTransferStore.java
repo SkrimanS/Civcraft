@@ -20,6 +20,7 @@ public final class GoodieTransferStore {
     public enum Completion { COMPLETE, INVALIDATED, ALREADY_COMPLETE }
     public static void install(Connection db)throws SQLException {
         GoodieFrameStore.install(db);
+        GoodieChestStore.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS goodie_transfers(
@@ -45,6 +46,7 @@ public final class GoodieTransferStore {
         }return Set.copyOf(result);
     }
     public static void requireOriginUnlocked(Connection db,long build)throws SQLException {
+        GoodieChestStore.requireOriginUnlocked(db,build);
         try(var s=db.prepareStatement("SELECT 1 FROM goodie_transfers WHERE origin_build=? AND status='PREPARED'")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Перенос торгового товара ещё сохраняется.");}
         }
@@ -62,6 +64,7 @@ public final class GoodieTransferStore {
         if(id==null||id.isBlank()||player==null||inventory==null||inventory.length==0||inventory.length>16*1024*1024||now<0)
             throw new IllegalArgumentException("Invalid goodie transfer intent");
         if(!before.equals(BonusGoodieStore.origin(db,before.origin())))throw new IllegalArgumentException("Состояние товара уже изменилось.");
+        GoodieChestStore.requireOriginUnlocked(db,before.origin());
         boolean taking=kind==BonusGoodieStore.Kind.PLAYER&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME||before.kind()==BonusGoodieStore.Kind.ITEM);
         boolean placing=before.kind()==BonusGoodieStore.Kind.PLAYER&&(kind==BonusGoodieStore.Kind.SOURCE||kind==BonusGoodieStore.Kind.FRAME);
         boolean dropping=kind==BonusGoodieStore.Kind.ITEM&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME||before.kind()==BonusGoodieStore.Kind.PLAYER);

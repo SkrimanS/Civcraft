@@ -34,8 +34,8 @@ public final class TradeShipOperations {
     public static boolean installed(Connection db)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trade_ship_operations'")){return r.next();}
     }
-    public static void requireBuildUnlocked(Connection db,long build)throws SQLException {requireUnlocked(db,"build_id",build);}
-    public static void requireTownUnlocked(Connection db,long town)throws SQLException {requireUnlocked(db,"town_id",town);}
+    public static void requireBuildUnlocked(Connection db,long build)throws SQLException {com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireStructureUnlocked(db,build,false);requireUnlocked(db,"build_id",build);}
+    public static void requireTownUnlocked(Connection db,long town)throws SQLException {com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireStructureUnlocked(db,town,true);requireUnlocked(db,"town_id",town);}
     private static void requireUnlocked(Connection db,String column,long id)throws SQLException {
         if(!installed(db))return;
         try(var s=db.prepareStatement("SELECT 1 FROM trade_ship_operations WHERE "+column+"=? AND status='PREPARED' LIMIT 1")) {
@@ -72,6 +72,7 @@ public final class TradeShipOperations {
     public static Pending prepare(Connection db,String id,Clock before,long hour,TradeShipProgress.Outcome outcome,
                                   TradeShipIncomeStore.Plan payment,byte[] containers)throws SQLException {
         transaction(db);
+        com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
         if(id==null || id.isBlank() || hour<=before.hour() || outcome.state().level()>10 || containers==null || containers.length==0)
             throw new IllegalArgumentException("Invalid trade ship intent");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Trade ship progress changed before preparation");

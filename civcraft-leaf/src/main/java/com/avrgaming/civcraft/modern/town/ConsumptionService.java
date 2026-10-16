@@ -52,6 +52,7 @@ public final class ConsumptionService implements Listener {
     }
     private long hour(){return System.currentTimeMillis()/period;}
     public void requireUnlocked(long build)throws SQLException {
+        storage.query(db->{com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireStructureUnlocked(db,build,false);return null;});
         for(var pending:storage.query(ConsumptionStore::pending))if(pending.before().build()==build)
             throw new IllegalArgumentException("Питание здания ещё сохраняется. Дождитесь восстановления операции.");
         boolean affected=storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=?")) {

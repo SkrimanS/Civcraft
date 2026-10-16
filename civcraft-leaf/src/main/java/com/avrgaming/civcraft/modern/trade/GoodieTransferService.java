@@ -41,6 +41,8 @@ public final class GoodieTransferService implements Listener {
     }
     public void requireUnlocked(UUID player) {
         departures.requireUnlocked(player);
+        try{if(storage.query(db->GoodieChestStore.pendingPlayer(db,player)))throw new IllegalArgumentException("Перенос товара через сундук ещё сохраняется.");}
+        catch(SQLException failure){throw new IllegalStateException("Cannot validate goodie chest transfer lock",failure);}
         if(frozen.contains(player))throw new IllegalArgumentException("Перенос торгового товара ещё сохраняется.");
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
