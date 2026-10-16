@@ -48,7 +48,7 @@ public final class ProductionStore {
         if(id==null || id.isBlank() || tick<=before.tick() || produced<0 || containers==null || containers.length==0)throw new IllegalArgumentException("Invalid production operation");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Production clock changed");
         long town;
-        try(var s=db.prepareStatement("SELECT town_id FROM structure_builds WHERE id=? AND structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill','ti_farm') AND status='COMPLETE' AND town_id IS NOT NULL")) {
+        try(var s=db.prepareStatement("SELECT town_id FROM structure_builds WHERE id=? AND structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill','ti_farm','s_mob_grinder') AND status='COMPLETE' AND town_id IS NOT NULL")) {
             s.setLong(1,before.build());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Producer is not complete");town=r.getLong(1);}
         }
         try(var s=db.prepareStatement("INSERT INTO resource_production_operations VALUES(?,?,?,?,?,?,?,?,'PREPARED')")) {

@@ -24,6 +24,8 @@ public final class ProductionService implements Listener {
     private final FisheryLoot loot;
     private final TrommelLoot trommel;
     private final QuarryLoot quarry;
+    private final MobGrinderLoot grinder;
+    private final long grinderPeriod=20000L;
     private final WindmillPlan windmill;
     private final FarmGrowthPlan farmGrowth;
     private final Map<String,Double> farmBiomeRates=new LinkedHashMap<>();
@@ -47,6 +49,7 @@ public final class ProductionService implements Listener {
         loot=new FisheryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         trommel=new TrommelLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         quarry=new QuarryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));plugin.nativeItems().require("mat_tungsten_ore");
+        grinder=new MobGrinderLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));for(String item:grinder.items())plugin.nativeItems().require(item);
         windmill=new WindmillPlan(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         var farmConfig=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         farmGrowth=new FarmGrowthPlan(farmConfig.getInt("farm.grows_per_tick"));
@@ -76,23 +79,25 @@ public final class ProductionService implements Listener {
         if(type.equals("ti_windmill"))return Optional.of("Мельница засевает до "+windmill.capacity(machinery(town))+" грядок в минуту на восьми соседних участках ферм. Семена, морковь и картофель положите в сундук мельницы. Во время войны посев приостановлен.");
         if(type.equals("ti_farm"))return Optional.of("Ферма выращивает культуры в своём чанке. Рост зависит от показателя города; на равнине действует множитель "+farmBiomeRates.getOrDefault("PLAINS",1.0)+". Цикл: "+farmGrowthPeriod/1000+" сек. Пропущенные при выгрузке чанка циклы сохраняются.");
         if(type.equals("ti_pasture"))return Optional.of("Пастбище позволяет разводить животных. Лимит: "+plugin.pastures().maximum()+" рождённых животных на пастбище, общий для всех видов. Смерть потомка освобождает место. Родителей нужно привести самостоятельно.");
+        if(type.equals("s_mob_grinder"))return Optional.of("Мобоферма перерабатывает яйца CivCraft раз в 20 секунд. Кладите во входной сундук только яйца; награды забирайте из выходного. Племенной строй повышает добычу.");
         return Optional.empty();
     }
     public void tick() {
         if(paused)return;
         try {
             for(var operation:storage.query(ProductionStore::pending))finish(operation);
-            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);ProductionStore.start(db,"ti_quarry",quarryPeriod,System.currentTimeMillis()/quarryPeriod);ProductionStore.start(db,"ti_windmill",windmillPeriod,System.currentTimeMillis()/windmillPeriod);FarmGrowthStore.start(db,farmGrowthPeriod,System.currentTimeMillis()/farmGrowthPeriod);return null;});ready=true;}
+            if(!ready){storage.transaction(db->{ProductionStore.start(db,"ti_fish_hatchery",fisheryPeriod,System.currentTimeMillis()/fisheryPeriod);ProductionStore.start(db,"s_trommel",trommelPeriod,System.currentTimeMillis()/trommelPeriod);ProductionStore.start(db,"ti_quarry",quarryPeriod,System.currentTimeMillis()/quarryPeriod);ProductionStore.start(db,"ti_windmill",windmillPeriod,System.currentTimeMillis()/windmillPeriod);ProductionStore.start(db,"s_mob_grinder",grinderPeriod,System.currentTimeMillis()/grinderPeriod);FarmGrowthStore.start(db,farmGrowthPeriod,System.currentTimeMillis()/farmGrowthPeriod);return null;});ready=true;}
             var farms=storage.query(db->{var result=new ArrayList<Farm>();
-                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill','ti_farm') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
+                try(var s=db.createStatement();var r=s.executeQuery("SELECT id,town_id,world,x,y,z,structure_id FROM structure_builds WHERE structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill','ti_farm','s_mob_grinder') AND status='COMPLETE' AND town_id IS NOT NULL ORDER BY id")){while(r.next())result.add(new Farm(r.getLong(1),r.getLong(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6),r.getString(7)));}return result;
             });
-            for(var farm:farms)try{long period=switch(farm.type()){case "s_trommel"->trommelPeriod;case "ti_quarry"->quarryPeriod;case "ti_windmill"->windmillPeriod;default->fisheryPeriod;};produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
+            for(var farm:farms)try{long period=switch(farm.type()){case "s_trommel"->trommelPeriod;case "ti_quarry"->quarryPeriod;case "ti_windmill"->windmillPeriod;case "s_mob_grinder"->grinderPeriod;default->fisheryPeriod;};produce(farm,System.currentTimeMillis()/period,period);}catch(SQLException|IOException|RuntimeException failure){warn("Producer "+farm.id()+" failed",failure);if(paused)return;}
         }catch(SQLException|IOException|RuntimeException failure){warn("Resource production recovery failed",failure);}
     }
     private void warn(String message,Exception failure){if(System.currentTimeMillis()-lastWarning>30000){lastWarning=System.currentTimeMillis();plugin.getLogger().severe(message+": "+failure.getMessage());}}
     private void produce(Farm farm,long tick,long period)throws SQLException,IOException {
         if(farm.type().equals("ti_farm")){growFarm(farm);return;}
         var before=storage.transaction(db->ProductionStore.initialize(db,farm.id(),period,tick));if(before.tick()>=tick)return;
+        if(farm.type().equals("s_mob_grinder")){grind(farm,before,tick);return;}
         if(farm.type().equals("ti_windmill")){plant(farm,before,tick);return;}
         if(farm.type().equals("s_trommel") || farm.type().equals("ti_quarry")){extract(farm,before,tick);return;}
         var inputs=new ArrayList<Input>();var destinations=new ArrayList<Position>();
@@ -176,6 +181,38 @@ public final class ProductionService implements Listener {
         var after=new ArrayList<Image>();for(int i=0;i<input.size();i++)after.add(new Image(input.get(i).position(),contents.get(i)));after.addAll(output);
         byte[] payload=ConsumptionContainers.encode(produced==0?List.of():after);int count=produced;long next=until;
         var pending=storage.transaction(db->ProductionStore.prepare(db,UUID.randomUUID().toString(),before,next,count,payload));lock(pending);if(produced>0)interrupt("prepared",farm.id());finish(pending);
+    }
+    private void grind(Farm farm,ProductionStore.Clock before,long tick)throws SQLException,IOException {
+        var sources=new ArrayList<Position>();var destinations=new ArrayList<Position>();
+        storage.query(db->{try(var s=db.prepareStatement("SELECT world,x,y,z,chest_id FROM structure_chests WHERE build_id=? ORDER BY chest_id,x,y,z")){
+            s.setLong(1,farm.id());try(var r=s.executeQuery()){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));if(r.getInt(5)==1)sources.add(p);else if(r.getInt(5)==2)destinations.add(p);}}
+        }return null;});
+        if(sources.size()!=2 || destinations.size()!=2)return;
+        var positions=new LinkedHashSet<>(sources);positions.addAll(destinations);if(positions.size()!=4)throw new IllegalStateException("Mob grinder chest groups overlap");
+        if(positions.stream().anyMatch(locked::contains))return;
+        for(var p:positions){var world=Bukkit.getWorld(p.world());if(world==null || !world.isChunkLoaded(p.x()>>4,p.z()>>4))return;}
+        var input=ConsumptionContainers.capture(sources);var output=ConsumptionContainers.capture(destinations);var contents=input.stream().map(Image::contents).toList();
+        var health=storage.query(db->com.avrgaming.civcraft.modern.war.BuildingDamageStore.health(db,farm.id()));
+        boolean active=health!=null && health.hitpoints()>0;
+        boolean space=output.stream().anyMatch(i->Arrays.stream(i.contents()).anyMatch(s->s==null || s.getType().isAir()));
+        double extraction=storage.townGoodieEffects(farm.town()).value("buff_extraction");String government=plugin.governments().townGovernment(farm.town());
+        int consumed=0;long until=active && space?Math.min(tick,before.tick()+64):tick;
+        if(active && space)for(long cycle=before.tick();cycle<until;cycle++){
+            boolean processed=false;int beforeConsumed=consumed;
+            for(var inventory:contents){for(int slot=0;slot<inventory.length;slot++){
+                var stack=inventory[slot];String id=plugin.nativeItems().id(stack);if(id==null)continue;
+                // The original removes each custom input it visits, including non-egg items before an egg.
+                if(stack.getAmount()==1)inventory[slot]=null;else stack.setAmount(stack.getAmount()-1);consumed++;
+                var rewards=grinder.roll(id,extraction,government,java.util.concurrent.ThreadLocalRandom.current());
+                for(var reward:rewards)output=ConsumptionContainers.addBestEffort(output,plugin.nativeItems().create(reward.item(),reward.amount()));
+                if(MobGrinderLoot.egg(id)){processed=true;break;}
+            }if(processed)break;}
+            if(consumed==beforeConsumed)break;
+        }
+        if(consumed==0)until=tick;
+        var after=new ArrayList<Image>();for(int i=0;i<input.size();i++)after.add(new Image(input.get(i).position(),contents.get(i)));after.addAll(output);
+        byte[] payload=ConsumptionContainers.encode(consumed==0?List.of():after);int count=consumed;long next=until;
+        var pending=storage.transaction(db->ProductionStore.prepare(db,UUID.randomUUID().toString(),before,next,count,payload));lock(pending);if(consumed>0)interrupt("prepared",farm.id());finish(pending);
     }
     private boolean machinery(long town)throws SQLException {
         return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM towns t JOIN civ_technologies c ON c.civ_id=t.civ_id WHERE t.id=? AND c.tech_id='tech_machinery'")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}}});
