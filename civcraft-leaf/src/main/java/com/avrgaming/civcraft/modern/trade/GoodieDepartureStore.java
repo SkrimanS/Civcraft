@@ -51,6 +51,12 @@ public final class GoodieDepartureStore {
             }
         }return out;
     }
+    public static void queueGround(Connection db,UUID player,BonusGoodieStore.State good,GoodieTransferStore.Drop at)throws SQLException {
+        if(db.getAutoCommit() || good.kind()!=BonusGoodieStore.Kind.ITEM || !good.equals(BonusGoodieStore.origin(db,good.origin())))throw new SQLException("Ground job requires committed canonical item ownership in its transaction");
+        try(var s=db.prepareStatement("INSERT INTO goodie_departure_items VALUES(?,?,?,?,?,?,?,?,?,?,'PREPARED')")) {
+            s.setString(1,good.holder());s.setString(2,player.toString());s.setLong(3,good.origin());s.setString(4,good.good());s.setString(5,good.token());s.setLong(6,good.revision());s.setString(7,at.world());s.setDouble(8,at.x());s.setDouble(9,at.y());s.setDouble(10,at.z());s.executeUpdate();
+        }
+    }
     public static void phase(Connection db,String id,String phase)throws SQLException {
         if(!Set.of("ACTIVE","DONE").contains(phase))throw new IllegalArgumentException("Invalid departure phase");
         try(var s=db.prepareStatement("UPDATE goodie_departure_items SET phase=? WHERE id=?")){s.setString(1,phase);s.setString(2,id);s.executeUpdate();}

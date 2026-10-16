@@ -19,7 +19,8 @@ public final class GoodieChestStore {
         @Override public byte[] before(){return before.clone();}
         @Override public byte[] after(){return after.clone();}
     }
-    public record Move(BonusGoodieStore.State before,BonusGoodieStore.Kind kind,String holder) {
+    public record Move(BonusGoodieStore.State before,BonusGoodieStore.Kind kind,String holder,GoodieTransferStore.Drop drop) {
+        public Move(BonusGoodieStore.State before,BonusGoodieStore.Kind kind,String holder){this(before,kind,holder,null);}
         public Move{Objects.requireNonNull(before);Objects.requireNonNull(kind);Objects.requireNonNull(holder);}
         public BonusGoodieStore.State after(){return new BonusGoodieStore.State(before.origin(),before.good(),before.token(),Math.addExact(before.revision(),1),kind,holder,null);}
     }
@@ -40,6 +41,8 @@ public final class GoodieChestStore {
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_goodie_chest_player ON goodie_chest_transfers(player_uuid) WHERE status='PREPARED'");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_chest_images(operation_id TEXT NOT NULL REFERENCES goodie_chest_transfers(id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,material TEXT NOT NULL,before_data BLOB NOT NULL,after_data BLOB NOT NULL,PRIMARY KEY(operation_id,world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_chest_moves(operation_id TEXT NOT NULL REFERENCES goodie_chest_transfers(id) ON DELETE CASCADE,origin_build INTEGER NOT NULL,good_id TEXT NOT NULL,token TEXT NOT NULL,before_revision INTEGER NOT NULL,before_kind TEXT NOT NULL,before_holder TEXT NOT NULL,before_town INTEGER,after_kind TEXT NOT NULL,after_holder TEXT NOT NULL,PRIMARY KEY(operation_id,origin_build))");
+            var columns=new HashSet<String>();try(var r=s.executeQuery("PRAGMA table_info(goodie_chest_moves)")){while(r.next())columns.add(r.getString("name"));}
+            for(String column:List.of("drop_world","drop_x","drop_y","drop_z"))if(!columns.contains(column))s.executeUpdate("ALTER TABLE goodie_chest_moves ADD COLUMN "+column+(column.equals("drop_world")?" TEXT":" REAL"));
             s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_chest_cursor_checkpoints(player_uuid TEXT PRIMARY KEY,receipt_id TEXT NOT NULL,token TEXT NOT NULL,revision INTEGER NOT NULL,item BLOB NOT NULL)");
         }
     }
@@ -81,8 +84,11 @@ public final class GoodieChestStore {
             }
         }return out;
     }
+    public static void requirePositionsAvailable(Connection db,Collection<Position> positions)throws SQLException {
+        var reserved=locked(db);var producers=producerPositions(db);if(positions.stream().anyMatch(p->reserved.contains(p) || producers.contains(p)))throw new IllegalArgumentException("Сундук участвует в незавершённой операции.");
+    }
     public static Pending prepare(Connection db,String id,UUID player,byte[] inventory,byte[] cursor,List<Image> images,List<Move> moves,String cursorToken,Long cursorRevision,long now)throws SQLException {
-        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.isEmpty() || images.size()>2 || moves.isEmpty() || moves.size()>128)throw new IllegalArgumentException("Invalid chest transfer");
+        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.size()>2 || moves.isEmpty() || moves.size()>128)throw new IllegalArgumentException("Invalid chest transfer");
         if((cursorToken==null)!=(cursorRevision==null))throw new IllegalArgumentException("Incomplete cursor checkpoint");
         var pending=new Pending(id,player,inventory,cursor,images,moves,cursorToken,cursorRevision);
         try(var s=db.prepareStatement("SELECT 1 FROM trade_receipts WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_transfers WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_chest_transfers WHERE player_uuid=? AND status='PREPARED'")){for(int i=1;i<=3;i++)s.setString(i,player.toString());try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Сначала завершите предыдущий обмен.");}}
@@ -95,14 +101,16 @@ public final class GoodieChestStore {
             for(boolean after:List.of(false,true)) {
                 var kind=after?move.kind():before.kind();var holder=after?move.holder():before.holder();
                 if(kind==BonusGoodieStore.Kind.PLAYER){if(!holder.equals(player.toString()))throw new IllegalArgumentException("Товар находится у другого игрока.");}
+                else if(after && kind==BonusGoodieStore.Kind.ITEM && move.drop()!=null && holder.equals(id+":"+before.origin())){}
                 else if(kind!=BonusGoodieStore.Kind.CONTAINER || !holders.contains(holder))throw new IllegalArgumentException("Товар должен находиться в открытом сундуке или у игрока.");
             }
+            if((move.kind()==BonusGoodieStore.Kind.ITEM)!=(move.drop()!=null))throw new IllegalArgumentException("Invalid chest item drop");
             move.after(); // Validate revision overflow before any intent is inserted.
         }
         if(cursorToken!=null && moves.stream().noneMatch(m->m.before().token().equals(cursorToken) && m.after().revision()==cursorRevision && m.kind()==BonusGoodieStore.Kind.PLAYER))throw new IllegalArgumentException("Cursor checkpoint does not match the transferred good");
         try(var s=db.prepareStatement("INSERT INTO goodie_chest_transfers VALUES(?,?,?,?,?,?,'PREPARED',?)")){s.setString(1,id);s.setString(2,player.toString());s.setBytes(3,inventory);s.setBytes(4,cursor);s.setString(5,cursorToken);if(cursorRevision==null)s.setNull(6,Types.BIGINT);else s.setLong(6,cursorRevision);s.setLong(7,now);s.executeUpdate();}
         for(var image:images)try(var s=db.prepareStatement("INSERT INTO goodie_chest_images VALUES(?,?,?,?,?,?,?,?)")){s.setString(1,id);s.setString(2,image.position().world());s.setInt(3,image.position().x());s.setInt(4,image.position().y());s.setInt(5,image.position().z());s.setString(6,image.material());s.setBytes(7,image.before());s.setBytes(8,image.after());s.executeUpdate();}
-        for(var move:moves)try(var s=db.prepareStatement("INSERT INTO goodie_chest_moves VALUES(?,?,?,?,?,?,?,?,?,?)")){var b=move.before();s.setString(1,id);s.setLong(2,b.origin());s.setString(3,b.good());s.setString(4,b.token());s.setLong(5,b.revision());s.setString(6,b.kind().name());s.setString(7,b.holder());if(b.hostTown()==null)s.setNull(8,Types.BIGINT);else s.setLong(8,b.hostTown());s.setString(9,move.kind().name());s.setString(10,move.holder());s.executeUpdate();}
+        for(var move:moves)try(var s=db.prepareStatement("INSERT INTO goodie_chest_moves VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")){var b=move.before();s.setString(1,id);s.setLong(2,b.origin());s.setString(3,b.good());s.setString(4,b.token());s.setLong(5,b.revision());s.setString(6,b.kind().name());s.setString(7,b.holder());if(b.hostTown()==null)s.setNull(8,Types.BIGINT);else s.setLong(8,b.hostTown());s.setString(9,move.kind().name());s.setString(10,move.holder());s.setString(11,move.drop()==null?null:move.drop().world());if(move.drop()==null){s.setNull(12,Types.DOUBLE);s.setNull(13,Types.DOUBLE);s.setNull(14,Types.DOUBLE);}else{s.setDouble(12,move.drop().x());s.setDouble(13,move.drop().y());s.setDouble(14,move.drop().z());}s.executeUpdate();}
         return pending;
     }
     public static List<Pending> pending(Connection db)throws SQLException {
@@ -111,7 +119,7 @@ public final class GoodieChestStore {
     }
     private static Pending read(Connection db,String id)throws SQLException {
         var images=new ArrayList<Image>();try(var s=db.prepareStatement("SELECT * FROM goodie_chest_images WHERE operation_id=? ORDER BY world,x,y,z")){s.setString(1,id);try(var r=s.executeQuery()){while(r.next())images.add(new Image(new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")),r.getString("material"),r.getBytes("before_data"),r.getBytes("after_data")));}}
-        var moves=new ArrayList<Move>();try(var s=db.prepareStatement("SELECT * FROM goodie_chest_moves WHERE operation_id=? ORDER BY origin_build")){s.setString(1,id);try(var r=s.executeQuery()){while(r.next()){var before=new BonusGoodieStore.State(r.getLong("origin_build"),r.getString("good_id"),r.getString("token"),r.getLong("before_revision"),BonusGoodieStore.Kind.valueOf(r.getString("before_kind")),r.getString("before_holder"),r.getObject("before_town")==null?null:r.getLong("before_town"));moves.add(new Move(before,BonusGoodieStore.Kind.valueOf(r.getString("after_kind")),r.getString("after_holder")));}}}
+        var moves=new ArrayList<Move>();try(var s=db.prepareStatement("SELECT * FROM goodie_chest_moves WHERE operation_id=? ORDER BY origin_build")){s.setString(1,id);try(var r=s.executeQuery()){while(r.next()){var before=new BonusGoodieStore.State(r.getLong("origin_build"),r.getString("good_id"),r.getString("token"),r.getLong("before_revision"),BonusGoodieStore.Kind.valueOf(r.getString("before_kind")),r.getString("before_holder"),r.getObject("before_town")==null?null:r.getLong("before_town"));moves.add(new Move(before,BonusGoodieStore.Kind.valueOf(r.getString("after_kind")),r.getString("after_holder"),r.getString("drop_world")==null?null:new GoodieTransferStore.Drop(r.getString("drop_world"),r.getDouble("drop_x"),r.getDouble("drop_y"),r.getDouble("drop_z"))));}}}
         try(var s=db.prepareStatement("SELECT * FROM goodie_chest_transfers WHERE id=? AND status='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Chest transfer is no longer pending");return new Pending(id,UUID.fromString(r.getString("player_uuid")),r.getBytes("inventory"),r.getBytes("cursor"),images,moves,r.getString("cursor_token"),r.getObject("cursor_revision")==null?null:r.getLong("cursor_revision"));}}
     }
     public static Set<String> invalidated(Connection db,Pending pending)throws SQLException {
@@ -120,7 +128,7 @@ public final class GoodieChestStore {
     public static boolean complete(Connection db,String id)throws SQLException {
         transaction(db);boolean active;try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_transfers WHERE id=? AND status='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){active=r.next();}}if(!active)return false;
         var intent=read(db,id);var invalid=invalidated(db,intent);
-        for(var move:intent.moves())if(!invalid.contains(move.before().token()))BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);
+        for(var move:intent.moves())if(!invalid.contains(move.before().token())){var after=BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);if(move.drop()!=null)GoodieDepartureStore.queueGround(db,intent.player(),after,move.drop());}
         try(var s=db.prepareStatement("DELETE FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
         if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))try(var s=db.prepareStatement("INSERT INTO goodie_chest_cursor_checkpoints VALUES(?,?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setString(3,intent.cursorToken());s.setLong(4,intent.cursorRevision());s.setBytes(5,intent.cursor());s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE goodie_chest_transfers SET status='COMPLETE',inventory=X'',cursor=X'' WHERE id=?")){s.setString(1,id);s.executeUpdate();}
@@ -128,5 +136,16 @@ public final class GoodieChestStore {
     }
     public static Cursor cursor(Connection db,UUID player)throws SQLException {
         try(var s=db.prepareStatement("SELECT receipt_id,token,revision,item FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,player.toString());try(var r=s.executeQuery()){return r.next()?new Cursor(r.getString(1),r.getString(2),r.getLong(3),r.getBytes(4)):null;}}
+    }
+    public static Map<String,Position> knownContainers(Connection db)throws SQLException {
+        var out=new HashMap<String,Position>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT world,x,y,z FROM goodie_chest_images")){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));out.put(p.holder(),p);}}return out;
+    }
+    public static Set<String> storedContainers(Connection db)throws SQLException {
+        var out=new LinkedHashSet<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT holder_id FROM bonus_goodies WHERE holder_kind='CONTAINER' ORDER BY holder_id")){while(r.next())out.add(r.getString(1));}return out;
+    }
+    public static void returnMissing(Connection db,Position position,Set<String> present)throws SQLException {
+        transaction(db);requirePositionsAvailable(db,List.of(position));
+        var origins=new ArrayList<Long>();try(var s=db.prepareStatement("SELECT origin_build FROM bonus_goodies WHERE holder_kind='CONTAINER' AND holder_id=?")){s.setString(1,position.holder());try(var r=s.executeQuery()){while(r.next())origins.add(r.getLong(1));}}
+        for(long origin:origins){var current=BonusGoodieStore.origin(db,origin);if(current!=null && !present.contains(current.token())){GoodieTransferStore.requireOriginUnlocked(db,origin);BonusGoodieStore.returnHome(db,current);}}
     }
 }

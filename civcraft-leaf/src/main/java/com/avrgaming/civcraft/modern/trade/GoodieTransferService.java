@@ -23,6 +23,7 @@ public final class GoodieTransferService implements Listener {
     private final GoodieFrameService frames;
     private final BonusGoodieItems items;
     private final GoodieDepartureService departures;
+    private final GoodieChestService chests;
     private final NamespacedKey applied,dropKey;
     private final Set<UUID> frozen=ConcurrentHashMap.newKeySet();
     private final Map<UUID,Long> clicks=new HashMap<>();
@@ -37,6 +38,7 @@ public final class GoodieTransferService implements Listener {
         for(var operation:storage.query(GoodieTransferStore::pending))frozen.add(operation.player());
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         departures=new GoodieDepartureService(plugin,storage,items);
+        chests=new GoodieChestService(plugin,storage,items);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,80L,20L);
     }
     public void requireUnlocked(UUID player) {
@@ -182,13 +184,14 @@ public final class GoodieTransferService implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void click(InventoryClickEvent e) {
         if(e.getWhoClicked() instanceof Player p && frozen.contains(p.getUniqueId())){e.setCancelled(true);return;}
+        if(chests.click(e))return;
         if(e.getView().getTopInventory().getType()!=InventoryType.CRAFTING&&(items.token(e.getCurrentItem())!=null||items.token(e.getCursor())!=null))e.setCancelled(true);
     }
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drag(InventoryDragEvent e){if(frozen.contains(e.getWhoClicked().getUniqueId())||items.token(e.getOldCursor())!=null)e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drag(InventoryDragEvent e){if(frozen.contains(e.getWhoClicked().getUniqueId())){e.setCancelled(true);return;}if(chests.drag(e))return;if(items.token(e.getOldCursor())!=null)e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent e){if(frozen.contains(e.getPlayer().getUniqueId()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void swap(PlayerSwapHandItemsEvent e){if(frozen.contains(e.getPlayer().getUniqueId()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void drop(PlayerDropItemEvent e) {
-        var player=e.getPlayer();if(frozen.contains(player.getUniqueId())){e.setCancelled(true);return;}
+        var player=e.getPlayer();if(frozen.contains(player.getUniqueId()) || chests.frozen(player.getUniqueId())){e.setCancelled(true);return;}
         String token=items.token(e.getItemDrop().getItemStack());if(token==null)return;
         // Cancellation restores the item first. The next tick journals the real inventory,
         // instead of recording Bukkit's transient inventory during PlayerDropItemEvent.
