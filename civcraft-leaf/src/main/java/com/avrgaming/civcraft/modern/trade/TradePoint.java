@@ -10,6 +10,13 @@ public record TradePoint(String action,String argument) {
         String command=lines.get(0).trim().toLowerCase(Locale.ROOT);
         String argument=lines.get(1).trim().toLowerCase(Locale.ROOT);
         if(command.equals("/repair"))return Optional.of(new TradePoint("barracks_repair","0"));
+        if((command.equals("/prev") || command.equals("/next")) && argument.isEmpty())return Optional.of(new TradePoint("barracks_"+command.substring(1),"0"));
+        if(command.equals("/unitname"))return Optional.of(new TradePoint("barracks_info","0"));
+        if(command.equals("/train"))return Optional.of(new TradePoint("barracks_train","0"));
+        if(command.equals("/progress") && argument.startsWith("id:")) {
+            try{int id=Integer.parseInt(argument.substring(3));if(id>=0 && id<128)return Optional.of(new TradePoint("barracks_progress",String.valueOf(id)));}catch(NumberFormatException ignored){}
+            return Optional.empty();
+        }
         if(command.equals("/sign") && argument.startsWith("id:")) {
             try{int id=Integer.parseInt(argument.substring(3));if(id>=0 && id<=3)return Optional.of(new TradePoint("blacksmith",String.valueOf(id)));}catch(NumberFormatException ignored){}
             return Optional.empty();

@@ -32,6 +32,7 @@ public final class NativeTradeService implements Listener {
     private final com.avrgaming.civcraft.modern.items.CatalystEnhancements catalysts;
     private final Map<Long,Long> lastForgeClick=new HashMap<>();
     private final com.avrgaming.civcraft.modern.items.LegacyRepairCatalog repairs;
+    private final com.avrgaming.civcraft.modern.town.BarracksService barracks;
     private record RepairOffer(long build,String item,long price,long expires) {}
     private final Map<UUID,RepairOffer> repairOffers=new java.util.concurrent.ConcurrentHashMap<>();
     private final Set<Long> componentMarkersIndexed=new HashSet<>();
@@ -50,6 +51,7 @@ public final class NativeTradeService implements Listener {
         stable=new StableService(plugin,storage);
         catalysts=new com.avrgaming.civcraft.modern.items.CatalystEnhancements(plugin,items);
         repairs=new com.avrgaming.civcraft.modern.items.LegacyRepairCatalog(new File(plugin.getDataFolder(),"civcraft/data/materials.yml"),new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
+        barracks=new com.avrgaming.civcraft.modern.town.BarracksService(plugin,storage);
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -103,7 +105,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_barracks' AND tp.action='barracks_repair') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_barracks' AND tp.action LIKE 'barracks_%') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -134,7 +136,7 @@ public final class NativeTradeService implements Listener {
             else if(point.structure().equals("s_library"))library(player,point);
             else if(point.structure().equals("s_store"))supply(player,point);
             else if(point.structure().equals("s_blacksmith"))blacksmith(player,point);
-            else if(point.structure().equals("s_barracks"))offerRepair(player,point);
+            else if(point.structure().equals("s_barracks")){if(point.action().equals("barracks_repair"))offerRepair(player,point);else barracks.action(player,point.build(),point.town(),point.action());}
             else if(point.structure().equals("s_stable"))stable(player,point);
             else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
@@ -443,7 +445,7 @@ public final class NativeTradeService implements Listener {
         } else if(point.structure().equals("s_stable")) {
             lines=stable.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_barracks")) {
-            lines=List.of("Ремонт предмета","Держите снаряжение","Нажмите для цены","");
+            lines=point.action().equals("barracks_repair")?List.of("Ремонт предмета","Держите снаряжение","Нажмите для цены",""):barracks.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_blacksmith")) {
             lines=switch(Integer.parseInt(point.argument())){case 0->List.of("Катализатор","Положить / забрать","Личное хранение","");case 1->List.of("Усилить предмет","Катализатор исчезнет","Есть риск поломки","");case 2->List.of("Сдать руду","Железо / золото","Выход: ×1,25","Время: 3 часа");default->List.of("Забрать слитки","Готовая переплавка","Только жители","");};
         } else if(point.structure().equals("s_store")) {

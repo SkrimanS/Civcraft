@@ -118,6 +118,11 @@ public final class FoundationItemListener implements Listener {
         if (FoundationItemFactory.matches(plugin, item, FoundationItemFactory.Kind.TOWN)
                 || matches(item, settings.settlerMmoItemId(), settings.settlerMmoItemType())) {
             event.setCancelled(true);
+            Long owningCiv=item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin,"unit-civ"),PersistentDataType.LONG);
+            if(owningCiv!=null) {
+                try{var resident=game.resident(player);if(resident.townId()==null || resident.civId()==null || !owningCiv.equals(resident.civId())){player.sendMessage(net.kyori.adventure.text.Component.text("Этот поселенец может основать город только для жителей своей цивилизации."));return;}}
+                catch(SQLException failure){plugin.getLogger().warning("Settler ownership check failed: "+failure.getMessage());player.sendMessage(net.kyori.adventure.text.Component.text("Не удалось проверить владельца поселенца. Повторите позже."));return;}
+            }
             ItemStack consumed = consumeOneMainHand(player);
             pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.TOWN, placeLocation, consumed));
             player.sendMessage(component("foundation.enter-town-name", "&eВведите название города. От 5 до 16 символов."));

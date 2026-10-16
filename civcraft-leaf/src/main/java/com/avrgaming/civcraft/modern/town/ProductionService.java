@@ -67,6 +67,17 @@ public final class ProductionService implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
     public void requireUnlocked(long build)throws SQLException {storage.query(db->{ProductionStore.requireBuildUnlocked(db,build);return null;});}
+    public enum UnitDelivery { SENT, WAITING, FULL }
+    public UnitDelivery deliverUnit(long build,ItemStack unit)throws SQLException,IOException {
+        if(paused || !ready)return UnitDelivery.WAITING;
+        var positions=storage.query(db->{var result=new ArrayList<Position>();try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=? AND chest_id=0 ORDER BY x,y,z")){s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())result.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}}return result;});
+        if(positions.isEmpty() || positions.stream().anyMatch(p->locked.contains(p) || Bukkit.getWorld(p.world())==null || !Bukkit.getWorld(p.world()).isChunkLoaded(p.x()>>4,p.z()>>4)))return UnitDelivery.WAITING;
+        var before=ConsumptionContainers.capture(positions);var after=new ArrayList<Image>();boolean placed=false;
+        for(var image:before){var contents=image.contents();if(!placed)for(int slot=0;slot<contents.length;slot++)if(contents[slot]==null || contents[slot].getType().isAir()){contents[slot]=unit.clone();placed=true;break;}after.add(new Image(image.position(),contents));}
+        if(!placed)return UnitDelivery.FULL;byte[] payload=ConsumptionContainers.encode(after);
+        var operation=storage.transaction(db->{var clock=ProductionStore.initialize(db,build,1000,0);String id=UUID.randomUUID().toString();var pending=ProductionStore.prepare(db,id,clock,Math.addExact(clock.tick(),1),1,payload);BarracksStore.delivering(db,build,id);return pending;});
+        lock(operation);interrupt("prepared",build);finish(operation);return UnitDelivery.SENT;
+    }
     public List<String> poolLines(long town,int slot)throws SQLException {
         if(slot<0 || slot>3)throw new IllegalArgumentException("Неизвестный бассейн.");
         return slot<storage.query(db->ProductionStore.fisheryLevel(db,town))?List.of("Бассейн "+(slot+1),"Работает","Удочки в сундук","Цикл: 20 сек."):
