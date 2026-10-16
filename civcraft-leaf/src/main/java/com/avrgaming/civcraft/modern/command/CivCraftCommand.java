@@ -219,6 +219,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleTown(Player player, String[] args) throws SQLException {
+        if(args.length>=2 && args[1].equalsIgnoreCase("repairitem")){if(args.length!=3)throw new IllegalArgumentException("/town repairitem yes|no");plugin.trades().confirmRepair(player,args[2]);return;}
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("structures")){plugin.buildingActivity().info(player);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("enablestructure")){if(args.length!=3)throw new IllegalArgumentException("/town enablestructure <ID или мир,x,y,z>");plugin.buildingActivity().enable(player,args[2]);return;}
         if(args.length>=3&&args[1].equalsIgnoreCase("info")&&args[2].equalsIgnoreCase("trade")){plugin.goodieIncome().info(player);return;}

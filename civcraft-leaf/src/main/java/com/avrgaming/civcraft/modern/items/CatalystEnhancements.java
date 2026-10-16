@@ -36,6 +36,19 @@ public final class CatalystEnhancements {
         if(!Double.isFinite(extraChance) || extraChance<0 || extraChance>1)throw new IllegalArgumentException("Invalid extra catalyst chance");
     }
     public boolean catalyst(String id){return id!=null && catalysts.containsKey(id);}
+    public record FreeUse(String catalyst,ItemStack item) {}
+    public FreeUse consumeFree(ItemStack original) {
+        if(original==null || !original.hasItemMeta())return null;
+        var key=new NamespacedKey(plugin,"free-catalyst");var meta=original.getItemMeta();
+        String value=meta.getPersistentDataContainer().get(key,PersistentDataType.STRING);if(value==null)return null;
+        String[] parts=value.split(":",2);int count;
+        try{if(parts.length!=2)throw new NumberFormatException();double parsed=Double.parseDouble(parts[0]);if(!Double.isFinite(parsed) || parsed<1 || parsed!=Math.rint(parsed) || parsed>1000000)throw new NumberFormatException();count=(int)parsed;}catch(NumberFormatException invalid){throw new IllegalArgumentException("Повреждена запись бесплатных усилений предмета.");}
+        if(!catalyst(parts[1]))throw new IllegalArgumentException("Катализатор бесплатного усиления не найден.");
+        var result=original.clone();if(count==1)meta.getPersistentDataContainer().remove(key);else meta.getPersistentDataContainer().set(key,PersistentDataType.STRING,(count-1)+":"+parts[1]);
+        var plain=PlainTextComponentSerializer.plainText();var lore=new ArrayList<Component>();
+        if(meta.lore()!=null)for(var line:meta.lore())if(!plain.serialize(line).startsWith("Бесплатных усилений: "))lore.add(line);
+        if(count>1)lore.add(Component.text("Бесплатных усилений: "+(count-1)));meta.lore(lore);result.setItemMeta(meta);return new FreeUse(parts[1],result);
+    }
     public static double level(ItemStack item,boolean attack) {
         if(item==null || !item.hasItemMeta())return 0;
         double value=item.getItemMeta().getPersistentDataContainer().getOrDefault(new NamespacedKey("civcraft",attack?"forge-attack":"forge-defense"),PersistentDataType.DOUBLE,0.0);

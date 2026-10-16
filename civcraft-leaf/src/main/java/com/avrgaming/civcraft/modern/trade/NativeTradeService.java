@@ -31,6 +31,10 @@ public final class NativeTradeService implements Listener {
     private final StableService stable;
     private final com.avrgaming.civcraft.modern.items.CatalystEnhancements catalysts;
     private final Map<Long,Long> lastForgeClick=new HashMap<>();
+    private final com.avrgaming.civcraft.modern.items.LegacyRepairCatalog repairs;
+    private record RepairOffer(long build,String item,long price,long expires) {}
+    private final Map<UUID,RepairOffer> repairOffers=new java.util.concurrent.ConcurrentHashMap<>();
+    private final Set<Long> componentMarkersIndexed=new HashSet<>();
     public void stableSettings(Player player,String[] args)throws SQLException{stable.settings(player,args);}
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
@@ -45,6 +49,7 @@ public final class NativeTradeService implements Listener {
         grocer=new GrocerCatalog(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         stable=new StableService(plugin,storage);
         catalysts=new com.avrgaming.civcraft.modern.items.CatalystEnhancements(plugin,items);
+        repairs=new com.avrgaming.civcraft.modern.items.LegacyRepairCatalog(new File(plugin.getDataFolder(),"civcraft/data/materials.yml"),new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -54,7 +59,29 @@ public final class NativeTradeService implements Listener {
         storage.transaction(db->{for(var entry:market.list())TradeStore.price(db,entry.ident(),MarketPrice.initial(entry.base(),market.rate()));return null;});
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::refreshBankBonuses,20L,20L);
+        plugin.getServer().getScheduler().runTaskTimer(plugin,this::indexComponentMarkers,100L,600L);
     }
+    private record MarkerBuilding(long id,String world,int x,int y,int z,String path) {}
+    private void indexComponentMarkers() {
+        repairOffers.values().removeIf(offer->offer.expires()<System.currentTimeMillis());
+        try {
+            var buildings=storage.query(db->{var result=new ArrayList<MarkerBuilding>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE' AND structure_id IN ('s_store','s_blacksmith','s_barracks')")){while(r.next())result.add(new MarkerBuilding(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return result;});
+            for(var building:buildings)if(!componentMarkersIndexed.contains(building.id())) {
+                var placements=new ArrayList<com.avrgaming.civcraft.modern.build.BlockPlacement>();
+                for(var block:new com.avrgaming.civcraft.modern.build.LegacyDefTemplateLoader().load(java.nio.file.Path.of(building.path())).blocks())if(TradePoint.parse(block.signLines()).isPresent())placements.add(new com.avrgaming.civcraft.modern.build.BlockPlacement(building.world(),building.x()+block.x(),building.y()+block.y(),building.z()+block.z(),"SIGN",block.signLines()));
+                storage.transaction(db->{TradeStore.recordPoints(db,building.id(),placements);return null;});componentMarkersIndexed.add(building.id());refreshBuild(building.id());
+            }
+        }catch(SQLException|java.io.IOException|RuntimeException failure){plugin.getLogger().warning("Unable to index component markers: "+failure.getMessage());}
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void repairChat(io.papermc.paper.event.player.AsyncChatEvent event) {
+        var offer=repairOffers.get(event.getPlayer().getUniqueId());if(offer==null || offer.expires()<System.currentTimeMillis())return;
+        String answer=net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
+        if(!Set.of("yes","no","да","нет").contains(answer.toLowerCase(Locale.ROOT)))return;
+        event.setCancelled(true);String response=answer.equalsIgnoreCase("да")?"yes":answer;
+        plugin.getServer().getScheduler().runTask(plugin,()->{try{confirmRepair(event.getPlayer(),response);}catch(IllegalArgumentException failure){event.getPlayer().sendMessage(Component.text(failure.getMessage()));}catch(SQLException|RuntimeException failure){plugin.getLogger().severe("Item repair failed: "+failure.getMessage());event.getPlayer().kick(Component.text("Ремонт приостановлен. Переподключитесь после восстановления сервера."));}});
+    }
+    @EventHandler public void repairQuit(org.bukkit.event.player.PlayerQuitEvent event){repairOffers.remove(event.getPlayer().getUniqueId());}
     private void refreshBankBonuses() {
         try {
             var banks=storage.query(db->{var result=new LinkedHashMap<Long,Long>();
@@ -76,7 +103,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_barracks' AND tp.action='barracks_repair') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -107,6 +134,7 @@ public final class NativeTradeService implements Listener {
             else if(point.structure().equals("s_library"))library(player,point);
             else if(point.structure().equals("s_store"))supply(player,point);
             else if(point.structure().equals("s_blacksmith"))blacksmith(player,point);
+            else if(point.structure().equals("s_barracks"))offerRepair(player,point);
             else if(point.structure().equals("s_stable"))stable(player,point);
             else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
@@ -207,8 +235,9 @@ public final class NativeTradeService implements Listener {
         if(action==1) {
             boolean[] success={false};
             var receipt=storage.transaction(db->{
-                String catalyst=BlacksmithStore.catalyst(db,point.build(),owner);if(catalyst==null)throw new IllegalArgumentException("Сначала поместите катализатор в кузницу.");
-                var result=catalysts.forge(catalyst,after[slot]);success[0]=result.success();after[slot]=result.item();
+                String catalyst=BlacksmithStore.catalyst(db,point.build(),owner);ItemStack target=after[slot];var free=catalysts.consumeFree(target);if(free!=null){catalyst=free.catalyst();target=free.item();}
+                if(catalyst==null)throw new IllegalArgumentException("Сначала поместите катализатор в кузницу.");
+                var result=catalysts.forge(catalyst,target);success[0]=result.success();after[slot]=result.item();
                 BlacksmithStore.catalyst(db,point.build(),owner,null);
                 // Legacy perform_forge receives a cost but never debits it or the visitor fee.
                 return TradeStore.prepare(db,UUID.randomUUID().toString(),owner,ItemStack.serializeItemsAsBytes(after),0,0,null,0);
@@ -232,6 +261,27 @@ public final class NativeTradeService implements Listener {
             apply(player,receipt);player.sendMessage(Component.text("Получено слитков: "+(batch.amount()-remaining)+". В кузнице осталось: "+remaining+"."));return;
         }
         throw new IllegalArgumentException("Неизвестное действие кузницы.");
+    }
+    private void offerRepair(Player player,Point point) {
+        var hand=player.getInventory().getItemInMainHand();String id=items.id(hand);
+        if(id==null || !(hand.getItemMeta() instanceof org.bukkit.inventory.meta.Damageable damage) || hand.getType().getMaxDurability()<=0)throw new IllegalArgumentException("Держите ремонтируемое снаряжение CivCraft.");
+        if(damage.getDamage()==0)throw new IllegalArgumentException("Предмет уже имеет полную прочность.");
+        long price=repairs.price(id);repairOffers.put(player.getUniqueId(),new RepairOffer(point.build(),id,price,System.currentTimeMillis()+120000));
+        player.sendMessage(Component.text("Полный ремонт стоит "+price+" монет. Держите этот тип предмета в руке и ответьте «да»/«нет» или /town repairitem yes|no."));
+    }
+    public void confirmRepair(Player player,String response)throws SQLException {
+        var offer=repairOffers.remove(player.getUniqueId());if(offer==null || offer.expires()<System.currentTimeMillis())throw new IllegalArgumentException("Сначала нажмите табличку ремонта в казарме.");
+        if(!response.equalsIgnoreCase("yes")){player.sendMessage(Component.text("Ремонт отменён."));return;}
+        if(economy.usesExternalProvider())throw new IllegalArgumentException("Для ремонта требуется внутренний баланс CivCraft.");
+        if(plugin.goodieTransfers()!=null)plugin.goodieTransfers().requireUnlocked(player.getUniqueId());
+        if(!player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Закройте инвентарь перед ремонтом.");recover(player);
+        var after=copy(player.getInventory().getContents());int slot=player.getInventory().getHeldItemSlot();
+        if(!offer.item().equals(items.id(after[slot])) || !(after[slot].getItemMeta() instanceof org.bukkit.inventory.meta.Damageable damage))throw new IllegalArgumentException("Вы сменили тип предмета в руке. Запросите ремонт снова.");
+        if(damage.getDamage()==0)throw new IllegalArgumentException("Предмет уже отремонтирован.");damage.setDamage(0);after[slot].setItemMeta(damage);
+        var receipt=storage.transaction(db->{
+            try(var s=db.prepareStatement("SELECT 1 FROM active_structure_builds WHERE id=? AND structure_id='s_barracks'")){s.setLong(1,offer.build());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Казарма больше не работает.");}}
+            return TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),offer.price(),0,null,0);
+        });apply(player,receipt);player.sendMessage(Component.text("Прочность полностью восстановлена. Списано "+offer.price()+" монет."));
     }
     private void supply(Player player,Point point)throws SQLException {
         var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
@@ -392,6 +442,8 @@ public final class NativeTradeService implements Listener {
             lines=plugin.production().poolLines(point.town(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_stable")) {
             lines=stable.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
+        } else if(point.structure().equals("s_barracks")) {
+            lines=List.of("Ремонт предмета","Держите снаряжение","Нажмите для цены","");
         } else if(point.structure().equals("s_blacksmith")) {
             lines=switch(Integer.parseInt(point.argument())){case 0->List.of("Катализатор","Положить / забрать","Личное хранение","");case 1->List.of("Усилить предмет","Катализатор исчезнет","Есть риск поломки","");case 2->List.of("Сдать руду","Железо / золото","Выход: ×1,25","Время: 3 часа");default->List.of("Забрать слитки","Готовая переплавка","Только жители","");};
         } else if(point.structure().equals("s_store")) {

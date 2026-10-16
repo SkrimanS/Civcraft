@@ -9,6 +9,7 @@ public record TradePoint(String action,String argument) {
         if(lines.size()<2)return Optional.empty();
         String command=lines.get(0).trim().toLowerCase(Locale.ROOT);
         String argument=lines.get(1).trim().toLowerCase(Locale.ROOT);
+        if(command.equals("/repair"))return Optional.of(new TradePoint("barracks_repair","0"));
         if(command.equals("/sign") && argument.startsWith("id:")) {
             try{int id=Integer.parseInt(argument.substring(3));if(id>=0 && id<=3)return Optional.of(new TradePoint("blacksmith",String.valueOf(id)));}catch(NumberFormatException ignored){}
             return Optional.empty();
