@@ -29,6 +29,20 @@ public final class BuildQueue {
     private final JavaPlugin plugin;
     private final Map<Long, CancellableBuild> activeBuilds = new ConcurrentHashMap<>();
     private final Set<Long> canceledBeforeStart = ConcurrentHashMap.newKeySet();
+    private final Map<Long,DestructionSnapshot> awaitingCompletion=new ConcurrentHashMap<>();
+    public record DestructionSnapshot(List<BlockPlacement> placements,List<BlockBackup> previews) {
+        public DestructionSnapshot {placements=List.copyOf(placements);previews=List.copyOf(previews);}
+    }
+    public DestructionSnapshot snapshotForDestruction(long build) {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Build snapshots require the server thread");
+        var active=activeBuilds.get(build);return active==null?awaitingCompletion.getOrDefault(build,new DestructionSnapshot(List.of(),List.of())):active.destructionSnapshot();
+    }
+    public void forgetCompletedPlacements(long build){awaitingCompletion.remove(build);}
+    private DestructionSnapshot destructionSnapshot(List<BlockPlacement> placements,Map<String,PreviewBlock> previews) {
+        var originals=new ArrayList<BlockBackup>();
+        for(var preview:previews.values())if(preview.active && !preview.removed && preview.originalData!=null){var world=Bukkit.getWorld(preview.world);if(world!=null && world.getBlockAt(preview.x,preview.y,preview.z).getType()==Material.BEDROCK)originals.add(new BlockBackup(preview.world,preview.x,preview.y,preview.z,preview.originalData.getAsString()));}
+        return new DestructionSnapshot(placements,originals);
+    }
     private final SnapshotWriter snapshotWriter;
 
     /**
@@ -57,6 +71,7 @@ public final class BuildQueue {
     }
 
     public boolean cancelBuild(long buildId) {
+        awaitingCompletion.remove(buildId);
         CancellableBuild build = activeBuilds.get(buildId);
         if (build == null) {
             // A build can still be preparing its chunk layout asynchronously.
@@ -185,6 +200,7 @@ public final class BuildQueue {
     }
 
     private interface CancellableBuild {
+        DestructionSnapshot destructionSnapshot();
         void requestCancel();
         void retime(long duration);
         void synchronizeClock(long start,long finish);
@@ -266,6 +282,7 @@ public final class BuildQueue {
                         restoreAllBedrockPreview();
                         StructureChestBlocks.pair(placements);
                         if (buildId > 0L) {
+                            awaitingCompletion.put(buildId,new DestructionSnapshot(placements,List.of()));
                             activeBuilds.remove(buildId);
                         }
                         cancel();
@@ -412,6 +429,8 @@ public final class BuildQueue {
             this.cancelRequested = true;
         }
 
+        @Override public DestructionSnapshot destructionSnapshot(){return BuildQueue.this.destructionSnapshot(placements,activePreviewByKey);}
+
         public void retime(long duration) {
             double progress=startedBuilding && buildDurationMillis>0?Math.max(0,Math.min(1,(System.currentTimeMillis()-startedAtMillis)/(double)buildDurationMillis)):0;
             buildDurationMillis=Math.max(0,duration);
@@ -557,6 +576,7 @@ public final class BuildQueue {
                     if (placedBlockCursor >= orderedBlocks.size()) {
                         restoreAllBedrockPreview();
                         if (buildId > 0L) {
+                            awaitingCompletion.put(buildId,new DestructionSnapshot(placements,List.of()));
                             activeBuilds.remove(buildId);
                         }
                         cancel();
@@ -690,6 +710,8 @@ public final class BuildQueue {
         public void requestCancel() {
             this.cancelRequested = true;
         }
+
+        @Override public DestructionSnapshot destructionSnapshot(){return BuildQueue.this.destructionSnapshot(placements,activePreviewByKey);}
 
         public void retime(long duration) {
             double progress=startedBuilding && buildDurationMillis>0?Math.max(0,Math.min(1,(System.currentTimeMillis()-startedAtMillis)/(double)buildDurationMillis)):0;

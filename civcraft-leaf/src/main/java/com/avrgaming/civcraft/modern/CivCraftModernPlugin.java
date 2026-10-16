@@ -47,6 +47,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private CivCraftGameService game;
     private LegacyStructureService legacyStructures;
     private ResearchService research;
+    public ResearchService research(){return research;}
     private TownClaimService townClaims;
     private SettlementMembershipService memberships;
     private CivCraftPlaceholderExpansion placeholderExpansion;

@@ -102,7 +102,7 @@ public final class EspionageService implements Listener,CommandExecutor {
     private double exposure(Player player,EspionageStore.Run run)throws SQLException {
         var at=player.getLocation();long nearby=Bukkit.getOnlinePlayers().stream().filter(p->!p.getUniqueId().equals(player.getUniqueId()) && p.getWorld()==player.getWorld() && p.getLocation().distanceSquared(at)<600).count();
         double range=scoutRange;
-        int scouts=storage.query(db->{int count=0;try(var s=db.prepareStatement("SELECT world,x,y,z FROM active_structure_builds WHERE town_id=? AND structure_id IN ('s_scouttower','s_scoutship')")){s.setLong(1,run.target());try(var r=s.executeQuery()){while(r.next())if(r.getString(1).equals(at.getWorld().getName())){double dx=r.getDouble(2)-at.getX(),dy=r.getDouble(3)-at.getY(),dz=r.getDouble(4)-at.getZ();if(dx*dx+dy*dy+dz*dz<range*range)count++;}}}return count;});
+        int scouts=storage.query(db->{int count=0;try(var s=db.prepareStatement("SELECT world,x,y,z,template_path FROM active_structure_builds WHERE town_id=? AND structure_id IN ('s_scouttower','s_scoutship')")){s.setLong(1,run.target());try(var r=s.executeQuery()){while(r.next())if(r.getString(1).equals(at.getWorld().getName())){var offset=com.avrgaming.civcraft.modern.build.LegacyGeometry.center(r.getString(5));double dx=r.getDouble(2)+offset.x()-at.getX(),dy=r.getDouble(3)+offset.y()-at.getY(),dz=r.getDouble(4)+offset.z()-at.getZ();if(dx*dx+dy*dy+dz*dz<range*range)count++;}}}return count;});
         double add=config.getDouble("espionage.exposure_per_second",1)+nearby*config.getDouble("espionage.exposure_per_player",2)+scouts*config.getDouble("espionage.exposure_per_scout",5);
         return storage.transaction(db->EspionageStore.exposure(db,player.getUniqueId(),add));
     }
@@ -131,21 +131,28 @@ public final class EspionageService implements Listener,CommandExecutor {
         boolean caught=!success && ThreadLocalRandom.current().nextInt(100)<(int)(MissionCatalog.chance(mission.compromise(),online,mission.intel())*100);
         var inventory=snapshot(player);if(caught)removeSpy(inventory);if(success && mission.id().equals("spy_investigate_town")){var report=report(target.town().id());int empty=-1;for(int i=0;i<36;i++)if(inventory[i]==null || inventory[i].getType().isAir()){empty=i;break;}if(empty<0)throw new IllegalArgumentException("Освободите место для доклада разведки.");inventory[empty]=report;}
         record Result(String message,TradeStore.Pending trade,GoodieTransferStore.Pending piracy) {}
+        var construction=success && mission.id().equals("spy_sabotage_wonder")?plugin.legacyStructures().snapshotForSabotage(target.building().id()):null;
+        if(construction!=null){var world=Bukkit.getWorld(target.building().world());if(world==null)throw new IllegalArgumentException("Мир строящегося чуда недоступен.");world.save(true);}
         var result=storage.transaction(db->{
             var current=MissionTargets.validate(db,player.getLocation(),resident.civId(),catalog.require(run.mission()),catalog);
             if(!current.equals(target))throw new IllegalArgumentException("Цель миссии изменилась.");
             try(var s=db.prepareStatement("UPDATE towns SET coins=coins-? WHERE id=? AND coins>=?")){s.setLong(1,mission.cost());s.setLong(2,run.source());s.setLong(3,mission.cost());if(s.executeUpdate()!=1)throw new IllegalArgumentException("В казне города недостаточно монет для миссии.");}
-            String message=success?effects.apply(db,run.source(),target,System.currentTimeMillis()):caught?"Миссия провалена, шпион раскрыт и уничтожен.":"Миссия провалена. Шпион не раскрыт.";
+            String message=success?effects.apply(db,run.source(),target,System.currentTimeMillis(),construction):caught?"Миссия провалена, шпион раскрыт и уничтожен.":"Миссия провалена. Шпион не раскрыт.";
             EspionageStore.finish(db,run.id(),success?"SUCCESS":"FAILED",message,System.currentTimeMillis());byte[] image=ItemStack.serializeItemsAsBytes(inventory);
             if(success && mission.id().equals("spy_pirate"))return new Result(message,null,plugin.goodieTransfers().preparePiracy(db,player,target.building().id(),image,UUID.randomUUID().toString()));
             return new Result(message,TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),image,0,0,null,0),null);
-        });if(result.piracy()!=null)plugin.goodieTransfers().applyPiracy(player,result.piracy());else plugin.trades().applyPrepared(player,result.trade());
+        });if(construction!=null)plugin.legacyStructures().stopSabotagedBuild(target.building().id());
+        if(result.piracy()!=null)plugin.goodieTransfers().applyPiracy(player,result.piracy());else plugin.trades().applyPrepared(player,result.trade());
         warnings.remove(run.id());player.sendMessage(Component.text(result.message()));if(caught)Bukkit.broadcast(Component.text("Шпион "+player.getName()+" пойман при миссии «"+mission.name()+"»."));
         if(success && mission.id().equals("spy_subvert_government"))plugin.governments().refreshProduction(target.town().civ());
         if(success && !mission.id().equals("spy_investigate_town"))townMessage(target.town().id(),"Город пострадал от шпионской миссии: "+mission.name()+".");
     }
     private ItemStack report(long town)throws SQLException {
-        var city=storage.findTown(town).orElseThrow();var book=new ItemStack(Material.WRITTEN_BOOK);var meta=(BookMeta)book.getItemMeta();meta.title(Component.text("Доклад разведки"));meta.author(Component.text("Шпионская служба"));meta.pages(Component.text("Город: "+city.name()+"\nКазна: "+city.coins()+"\nМолотки: "+city.hammersPerHour()+"\nНаука: "+city.beakersPerHour()+"\nРост: "+city.growth()+"\nКультура: "+storage.staticTownCulture(town)+"\nСчастье: "+city.happiness()+"\nВремя: "+java.time.Instant.now()));book.setItemMeta(meta);return book;
+        var city=storage.findTown(town).orElseThrow();var civ=storage.findCiv(city.civId()).orElseThrow();var upkeep=plugin.upkeep().report(town);
+        String research=storage.query(db->{try(var s=db.prepareStatement("SELECT tech_id FROM civ_research WHERE civ_id=?")){s.setLong(1,city.civId());try(var r=s.executeQuery()){if(!r.next())return "нет";return plugin.research().findTech(r.getString(1)).map(com.avrgaming.civcraft.modern.research.TechDefinition::name).orElse("неизвестно");}}});
+        String time=java.time.ZonedDateTime.now(java.time.ZoneId.of(plugin.getConfig().getString("server.timezone",java.time.ZoneId.systemDefault().getId()))).format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss z"));
+        var book=new ItemStack(Material.WRITTEN_BOOK);var meta=(BookMeta)book.getItemMeta();meta.title(Component.text("Доклад разведки"));meta.author(Component.text("Шпионская служба"));
+        meta.pages(Component.text("Город: "+city.name()+"\nЦивилизация: "+civ.name()+"\nВремя: "+time+"\n\nКазна: "+city.coins()+"\nМолотки: "+city.hammersPerHour()+"\nНаука: "+city.beakersPerHour()+"\nРост: "+city.growth()+"\nКультура: "+storage.staticTownCulture(town)+"\nИсследуется: "+research),Component.text("Содержание города\n\nТерритория: "+upkeep.territory()+"\nПостройки: "+upkeep.structures()+"\n\nИтого с бонусами:\n"+upkeep.total()+" монет в день\n\nСчастье: "+city.happiness()));book.setItemMeta(meta);return book;
     }
     private void refreshBooks()throws SQLException {
         for(var player:Bukkit.getOnlinePlayers()) {

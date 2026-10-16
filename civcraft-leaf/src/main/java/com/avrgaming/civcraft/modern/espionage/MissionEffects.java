@@ -16,6 +16,9 @@ public final class MissionEffects {
         if(poisonMin<1 || poisonMax<=poisonMin || !Double.isFinite(famine) || famine<0 || famine>1)throw new IllegalArgumentException("Invalid espionage poison configuration");
     }
     public String apply(Connection db,long source,MissionTargets.Target target,long now)throws SQLException {
+        return apply(db,source,target,now,null);
+    }
+    public String apply(Connection db,long source,MissionTargets.Target target,long now,com.avrgaming.civcraft.modern.build.BuildQueue.DestructionSnapshot snapshot)throws SQLException {
         long town=target.town().id();
         switch(target.mission().id()) {
             case "spy_investigate_town" -> {return "Город разведан.";}
@@ -39,6 +42,10 @@ public final class MissionEffects {
                 var building=target.building();var health=BuildingDamageStore.health(db,building.id());if(health.hitpoints()==0)throw new IllegalArgumentException("Постройка уже разрушена.");
                 try(var s=db.prepareStatement("INSERT INTO building_combat_health VALUES(?,0,?,'DESTROY_PENDING') ON CONFLICT(build_id) DO UPDATE SET hitpoints=0,phase='DESTROY_PENDING'")){s.setLong(1,building.id());s.setInt(2,health.maximum());s.executeUpdate();}
                 try(var s=db.prepareStatement("UPDATE structure_builds SET status='WAR_DESTROY_PENDING' WHERE id=? AND status='COMPLETE'")){s.setLong(1,building.id());if(s.executeUpdate()!=1)throw new SQLException("Sabotage target changed");}return "Постройка #"+building.id()+" уничтожена саботажем.";
+            }
+            case "spy_sabotage_wonder" -> {
+                if(snapshot==null)throw new SQLException("Missing unfinished wonder snapshot");
+                com.avrgaming.civcraft.modern.war.BuildingRuinStore.sabotageWonder(db,target.building().id(),snapshot);return "Строящееся чудо #"+target.building().id()+" уничтожено саботажем. Стоимость стройки не возвращается.";
             }
             case "spy_pirate" -> {return "Торговый товар похищен из исходной рамки.";}
             default -> throw new IllegalArgumentException("Для этой цели саботаж недоступен.");

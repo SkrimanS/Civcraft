@@ -17,6 +17,15 @@ public final class UpkeepService {
     private final com.avrgaming.civcraft.modern.war.WarUpkeepRules warUpkeep;
     private final com.avrgaming.civcraft.modern.war.RevolutionRules scoreRules;
     public record DailyResult(List<UpkeepStore.Payment> payments,List<com.avrgaming.civcraft.modern.wonder.WonderIncomeStore.Credit> bonuses) {}
+    public record Breakdown(double territory,double structures,long total) {}
+    public Breakdown report(long town)throws SQLException {
+        return storage.query(db->{
+            int level;try(var s=db.prepareStatement("SELECT level FROM towns WHERE id=?")){s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Город не найден.");level=r.getInt(1);}}
+            var prices=new HashMap<String,Double>();for(var definition:plugin.legacyStructures().listDefinitions(Integer.MAX_VALUE))prices.put(definition.id(),definition.upkeep());
+            double structures=0;try(var s=db.prepareStatement("SELECT structure_id,COUNT(*) FROM structure_builds WHERE town_id=? AND status IN ('QUEUED','BUILDING','COMPLETE') GROUP BY structure_id")){s.setLong(1,town);try(var r=s.executeQuery()){while(r.next())structures+=prices.getOrDefault(r.getString(1),0.0)*r.getLong(2);}}
+            long total=0;for(var charge:plan(db))if(charge.town()==town){total=charge.amount();break;}return new Breakdown(plugin.townUpgrades().level(level).upkeep(),structures,total);
+        });
+    }
     public UpkeepService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         extraTownCost=(long)YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getDouble("civ.town_upkeep",500);

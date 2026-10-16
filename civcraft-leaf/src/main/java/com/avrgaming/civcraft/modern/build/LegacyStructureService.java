@@ -42,6 +42,7 @@ public final class LegacyStructureService {
     private final StructureDefinitionService definitions;
     private final com.avrgaming.civcraft.modern.trade.TradeGoodsCatalog tradeGoods;
     private final BuildQueue buildQueue;
+    private final java.util.Set<Long> recoveringTerrain=ConcurrentHashMap.newKeySet();
     private ModernCivCraftSettings settings;
     private Lang fallbackLang;
 
@@ -59,6 +60,8 @@ public final class LegacyStructureService {
         warmupTemplateCacheAsync();
     }
 
+    public BuildQueue.DestructionSnapshot snapshotForSabotage(long build){if(recoveringTerrain.contains(build))throw new IllegalArgumentException("Территория стройки восстанавливается. Дождитесь возобновления строительства.");return buildQueue.snapshotForDestruction(build);}
+    public void stopSabotagedBuild(long build){buildQueue.cancelBuild(build);}
     public void updateSettings(ModernCivCraftSettings settings) {
         this.settings = settings;
         this.definitions.updateSettings(settings);
@@ -419,6 +422,7 @@ public final class LegacyStructureService {
     }
 
     private void restoreTerrainInBatches(long buildId, List<BlockBackup> original, Runnable onComplete) {
+        recoveringTerrain.add(buildId);
         plugin.getLogger().info("Restoring " + original.size()
                 + " block states for CivCraft structure #" + buildId);
         new BukkitRunnable() {
@@ -459,6 +463,7 @@ public final class LegacyStructureService {
                 }
                 if (cursor >= original.size()) {
                     cancel();
+                    recoveringTerrain.remove(buildId);
                     onComplete.run();
                 }
             }
@@ -1248,6 +1253,7 @@ public final class LegacyStructureService {
                 } else if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.trades()!=null) {
                     plugin.getServer().getScheduler().runTask(plugin,()->civ.trades().refreshBuild(buildId));
                 }
+                buildQueue.forgetCompletedPlacements(buildId);
             } catch (SQLException exception) {
                 plugin.getLogger().warning("Unable to complete structure build " + buildId + ": " + exception.getMessage());
             }
