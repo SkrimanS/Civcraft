@@ -40,6 +40,7 @@ public final class GovernmentStore {
         try(var update=db.prepareStatement("UPDATE civilizations SET government='gov_anarchy' WHERE id=?")) {
             update.setLong(1,civId);update.executeUpdate();
         }
+        com.avrgaming.civcraft.modern.research.CivilizationScienceStore.cap(db,civId,0);
     }
     public static Transition transition(Connection db,long civId)throws SQLException {
         try(var query=db.prepareStatement("SELECT target,started_at FROM government_transitions WHERE civ_id=?")) {

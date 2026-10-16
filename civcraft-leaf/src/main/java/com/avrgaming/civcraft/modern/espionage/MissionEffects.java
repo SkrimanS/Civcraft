@@ -36,7 +36,7 @@ public final class MissionEffects {
             case "spy_subvert_government" -> {
                 GovernmentStore.install(db);String government;try(var s=db.prepareStatement("SELECT government FROM civilizations WHERE id=?")){s.setLong(1,target.town().civ());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Civilization disappeared");government=r.getString(1);}}
                 try(var s=db.prepareStatement("INSERT INTO government_transitions VALUES(?,?,?)")){s.setLong(1,target.town().civ());s.setString(2,government);s.setLong(3,now);s.executeUpdate();}
-                try(var s=db.prepareStatement("UPDATE civilizations SET government='gov_anarchy' WHERE id=?")){s.setLong(1,target.town().civ());s.executeUpdate();}return "Правительство погружено в анархию.";
+                try(var s=db.prepareStatement("UPDATE civilizations SET government='gov_anarchy' WHERE id=?")){s.setLong(1,target.town().civ());s.executeUpdate();}com.avrgaming.civcraft.modern.research.CivilizationScienceStore.cap(db,target.town().civ(),0);return "Правительство погружено в анархию.";
             }
             case "spy_sabotage" -> {
                 var building=target.building();var health=BuildingDamageStore.health(db,building.id());if(health.hitpoints()==0)throw new IllegalArgumentException("Постройка уже разрушена.");

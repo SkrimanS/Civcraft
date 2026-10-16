@@ -66,6 +66,7 @@ public final class ControlPointStore {
                 try(var s=db.prepareStatement("DELETE FROM war_defeated_towns WHERE war_start=? AND conqueror=? AND town_id IN (SELECT id FROM towns WHERE civ_id=?)")){s.setLong(1,war);s.setLong(2,defender);s.setLong(3,civ);s.executeUpdate();}
                 for(String table:new String[]{"war_defeated_towns","war_defeated_civs"})try(var s=db.prepareStatement("UPDATE "+table+" SET conqueror=? WHERE war_start=? AND conqueror=?")){s.setLong(1,civ);s.setLong(2,war);s.setLong(3,defender);s.executeUpdate();}
                 try(var s=db.prepareStatement("INSERT INTO war_defeated_civs VALUES(?,?,?)")){s.setLong(1,war);s.setLong(2,defender);s.setLong(3,civ);s.executeUpdate();}
+                com.avrgaming.civcraft.modern.endgame.EndGameStore.warDefeat(db,defender);
                 try(var s=db.prepareStatement("INSERT INTO war_defeated_towns SELECT ?,id,? FROM towns WHERE civ_id=? ON CONFLICT(war_start,town_id) DO UPDATE SET conqueror=excluded.conqueror")){s.setLong(1,war);s.setLong(2,civ);s.setLong(3,defender);s.executeUpdate();}
             }else try(var s=db.prepareStatement("INSERT INTO war_defeated_towns VALUES(?,?,?)")){s.setLong(1,war);s.setLong(2,defenderTown);s.setLong(3,civ);s.executeUpdate();}
         }

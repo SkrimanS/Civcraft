@@ -6,6 +6,8 @@ public final class LegacyScoreStore {
     private LegacyScoreStore() {}
     public static void install(Connection db)throws SQLException {try(var s=db.createStatement()){s.executeUpdate("CREATE TABLE IF NOT EXISTS legacy_civ_scores(civ_id INTEGER PRIMARY KEY REFERENCES civilizations(id) ON DELETE CASCADE,points INTEGER NOT NULL,ranked INTEGER NOT NULL,checked_at INTEGER NOT NULL)");}}
     public static void refresh(Connection db,RevolutionRules rules,long now)throws SQLException {
+        boolean endgame;try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='endgame_round'")){endgame=r.next();}
+        if(endgame && com.avrgaming.civcraft.modern.endgame.EndGameStore.winner(db)!=null)return;
         var ids=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM civilizations c WHERE NOT EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) ORDER BY id")){while(r.next())ids.add(r.getLong(1));}
         var scores=new LinkedHashMap<Long,Long>();var ranked=new TreeMap<Long,Long>();for(long id:ids){long score=rules.civilizationScore(db,id);scores.put(id,score);ranked.put(score,id);}
         try(var s=db.createStatement()){s.executeUpdate("DELETE FROM legacy_civ_scores");}

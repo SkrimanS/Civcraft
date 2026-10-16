@@ -80,6 +80,7 @@ public final class TownUpgradeService {
                 var notices=TaxStore.advanceGrace(db,now.toLocalDate().toString(),System.currentTimeMillis());
                 return new DailyResult(BankDailyStore.interest(db,now.toLocalDate().toString(),System.currentTimeMillis()),notices,upkeep.bonuses());
             });
+            plugin.endgame().daily();
             result.notices().forEach(plugin.taxes()::notify);
             for(var bonus:result.bonuses())for(var player:plugin.getServer().getOnlinePlayers()) {
                 var resident=storage.findResident(player.getUniqueId()).orElse(null);

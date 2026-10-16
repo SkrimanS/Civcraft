@@ -35,6 +35,14 @@ public final class BuildingRuinStore {
     public static Long next(Connection db)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT b.id FROM structure_builds b JOIN building_combat_health h ON h.build_id=b.id WHERE b.status='WAR_DESTROY_PENDING' AND h.hitpoints=0 AND h.phase='DESTROY_PENDING' ORDER BY b.id LIMIT 1")){return r.next()?r.getLong(1):null;}
     }
+    /** Completed Councils are removed on war defeat through the same durable ruin worker. */
+    public static void destroyCompletedWonder(Connection db,long build)throws SQLException {
+        if(db.getAutoCommit())throw new SQLException("Wonder destruction requires a transaction");
+        int maximum;try(var s=db.prepareStatement("SELECT max_hitpoints FROM structure_builds WHERE id=? AND structure_id GLOB 'w_*' AND status='COMPLETE'")){s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Completed wonder changed before destruction");maximum=Math.max(1,r.getInt(1));}}
+        try(var s=db.prepareStatement("INSERT OR IGNORE INTO wonder_sabotage_targets VALUES(?)")){s.setLong(1,build);s.executeUpdate();}
+        try(var s=db.prepareStatement("INSERT INTO building_combat_health VALUES(?,0,?,'DESTROY_PENDING') ON CONFLICT(build_id) DO UPDATE SET hitpoints=0,maximum=excluded.maximum,phase='DESTROY_PENDING'")){s.setLong(1,build);s.setInt(2,maximum);s.executeUpdate();}
+        try(var s=db.prepareStatement("UPDATE structure_builds SET status='WAR_DESTROY_PENDING' WHERE id=? AND status='COMPLETE'")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Completed wonder changed before destruction");}
+    }
     public static List<Change> changes(Connection db,long build)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM building_ruin_jobs WHERE build_id=?")) {
             s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())return null;}

@@ -121,7 +121,7 @@ public final class ResearchService {
                     continue;
                 }
                 double beakersPerHour = effectiveSciencePerHour(research.civId());
-                                double beakersThisMinute = beakersPerHour / 60.0;
+                double beakersThisMinute = beakersPerHour / 60.0;
                 boolean completed = storage.addResearchBeakers(research.civId(), research.techId(), beakersThisMinute, definition.beakerCost());
                 if (completed) {
                     plugin.getLogger().info("Civilization #" + research.civId() + " completed technology " + definition.id());
