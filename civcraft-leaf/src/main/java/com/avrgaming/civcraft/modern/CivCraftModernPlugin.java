@@ -171,7 +171,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         this.campNpcMenus = new CampNpcMenusService(this);
         this.campNpcMenus.start();
         this.lang = this.campNpcMenus.lang();
-        this.gameplayRestrictions = new GameplayRestrictionService(this, settings);
+        this.gameplayRestrictions = new GameplayRestrictionService(this, settings, economy);
         this.gameplayRestrictions.start();
         this.legacyStructures = new LegacyStructureService(this, storage, settings, economy, game);
         storage.setWonderBonuses(com.avrgaming.civcraft.modern.wonder.WonderBonuses.load(getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile()));

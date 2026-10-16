@@ -11,6 +11,12 @@ recipes:
 
 experience:
   disable-gain: true
+  convert-to-coins: true
+
+workstations:
+  disable-enchanting: true
+  # Operators may use anvils to rename items, as in the original plugin.
+  disable-anvils: true
 
 plants:
   disable-growth: true

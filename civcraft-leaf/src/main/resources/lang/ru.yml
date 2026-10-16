@@ -152,3 +152,6 @@ custom-items:
 restrictions:
   craft-blocked: '&cЭтот крафт запрещён.'
   redstone-blocked: '&cРедстоун разрешён только в чанках построек фермы.'
+  enchanting-blocked: '&cСтол зачарований отключён. Используйте библиотеку.'
+  anvil-blocked: '&cНаковальни отключены. Усиление — в кузнице, ремонт — в казарме.'
+  experience-coins: '&aПодобрано {amount} монет.'

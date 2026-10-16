@@ -1,6 +1,7 @@
 package com.avrgaming.civcraft.modern.restriction;
 
 import com.avrgaming.civcraft.modern.config.ModernCivCraftSettings;
+import com.avrgaming.civcraft.modern.economy.CivCraftEconomyService;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -54,6 +55,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class GameplayRestrictionService implements Listener {
     private final JavaPlugin plugin;
+    private final CivCraftEconomyService economy;
     private final Map<UUID, Long> messageCooldowns = new HashMap<>();
     private volatile ModernCivCraftSettings settings;
     private YamlConfiguration restrictions;
@@ -63,9 +65,10 @@ public final class GameplayRestrictionService implements Listener {
     private List<String> plantAllowedStructureIds = List.of("farm", "city_farm");
     private List<String> redstoneAllowedStructureIds = List.of("farm", "city_farm");
 
-    public GameplayRestrictionService(JavaPlugin plugin, ModernCivCraftSettings settings) {
+    public GameplayRestrictionService(JavaPlugin plugin, ModernCivCraftSettings settings, CivCraftEconomyService economy) {
         this.plugin = plugin;
         this.settings = settings;
+        this.economy = economy;
     }
 
     public void start() {
@@ -220,20 +223,25 @@ public final class GameplayRestrictionService implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerExpChange(PlayerExpChangeEvent event) {
         if (restrictions.getBoolean("experience.disable-gain", true) && event.getAmount() > 0) {
+            int amount=event.getAmount();
             event.setAmount(0);
+            if(restrictions.getBoolean("experience.convert-to-coins",true))try {
+                economy.deposit(event.getPlayer(),amount,"legacy experience pickup");
+                event.getPlayer().sendMessage(color(lang.getString("restrictions.experience-coins","&aПодобрано {amount} монет.").replace("{amount}",Integer.toString(amount))));
+            }catch(SQLException failure){plugin.getLogger().severe("Unable to credit experience coins to "+event.getPlayer().getUniqueId()+": "+failure.getMessage());}
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockExp(BlockExpEvent event) {
-        if (restrictions.getBoolean("experience.disable-gain", true)) {
+        if (restrictions.getBoolean("experience.disable-gain", true) && !restrictions.getBoolean("experience.convert-to-coins",true)) {
             event.setExpToDrop(0);
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
-        if (restrictions.getBoolean("experience.disable-gain", true)) {
+        if (restrictions.getBoolean("experience.disable-gain", true) && !restrictions.getBoolean("experience.convert-to-coins",true)) {
             event.setDroppedExp(0);
         }
     }
@@ -243,6 +251,27 @@ public final class GameplayRestrictionService implements Listener {
         if (restrictions.getBoolean("experience.disable-gain", true)) {
             event.setExperience(0);
         }
+    }
+
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void workstation(PlayerInteractEvent event) {
+        if(event.getAction()!=Action.RIGHT_CLICK_BLOCK || event.getClickedBlock()==null)return;
+        Material type=event.getClickedBlock().getType();
+        if(type==Material.ENCHANTING_TABLE && restrictions.getBoolean("workstations.disable-enchanting",true)) {
+            event.setCancelled(true);deny(event.getPlayer(),"enchanting-blocked","&cСтол зачарований отключён. Используйте библиотеку.");
+        } else if(Set.of(Material.ANVIL,Material.CHIPPED_ANVIL,Material.DAMAGED_ANVIL).contains(type) && restrictions.getBoolean("workstations.disable-anvils",true) && !event.getPlayer().isOp()) {
+            event.setCancelled(true);deny(event.getPlayer(),"anvil-blocked","&cНаковальни отключены. Усиление — в кузнице, ремонт — в казарме.");
+        }
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void workstationOpen(org.bukkit.event.inventory.InventoryOpenEvent event) {
+        boolean enchanting=event.getInventory().getType()==org.bukkit.event.inventory.InventoryType.ENCHANTING && restrictions.getBoolean("workstations.disable-enchanting",true);
+        boolean anvil=event.getInventory().getType()==org.bukkit.event.inventory.InventoryType.ANVIL && restrictions.getBoolean("workstations.disable-anvils",true) && !event.getPlayer().isOp();
+        if(enchanting || anvil)event.setCancelled(true);
+    }
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void enchant(org.bukkit.event.enchantment.EnchantItemEvent event) {
+        if(restrictions.getBoolean("workstations.disable-enchanting",true)){event.setCancelled(true);deny(event.getEnchanter(),"enchanting-blocked","&cСтол зачарований отключён. Используйте библиотеку.");}
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
