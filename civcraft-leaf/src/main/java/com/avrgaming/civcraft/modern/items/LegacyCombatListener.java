@@ -21,9 +21,15 @@ public final class LegacyCombatListener implements Listener {
     private final CivCraftModernPlugin plugin;
     private final NativeLegacyItems items;
     private final NamespacedKey bowIdentity;
+    private final NamespacedKey bowEnhancement;
+    private final double attackMultiplier,defenseMultiplier;
 
     public LegacyCombatListener(CivCraftModernPlugin plugin,NativeLegacyItems items) {
         this.plugin=plugin;this.items=items;this.bowIdentity=new NamespacedKey(plugin,"fired-bow-id");
+        bowEnhancement=new NamespacedKey(plugin,"fired-bow-enhancement");
+        var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
+        attackMultiplier=config.getDouble("global.attack_catalyst_multiplier",1);defenseMultiplier=config.getDouble("global.defense_catalyst_multiplier",1);
+        if(!Double.isFinite(attackMultiplier) || !Double.isFinite(defenseMultiplier) || attackMultiplier<0 || defenseMultiplier<0)throw new IllegalArgumentException("Invalid catalyst combat multipliers");
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
 
@@ -36,6 +42,7 @@ public final class LegacyCombatListener implements Listener {
             event.setCancelled(true);player.sendMessage(Component.text("Нельзя стрелять из лука в металлической броне."));return;
         }
         event.getProjectile().getPersistentDataContainer().set(bowIdentity,PersistentDataType.STRING,definition.id());
+        event.getProjectile().getPersistentDataContainer().set(bowEnhancement,PersistentDataType.DOUBLE,CatalystEnhancements.level(event.getBow(),true)*attackMultiplier);
     }
 
     @EventHandler(priority=EventPriority.LOW,ignoreCancelled=true)
@@ -45,19 +52,19 @@ public final class LegacyCombatListener implements Listener {
             if(event.getDamager() instanceof Player attacker) {
                 var weapon=items.definition(attacker.getInventory().getItemInMainHand()).orElse(null);
                 if(weapon==null)event.setDamage(0.5);
-                else if(weapon.attack()>0)event.setDamage(LegacyCombatRules.melee(weapon.attack(),items.hasTechnology(attacker,weapon)));
+                else if(weapon.attack()>0)event.setDamage(LegacyCombatRules.melee(weapon.attack()+CatalystEnhancements.level(attacker.getInventory().getItemInMainHand(),true)*attackMultiplier,items.hasTechnology(attacker,weapon)));
             } else if(event.getDamager() instanceof Arrow arrow && arrow.getShooter() instanceof Player attacker) {
                 String id=arrow.getPersistentDataContainer().get(bowIdentity,PersistentDataType.STRING);
                 if(id!=null) {
                     var bow=items.require(id);
                     if(wearingMetal(attacker)) {event.setCancelled(true);return;}
-                    event.setDamage(LegacyCombatRules.ranged(items.combat(id).rangedAttack(),arrow.getVelocity().lengthSquared(),items.hasTechnology(attacker,bow)));
+                    event.setDamage(LegacyCombatRules.ranged(items.combat(id).rangedAttack()+arrow.getPersistentDataContainer().getOrDefault(bowEnhancement,PersistentDataType.DOUBLE,0.0),arrow.getVelocity().lengthSquared(),items.hasTechnology(attacker,bow)));
                 }
             }
             if(event.getEntity() instanceof Player defender) {
                 for(ItemStack armor:defender.getInventory().getArmorContents()) {
                     var definition=items.definition(armor).orElse(null);
-                    if(definition!=null && definition.defense()>0)event.setDamage(LegacyCombatRules.defend(event.getDamage(),definition.defense(),items.hasTechnology(defender,definition)));
+                    if(definition!=null && definition.defense()>0)event.setDamage(LegacyCombatRules.defend(event.getDamage(),definition.defense()+CatalystEnhancements.level(armor,false)*defenseMultiplier,items.hasTechnology(defender,definition)));
                 }
             }
         } catch(SQLException exception) {

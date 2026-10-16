@@ -13,6 +13,7 @@ public final class TradeStore {
         GrocerStore.install(db);
         LibraryStore.install(db);
         BuildingSupplyStore.install(db);
+        BlacksmithStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS structure_trade_points(

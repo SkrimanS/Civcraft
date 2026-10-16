@@ -29,6 +29,8 @@ public final class NativeTradeService implements Listener {
     private final MarketCatalog market;
     private final GrocerCatalog grocer;
     private final StableService stable;
+    private final com.avrgaming.civcraft.modern.items.CatalystEnhancements catalysts;
+    private final Map<Long,Long> lastForgeClick=new HashMap<>();
     public void stableSettings(Player player,String[] args)throws SQLException{stable.settings(player,args);}
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
@@ -42,6 +44,7 @@ public final class NativeTradeService implements Listener {
         market=new MarketCatalog(new File(plugin.getDataFolder(),"civcraft/data/market.yml"),items);
         grocer=new GrocerCatalog(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         stable=new StableService(plugin,storage);
+        catalysts=new com.avrgaming.civcraft.modern.items.CatalystEnhancements(plugin,items);
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -73,7 +76,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -103,6 +106,7 @@ public final class NativeTradeService implements Listener {
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
             else if(point.structure().equals("s_store"))supply(player,point);
+            else if(point.structure().equals("s_blacksmith"))blacksmith(player,point);
             else if(point.structure().equals("s_stable"))stable(player,point);
             else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
@@ -183,6 +187,52 @@ public final class NativeTradeService implements Listener {
         var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
         apply(player,receipt);player.sendMessage(Component.text("Куплено: "+entry.amount()+" × "+entry.name()+", "+total+" монет. Комиссия городу: "+fee+"."));
     }
+    private void blacksmith(Player player,Point point)throws SQLException {
+        long now=System.currentTimeMillis();
+        if(now-lastForgeClick.getOrDefault(point.build(),0L)<5000)throw new IllegalArgumentException("Кузница остывает. Подождите несколько секунд.");
+        lastForgeClick.put(point.build(),now);
+        int action=Integer.parseInt(point.argument()),slot=player.getInventory().getHeldItemSlot();
+        String owner=player.getUniqueId().toString();ItemStack[] after=copy(player.getInventory().getContents());
+        if(action==0) {
+            var receipt=storage.transaction(db->{
+                String catalyst=BlacksmithStore.catalyst(db,point.build(),owner);
+                if(catalyst==null){
+                    catalyst=items.id(after[slot]);if(!catalysts.catalyst(catalyst))throw new IllegalArgumentException("Держите катализатор для помещения в кузницу.");
+                    if(after[slot].getAmount()==1)after[slot]=null;else after[slot].setAmount(after[slot].getAmount()-1);
+                    BlacksmithStore.catalyst(db,point.build(),owner,catalyst);
+                }else{add(after,items.create(catalyst,1),1);BlacksmithStore.catalyst(db,point.build(),owner,null);}
+                return TradeStore.prepare(db,UUID.randomUUID().toString(),owner,ItemStack.serializeItemsAsBytes(after),0,0,null,0);
+            });apply(player,receipt);player.sendMessage(Component.text("Катализатор перемещён между вашим инвентарём и кузницей."));return;
+        }
+        if(action==1) {
+            boolean[] success={false};
+            var receipt=storage.transaction(db->{
+                String catalyst=BlacksmithStore.catalyst(db,point.build(),owner);if(catalyst==null)throw new IllegalArgumentException("Сначала поместите катализатор в кузницу.");
+                var result=catalysts.forge(catalyst,after[slot]);success[0]=result.success();after[slot]=result.item();
+                BlacksmithStore.catalyst(db,point.build(),owner,null);
+                // Legacy perform_forge receives a cost but never debits it or the visitor fee.
+                return TradeStore.prepare(db,UUID.randomUUID().toString(),owner,ItemStack.serializeItemsAsBytes(after),0,0,null,0);
+            });apply(player,receipt);player.sendMessage(Component.text(success[0]?"Усиление прошло успешно!":"Усиление не удалось. Предмет и катализатор уничтожены."));return;
+        }
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        if(resident.townId()==null || resident.townId()!=point.town())throw new IllegalArgumentException("Переплавка доступна только жителям города кузницы.");
+        if(action==2) {
+            var hand=after[slot];if(hand==null || items.id(hand)!=null || !Set.of(Material.IRON_ORE,Material.GOLD_ORE).contains(hand.getType()))throw new IllegalArgumentException("Держите обычную железную или золотую руду.");
+            int item=hand.getType()==Material.IRON_ORE?265:266,amount=(int)(hand.getAmount()*1.25);after[slot]=null;
+            var receipt=storage.transaction(db->{BlacksmithStore.deposit(db,point.build(),owner,item,amount,now);return TradeStore.prepare(db,UUID.randomUUID().toString(),owner,ItemStack.serializeItemsAsBytes(after),0,0,null,0);});
+            apply(player,receipt);player.sendMessage(Component.text("Руда принята. Через 3 часа можно забрать "+amount+" слитков."));return;
+        }
+        if(action==3) {
+            var batches=storage.query(db->BlacksmithStore.smelting(db,point.build(),owner));
+            if(batches.isEmpty())throw new IllegalArgumentException("Вы не сдавали руду в эту кузницу.");
+            var batch=batches.stream().filter(b->b.ready()<=now).findFirst().orElse(null);
+            if(batch==null){long next=batches.stream().mapToLong(BlacksmithStore.Smelt::ready).min().orElseThrow();throw new IllegalArgumentException("Переплавка ещё идёт. Осталось минут: "+Math.max(1,(next-now+59999)/60000)+".");}
+            int remaining=addPartial(after,items.vanilla(batch.item(),1),batch.amount());if(remaining==batch.amount())throw new IllegalArgumentException("Освободите место для слитков.");
+            var receipt=storage.transaction(db->{BlacksmithStore.withdraw(db,batch.id(),remaining);return TradeStore.prepare(db,UUID.randomUUID().toString(),owner,ItemStack.serializeItemsAsBytes(after),0,0,null,0);});
+            apply(player,receipt);player.sendMessage(Component.text("Получено слитков: "+(batch.amount()-remaining)+". В кузнице осталось: "+remaining+"."));return;
+        }
+        throw new IllegalArgumentException("Неизвестное действие кузницы.");
+    }
     private void supply(Player player,Point point)throws SQLException {
         var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
         if(offer==null)throw new IllegalArgumentException("Место магазина пусто. Добавьте товар через /town upgrade.");
@@ -229,6 +279,9 @@ public final class NativeTradeService implements Listener {
         ItemStack[] result=new ItemStack[contents.length];for(int i=0;i<contents.length;i++)result[i]=contents[i]==null?null:contents[i].clone();return result;
     }
     private static void add(ItemStack[] contents,ItemStack exemplar,int quantity) {
+        if(addPartial(contents,exemplar,quantity)>0)throw new IllegalArgumentException("Освободите место в инвентаре.");
+    }
+    private static int addPartial(ItemStack[] contents,ItemStack exemplar,int quantity) {
         int remaining=quantity;
         for(int slot=0;slot<36 && remaining>0;slot++) {
             ItemStack existing=contents[slot];
@@ -239,7 +292,7 @@ public final class NativeTradeService implements Listener {
         for(int slot=0;slot<36 && remaining>0;slot++)if(contents[slot]==null || contents[slot].getType().isAir()) {
             ItemStack stack=exemplar.clone();int added=Math.min(remaining,stack.getMaxStackSize());stack.setAmount(added);contents[slot]=stack;remaining-=added;
         }
-        if(remaining>0)throw new IllegalArgumentException("Освободите место в инвентаре.");
+        return remaining;
     }
     private void remove(ItemStack[] contents,MarketCatalog.Entry entry,int quantity) {
         int remaining=quantity;
@@ -339,6 +392,8 @@ public final class NativeTradeService implements Listener {
             lines=plugin.production().poolLines(point.town(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_stable")) {
             lines=stable.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
+        } else if(point.structure().equals("s_blacksmith")) {
+            lines=switch(Integer.parseInt(point.argument())){case 0->List.of("Катализатор","Положить / забрать","Личное хранение","");case 1->List.of("Усилить предмет","Катализатор исчезнет","Есть риск поломки","");case 2->List.of("Сдать руду","Железо / золото","Выход: ×1,25","Время: 3 часа");default->List.of("Забрать слитки","Готовая переплавка","Только жители","");};
         } else if(point.structure().equals("s_store")) {
             var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->BuildingSupplyStore.fee(db,point.town()));
