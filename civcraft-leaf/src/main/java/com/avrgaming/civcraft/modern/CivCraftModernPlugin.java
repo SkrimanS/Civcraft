@@ -269,6 +269,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             buildingActivity=new com.avrgaming.civcraft.modern.build.BuildingActivityService(this,storage);
             getServer().getScheduler().runTaskTimer(this,buildingActivity::tick,20L,20L);
             new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
+            new com.avrgaming.civcraft.modern.town.UnitInventoryService(this,storage);
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.

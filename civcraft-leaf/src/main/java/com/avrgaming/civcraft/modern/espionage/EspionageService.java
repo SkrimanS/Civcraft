@@ -166,7 +166,8 @@ public final class EspionageService implements Listener,CommandExecutor {
         }
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void death(org.bukkit.event.entity.PlayerDeathEvent event) {
-        boolean spy=Arrays.stream(event.getEntity().getInventory().getContents()).anyMatch(item->"u_spy".equals(id(item)));event.getDrops().removeIf(this::book);event.getItemsToKeep().removeIf(this::book);
+        if(event.getKeepInventory())return;
+        boolean spy=Arrays.stream(event.getEntity().getInventory().getContents()).anyMatch(item->"u_spy".equals(id(item)));event.getDrops().removeIf(item->book(item)||"u_spy".equals(id(item)));event.getItemsToKeep().removeIf(item->book(item)||"u_spy".equals(id(item)));
         if(!spy)return;
         try {
             var resident=storage.findResident(event.getEntity().getUniqueId()).orElse(null);if(resident==null || resident.townId()==null)return;long town=resident.townId();
