@@ -18,7 +18,7 @@ public final class OccupationRules {
     }
     public static void credit(Connection db,long town,long civ,Income income)throws SQLException {
         if(income.town()>0)com.avrgaming.civcraft.modern.town.UpkeepStore.deposit(db,"towns",town,income.town());
-        if(income.civilization()>0)com.avrgaming.civcraft.modern.town.UpkeepStore.deposit(db,"civilizations",civ,income.civilization());
+        if(income.civilization()>0)com.avrgaming.civcraft.modern.research.CivilizationScienceStore.creditTax(db,civ,income.civilization());
     }
     public static String government(Connection db,long town)throws SQLException {
         try(var s=db.prepareStatement("SELECT c.government,m.government,tc.mother_civ FROM towns t JOIN civilizations c ON c.id=t.civ_id LEFT JOIN town_conquests tc ON tc.town_id=t.id LEFT JOIN civilizations m ON m.id=tc.mother_civ WHERE t.id=?")) {

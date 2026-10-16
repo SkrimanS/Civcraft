@@ -12,12 +12,14 @@ public final class TaxService {
     private final StorageBootstrap storage;
     public TaxService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
-        storage.transaction(db->{TaxStore.install(db);return null;});
+        double coinsPerBeaker=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getDouble("civ.coins_per_beaker",10);
+        storage.transaction(db->{TaxStore.install(db);com.avrgaming.civcraft.modern.research.CivilizationScienceStore.install(db,coinsPerBeaker);return null;});
         long hours=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getLong("global.join_civ_cooldown",12);
         if(hours<0 || hours>87600)throw new IllegalArgumentException("Invalid civilization rejoin cooldown");
         storage.setJoinCooldownMillis(hours*3600000);
     }
     public void settings(Player player,String[] args,boolean civilization)throws SQLException {
+        if(civilization && args.length>=3 && args[2].equalsIgnoreCase("science")){science(player,args);return;}
         if(args.length<3 || args.length>4)throw new IllegalArgumentException(civilization?"/civ set taxes [процент]":"/town set flattax [монеты], /town set taxrate [процент]");
         String field= civilization && args[2].equalsIgnoreCase("taxes")?"income_tax_rate":
                 !civilization && args[2].equalsIgnoreCase("flattax")?"flat_tax":
@@ -48,6 +50,20 @@ public final class TaxService {
         }
         String name=field.equals("flat_tax")?"Подушный налог":field.equals("property_tax_rate")?"Налог на участки":"Налог цивилизации";
         player.sendMessage(Component.text(name+": "+(percentage?value*100+"%":(long)value+" монет/день")));
+    }
+    private void science(Player player,String[] args)throws SQLException {
+        if(args.length<3 || args.length>4)throw new IllegalArgumentException("/civ set science [процент]");
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        if(resident.civId()==null)throw new IllegalArgumentException("Вы не состоите в цивилизации.");
+        Double requested=null;
+        if(args.length==4){try{requested=Double.parseDouble(args[3].replace("%",""))/100;}catch(NumberFormatException invalid){throw new IllegalArgumentException("Укажите процент от 0 до 100.");}if(!Double.isFinite(requested) || requested<0 || requested>1)throw new IllegalArgumentException("Укажите процент от 0 до 100.");}
+        final Double setting=requested;
+        double value=storage.transaction(db->{
+            com.avrgaming.civcraft.modern.diplomacy.DiplomacyStore.authority(db,resident.civId(),player.getUniqueId());
+            if(setting!=null)com.avrgaming.civcraft.modern.research.CivilizationScienceStore.setPercentage(db,resident.civId(),setting);
+            return com.avrgaming.civcraft.modern.research.CivilizationScienceStore.percentage(db,resident.civId());
+        });
+        player.sendMessage(Component.text("Научный бюджет: "+value*100+"% налоговых поступлений. Без исследования колбы идут на активную научную победу; иначе налоговые колбы не сохраняются."));
     }
     public void resident(Player player,boolean pay)throws SQLException {
         if(pay) {

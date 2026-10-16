@@ -22,8 +22,14 @@ public final class CultureClock {
     }
     public void minute() {
         try{storage.transaction(db->{
-            var ids=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT t.id FROM towns t WHERE NOT EXISTS(SELECT 1 FROM civ_research cr WHERE cr.civ_id=t.civ_id)")){while(r.next())ids.add(r.getLong(1));}
-            for(long id:ids)CultureClockStore.science(db,id,storage.findTown(id).orElseThrow().beakersPerHour()/60);
+            var ids=new LinkedHashMap<Long,Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT t.id,t.civ_id FROM towns t WHERE NOT EXISTS(SELECT 1 FROM civ_research cr WHERE cr.civ_id=t.civ_id)")){while(r.next())ids.put(r.getLong(1),r.getLong(2));}
+            var scientific=new HashSet<Long>();
+            for(var entry:ids.entrySet()) {
+                long id=entry.getKey(),civ=entry.getValue();
+                if(com.avrgaming.civcraft.modern.research.CivilizationScienceStore.victoryActive(db,civ)) {
+                    if(scientific.add(civ))com.avrgaming.civcraft.modern.research.CivilizationScienceStore.extra(db,civ,plugin.research().effectiveSciencePerHour(civ)/60);
+                } else CultureClockStore.science(db,id,storage.findTown(id).orElseThrow().beakersPerHour()/60);
+            }
             return null;
         });}catch(SQLException failure){plugin.getLogger().warning("Unused culture science failed: "+failure.getMessage());}
     }

@@ -118,7 +118,7 @@ public final class ConsumptionStore {
             if(s.executeUpdate()!=1)throw new SQLException("Consumption building no longer exists");
         }
         if(pending.townCoins()>0)UpkeepStore.deposit(db,"towns",pending.town(),pending.townCoins());
-        if(pending.civCoins()>0)UpkeepStore.deposit(db,"civilizations",pending.civ(),pending.civCoins());
+        if(pending.civCoins()>0)com.avrgaming.civcraft.modern.research.CivilizationScienceStore.creditTax(db,pending.civ(),pending.civCoins());
         if(pending.culture()>0)try(var s=db.prepareStatement("UPDATE towns SET accumulated_culture=accumulated_culture+? WHERE id=? AND accumulated_culture<=?")) {
             s.setLong(1,pending.culture());s.setLong(2,pending.town());s.setLong(3,Long.MAX_VALUE-pending.culture());
             if(s.executeUpdate()!=1)throw new SQLException("Consumption culture exceeds supported balance");

@@ -97,7 +97,9 @@ public final class GovernmentService {
                 long duration=duration(id);
                 var transition=storage.query(db->GovernmentStore.transition(db,id));
                 var changes=transition==null?null:storage.transaction(db->{
-                    return GovernmentStore.finish(db,transition,System.currentTimeMillis(),duration)?retimeData(db,id):null;
+                    if(!GovernmentStore.finish(db,transition,System.currentTimeMillis(),duration))return null;
+                    com.avrgaming.civcraft.modern.research.CivilizationScienceStore.cap(db,id,maximumTax(transition.target()));
+                    return retimeData(db,id);
                 });
                 if(changes!=null) {
                     applyTiming(changes);

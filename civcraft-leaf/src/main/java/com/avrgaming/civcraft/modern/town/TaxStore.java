@@ -91,7 +91,7 @@ public final class TaxStore {
     private static void creditTax(Connection db,long town,long civ,long paid,double rate)throws SQLException {
         if(!Double.isFinite(rate) || rate<0 || rate>1)throw new SQLException("Unsupported civilization tax rate");
         long income=whole(paid*rate);
-        credit(db,"towns",town,paid-income);credit(db,"civilizations",civ,income);
+        credit(db,"towns",town,paid-income);com.avrgaming.civcraft.modern.research.CivilizationScienceStore.creditTax(db,civ,income);
     }
     private static void credit(Connection db,String table,long id,long amount)throws SQLException {
         try(var s=db.prepareStatement("UPDATE "+table+" SET coins=coins+? WHERE id=? AND coins<=?")) {

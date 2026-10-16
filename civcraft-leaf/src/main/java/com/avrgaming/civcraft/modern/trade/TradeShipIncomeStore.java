@@ -42,7 +42,11 @@ public final class TradeShipIncomeStore {
             s.setString(1,receipt);s.setLong(2,town);s.setLong(3,plan.civilization());s.setString(4,payment.town().toPlainString());
             s.setString(5,payment.civilization().toPlainString());s.setLong(6,payment.culture());if(s.executeUpdate()==0)return false;
         }
-        deposit(db,true,town,payment.town());deposit(db,false,plan.civilization(),payment.civilization());
+        deposit(db,true,town,payment.town());
+        BigDecimal tribute=payment.civilization();
+        try(var old=db.prepareStatement("SELECT amount FROM trade_ship_civ_fractions WHERE civ_id=?")){old.setLong(1,plan.civilization());try(var r=old.executeQuery()){if(r.next())tribute=tribute.add(new BigDecimal(r.getString(1)));}}
+        com.avrgaming.civcraft.modern.research.CivilizationScienceStore.creditTax(db,plan.civilization(),tribute);
+        try(var old=db.prepareStatement("DELETE FROM trade_ship_civ_fractions WHERE civ_id=?")){old.setLong(1,plan.civilization());old.executeUpdate();}
         if(payment.culture()>0)try(var s=db.prepareStatement("UPDATE towns SET accumulated_culture=accumulated_culture+? WHERE id=? AND accumulated_culture<=?")) {
             s.setLong(1,payment.culture());s.setLong(2,town);s.setLong(3,Long.MAX_VALUE-payment.culture());
             if(s.executeUpdate()!=1)throw new SQLException("Trade ship culture overflow or town missing");

@@ -20,7 +20,7 @@ public final class NotreDameIncomeStore {
     public static void deposit(Connection db,String day,WonderIncomeStore.Credit credit,double capturedPenalty)throws SQLException {
         double tax;try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")){s.setLong(1,credit.civ());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Notre Dame owner missing");tax=r.getDouble(1);}}
         var income=OccupationRules.income(credit.coins(),tax,OccupationRules.captured(db,credit.town()),capturedPenalty);
-        if(income.town()>0)UpkeepStore.deposit(db,"towns",credit.town(),income.town());if(income.civilization()>0)UpkeepStore.deposit(db,"civilizations",credit.civ(),income.civilization());
+        if(income.town()>0)UpkeepStore.deposit(db,"towns",credit.town(),income.town());if(income.civilization()>0)com.avrgaming.civcraft.modern.research.CivilizationScienceStore.creditTax(db,credit.civ(),income.civilization());
         try(var s=db.prepareStatement("INSERT INTO wonder_daily_splits VALUES(?,?,?,?,?)")){s.setString(1,day);s.setLong(2,credit.build());s.setLong(3,income.town());s.setLong(4,income.civilization());s.setLong(5,income.discarded());s.executeUpdate();}
     }
 }

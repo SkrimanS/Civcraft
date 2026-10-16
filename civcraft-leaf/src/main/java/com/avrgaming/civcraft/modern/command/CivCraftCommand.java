@@ -156,6 +156,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             }
             send(player,"&e/civ upkeep / upkeep pay [сумма] &7- содержание и погашение долга");
             send(player,"&e/civ set taxes [процент] &7- налог цивилизации с городского дохода");
+            send(player,"&e/civ set science [процент] &7- доля налоговых поступлений, направляемая на науку");
             send(player,"&e/civ dip help &7- дипломатические договоры и враждебность");
             send(player,"&e/civ revolution [yes] &7- восстание в захваченной исходной столице");
             send(player,"&e/civ advisor list|add|remove &7- советники цивилизации");
@@ -745,7 +746,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, String @NotNull [] args) {
         String primary = alias.toLowerCase(Locale.ROOT);
         if(primary.equals("ad"))primary="civadmin";
-        if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes");
+        if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes","science");
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("revolution"))return List.of("yes");
         if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("outlaw"))return List.of("list","add","remove","addall","removeall","addallciv","removeallciv");
         if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("reset"))return List.of("library","store");
