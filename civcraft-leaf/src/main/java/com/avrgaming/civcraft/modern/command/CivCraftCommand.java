@@ -226,6 +226,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&6Рост города &e"+town.name()+"&6: &e"+formatNumber(town.growth()));return;
         }
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("culture")){plugin.culture().info(player);return;}
+        if(args.length>=3 && args[1].equalsIgnoreCase("set") && args[2].equalsIgnoreCase("stablefee")){plugin.trades().stableSettings(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}

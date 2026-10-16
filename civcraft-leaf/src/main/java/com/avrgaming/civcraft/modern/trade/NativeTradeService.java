@@ -28,6 +28,8 @@ public final class NativeTradeService implements Listener {
     private final CivCraftEconomyService economy;
     private final MarketCatalog market;
     private final GrocerCatalog grocer;
+    private final StableService stable;
+    public void stableSettings(Player player,String[] args)throws SQLException{stable.settings(player,args);}
     private final NamespacedKey applied;
     private final Map<String,Double> oreRates=new HashMap<>();
     private final Map<UUID,Long> lastClick=new HashMap<>();
@@ -39,6 +41,7 @@ public final class NativeTradeService implements Listener {
         applied=new NamespacedKey(plugin,"last-applied-trade");
         market=new MarketCatalog(new File(plugin.getDataFolder(),"civcraft/data/market.yml"),items);
         grocer=new GrocerCatalog(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
+        stable=new StableService(plugin,storage);
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -70,7 +73,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','ti_fish_hatchery') AND tp.action='grocer'))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -99,6 +102,7 @@ public final class NativeTradeService implements Listener {
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
+            else if(point.structure().equals("s_stable"))stable(player,point);
             else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
             render(event.getClickedBlock(),point);
@@ -107,6 +111,16 @@ public final class NativeTradeService implements Listener {
             plugin.getLogger().severe("Trade failed for "+player.getUniqueId()+": "+exception.getMessage());
             player.kick(Component.text("Обмен приостановлен. Переподключитесь после восстановления сервера."));
         }
+    }
+    private void stable(Player player,Point point)throws SQLException {
+        int group=Integer.parseInt(point.argument());
+        if(point.action().equals("stable_prev") || point.action().equals("stable_next")){stable.navigate(point.build(),group,point.action().equals("stable_prev")?-1:1);refreshBuild(point.build());return;}
+        var offer=stable.selected(point.build(),group);stable.validate(point.build(),point.town(),offer);
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();boolean member=resident.townId()!=null && resident.townId()==point.town();
+        long fee=member?0:Math.round(offer.price()*storage.query(db->StableStore.fee(db,point.town()))),total=Math.addExact(offer.price(),fee);
+        var after=copy(player.getInventory().getContents());if(offer.item()!=0)add(after,items.vanilla(offer.item(),1),1);
+        var receipt=storage.transaction(db->{var pending=TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee);if(offer.item()==0)stable.prepare(db,pending.id(),point.build(),point.town(),player.getUniqueId().toString(),offer);return pending;});
+        apply(player,receipt);player.sendMessage(Component.text("Куплено: "+offer.name()+". Оплачено "+total+" монет. Комиссия городу: "+fee+"."));
     }
     private BankItem bankItem(String action) {
         boolean block=action.endsWith("b");String kind=block?action.substring(0,action.length()-1):action;
@@ -217,7 +231,10 @@ public final class NativeTradeService implements Listener {
             restoreInventory(player,pending.id(),pending.inventory());
         }
         testInterruption("player-saved",player);
-        storage.transaction(db->TradeStore.finish(db,pending));
+        String horse=stable.fulfil(pending.id());
+        if(horse!=null)testInterruption("entity-saved",player);
+        storage.transaction(db->{if(horse!=null)StableStore.saved(db,pending.id(),horse);return TradeStore.finish(db,pending);});
+        if(horse!=null)stable.release(horse);
     }
     private void restoreInventory(Player player,String id,byte[] inventory) {
         ItemStack[] contents=ItemStack.deserializeItemsFromBytes(inventory);
@@ -291,6 +308,8 @@ public final class NativeTradeService implements Listener {
                 List.of("Купить "+entry.amount()+" шт.",entry.name(),entry.price()+" монет","Гостям: +"+Math.round(settings.fee()*100)+"%");
         } else if(point.structure().equals("ti_fish_hatchery") && plugin.production()!=null) {
             lines=plugin.production().poolLines(point.town(),Integer.parseInt(point.argument()));
+        } else if(point.structure().equals("s_stable")) {
+            lines=stable.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_library")) {
             var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->LibraryStore.fee(db,point.town()));

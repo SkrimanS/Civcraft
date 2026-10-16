@@ -9,6 +9,12 @@ public record TradePoint(String action,String argument) {
         if(lines.size()<2)return Optional.empty();
         String command=lines.get(0).trim().toLowerCase(Locale.ROOT);
         String argument=lines.get(1).trim().toLowerCase(Locale.ROOT);
+        if(command.equals("/horsespawn"))return Optional.of(new TradePoint("stable_horse_spawn","0"));
+        if(command.equals("/mulespawn"))return Optional.of(new TradePoint("stable_mule_spawn","1"));
+        if(List.of("/prev","/next","/item").contains(command) && argument.startsWith("id:")){
+            try{int group=Integer.parseInt(argument.substring(3));if(group>=0 && group<=2)return Optional.of(new TradePoint("stable_"+command.substring(1),String.valueOf(group)));}catch(NumberFormatException ignored){}
+            return Optional.empty();
+        }
         if(command.equals("/sign") && argument.startsWith("sell:"))return Optional.of(new TradePoint("bank",argument.substring(5)));
         if(command.equals("/sign") && argument.startsWith("slot:")) {
             try{int slot=Integer.parseInt(argument.substring(5));if(slot>=0 && slot<4)return Optional.of(new TradePoint("grocer",String.valueOf(slot)));}
