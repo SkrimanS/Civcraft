@@ -33,6 +33,7 @@ public final class NativeTradeService implements Listener {
     private final Map<Long,Long> lastForgeClick=new HashMap<>();
     private final com.avrgaming.civcraft.modern.items.LegacyRepairCatalog repairs;
     private final com.avrgaming.civcraft.modern.town.BarracksService barracks;
+    private final com.avrgaming.civcraft.modern.wonder.GreatLibraryEnchantments greatLibrary;
     private record RepairOffer(long build,String item,long price,long expires) {}
     private final Map<UUID,RepairOffer> repairOffers=new java.util.concurrent.ConcurrentHashMap<>();
     private final Set<Long> componentMarkersIndexed=new HashSet<>();
@@ -53,6 +54,7 @@ public final class NativeTradeService implements Listener {
         catalysts=new com.avrgaming.civcraft.modern.items.CatalystEnhancements(plugin,items);
         repairs=new com.avrgaming.civcraft.modern.items.LegacyRepairCatalog(new File(plugin.getDataFolder(),"civcraft/data/materials.yml"),new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         barracks=new com.avrgaming.civcraft.modern.town.BarracksService(plugin,storage);
+        greatLibrary=new com.avrgaming.civcraft.modern.wonder.GreatLibraryEnchantments(new File(plugin.getDataFolder(),"civcraft/data/enchantments.yml"));
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
@@ -68,7 +70,7 @@ public final class NativeTradeService implements Listener {
     private void indexComponentMarkers() {
         repairOffers.values().removeIf(offer->offer.expires()<System.currentTimeMillis());
         try {
-            var buildings=storage.query(db->{var result=new ArrayList<MarkerBuilding>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE' AND structure_id IN ('s_store','s_blacksmith','s_barracks')")){while(r.next())result.add(new MarkerBuilding(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return result;});
+            var buildings=storage.query(db->{var result=new ArrayList<MarkerBuilding>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE' AND structure_id IN ('s_store','s_blacksmith','s_barracks','w_greatlibrary')")){while(r.next())result.add(new MarkerBuilding(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return result;});
             for(var building:buildings)if(!componentMarkersIndexed.contains(building.id())) {
                 var placements=new ArrayList<com.avrgaming.civcraft.modern.build.BlockPlacement>();
                 for(var block:new com.avrgaming.civcraft.modern.build.LegacyDefTemplateLoader().load(java.nio.file.Path.of(building.path())).blocks())if(TradePoint.parse(block.signLines()).isPresent())placements.add(new com.avrgaming.civcraft.modern.build.BlockPlacement(building.world(),building.x()+block.x(),building.y()+block.y(),building.z()+block.z(),"SIGN",block.signLines()));
@@ -106,7 +108,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_blacksmith' AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_barracks' AND tp.action LIKE 'barracks_%') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id IN ('s_blacksmith','w_greatlibrary') AND tp.action IN ('grocer','blacksmith')) OR (sb.structure_id='s_barracks' AND tp.action LIKE 'barracks_%') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -135,6 +137,7 @@ public final class NativeTradeService implements Listener {
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
+            else if(point.structure().equals("w_greatlibrary"))greatLibrary(player,point);
             else if(point.structure().equals("s_store"))supply(player,point);
             else if(point.structure().equals("s_blacksmith"))blacksmith(player,point);
             else if(point.structure().equals("s_barracks")){if(point.action().equals("barracks_repair"))offerRepair(player,point);else barracks.action(player,point.build(),point.town(),point.action());}
@@ -328,6 +331,14 @@ public final class NativeTradeService implements Listener {
         apply(player,receipt);
         player.sendMessage(Component.text("Добавлено зачарование: "+offer.name()+" "+offer.level()+". Оплачено "+total+" монет. Комиссия городу: "+fee+"."));
     }
+    private void greatLibrary(Player player,Point point)throws SQLException {
+        int slot=Integer.parseInt(point.argument());var offer=greatLibrary.offer(slot);var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        var after=copy(player.getInventory().getContents());int hand=player.getInventory().getHeldItemSlot();after[hand]=greatLibrary.apply(after[hand],slot,items);
+        var receipt=storage.transaction(db->{
+            try(var s=db.prepareStatement("SELECT 1 FROM towns WHERE id=? AND civ_id=?")){s.setLong(1,point.town());if(resident.civId()==null || resident.townId()==null)throw new IllegalArgumentException("Великая библиотека доступна только жителям своей цивилизации.");s.setLong(2,resident.civId());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Великая библиотека доступна только жителям своей цивилизации.");}}
+            return TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),offer.cost(),0,null,0);
+        });apply(player,receipt);player.sendMessage(Component.text("Добавлено: "+offer.name()+". Списано "+offer.cost()+" монет."));
+    }
     private static ItemStack[] copy(ItemStack[] contents) {
         ItemStack[] result=new ItemStack[contents.length];for(int i=0;i<contents.length;i++)result[i]=contents[i]==null?null:contents[i].clone();return result;
     }
@@ -453,6 +464,8 @@ public final class NativeTradeService implements Listener {
             var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->BuildingSupplyStore.fee(db,point.town()));
             lines=offer==null?List.of("Магазин","Пустое место","Ассортимент:","/town upgrade"):List.of("Купить 64 шт.",offer.name(),offer.price()+" монет","Гостям: +"+Math.round(fee*100)+"%");
+        } else if(point.structure().equals("w_greatlibrary")) {
+            var offer=greatLibrary.offer(Integer.parseInt(point.argument()));lines=List.of(offer.name(),offer.cost()+" монет","Только своя","цивилизация");
         } else if(point.structure().equals("s_library")) {
             var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->LibraryStore.fee(db,point.town()));
