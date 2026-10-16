@@ -73,7 +73,7 @@ public final class NativeTradeService implements Listener {
                     FROM structure_trade_points tp JOIN active_structure_builds sb ON sb.id=tp.build_id
                     JOIN protected_blocks pb ON pb.build_id=sb.id AND pb.world=tp.world AND pb.x=tp.x AND pb.y=tp.y AND pb.z=tp.z
                     WHERE tp.world=? AND tp.x=? AND tp.y=? AND tp.z=? AND sb.status='COMPLETE'
-                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
+                    AND ((sb.structure_id='s_bank' AND tp.action='bank') OR (sb.structure_id='s_market' AND tp.action IN ('buy','buybig','sell','sellbig')) OR (sb.structure_id IN ('s_grocer','s_library','s_store','ti_fish_hatchery') AND tp.action='grocer') OR (sb.structure_id='s_stable' AND tp.action IN ('stable_prev','stable_next','stable_item')))
                     """)) {
                 query.setString(1,block.getWorld().getName());query.setInt(2,block.getX());query.setInt(3,block.getY());query.setInt(4,block.getZ());
                 try(var result=query.executeQuery()) {return result.next()?new Point(result.getLong(1),result.getLong(2),result.getString(3),result.getString(4),result.getString(5)):null;}
@@ -102,6 +102,7 @@ public final class NativeTradeService implements Listener {
             if(point.structure().equals("s_bank") && point.action().equals("bank"))bank(player,point);
             else if(point.structure().equals("s_grocer") && point.action().equals("grocer"))grocer(player,point);
             else if(point.structure().equals("s_library"))library(player,point);
+            else if(point.structure().equals("s_store"))supply(player,point);
             else if(point.structure().equals("s_stable"))stable(player,point);
             else if(point.structure().equals("ti_fish_hatchery"))player.sendMessage(Component.text(String.join(". ",plugin.production().poolLines(point.town(),Integer.parseInt(point.argument())))));
             else if(point.structure().equals("s_market") && !point.action().equals("bank"))market(player,point);
@@ -181,6 +182,34 @@ public final class NativeTradeService implements Listener {
         ItemStack[] after=copy(player.getInventory().getContents());add(after,items.vanilla(entry.item(),entry.data(),1),entry.amount());
         var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
         apply(player,receipt);player.sendMessage(Component.text("Куплено: "+entry.amount()+" × "+entry.name()+", "+total+" монет. Комиссия городу: "+fee+"."));
+    }
+    private void supply(Player player,Point point)throws SQLException {
+        var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
+        if(offer==null)throw new IllegalArgumentException("Место магазина пусто. Добавьте товар через /town upgrade.");
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();
+        boolean member=resident.townId()!=null && resident.townId()==point.town();
+        long fee=member?0:Math.round(offer.price()*storage.query(db->BuildingSupplyStore.fee(db,point.town()))),total=Math.addExact(offer.price(),fee);
+        ItemStack[] after=copy(player.getInventory().getContents());add(after,items.vanilla(offer.item(),offer.data(),1),64);
+        var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(after),total,0,point.town(),fee));
+        apply(player,receipt);player.sendMessage(Component.text("Куплено: 64 × "+offer.name()+", "+total+" монет. Комиссия городу: "+fee+"."));
+    }
+    public void buildingFee(Player player,String[] args)throws SQLException {
+        String kind=args[2].toLowerCase(Locale.ROOT);
+        String table=switch(kind){case "storefee"->"town_supply_settings";case "libraryfee"->"town_library_settings";case "grocerfee"->"town_grocer_settings";default->throw new IllegalArgumentException("Неизвестная комиссия.");};
+        String type=switch(kind){case "storefee"->"s_store";case "libraryfee"->"s_library";default->"s_grocer";};
+        if(args.length<3 || args.length>4)throw new IllegalArgumentException("/town set "+kind+" [5–15]");
+        var resident=storage.findResident(player.getUniqueId()).orElseThrow();if(resident.townId()==null)throw new IllegalArgumentException("Вы не состоите в городе.");long town=resident.townId();
+        var builds=storage.transaction(db->{
+            try(var s=db.prepareStatement("SELECT 1 FROM towns t WHERE t.id=? AND (t.mayor_uuid=? OR EXISTS(SELECT 1 FROM town_assistants a WHERE a.town_id=t.id AND a.player_uuid=?))")){s.setLong(1,town);s.setString(2,player.getUniqueId().toString());s.setString(3,player.getUniqueId().toString());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Комиссию устанавливают мэр и помощники.");}}
+            var ids=new ArrayList<Long>();try(var s=db.prepareStatement("SELECT id FROM structure_builds WHERE town_id=? AND structure_id=? AND status='COMPLETE'")){s.setLong(1,town);s.setString(2,type);try(var r=s.executeQuery()){while(r.next())ids.add(r.getLong(1));}}
+            if(ids.isEmpty())throw new IllegalArgumentException("В городе нет такой завершённой постройки.");
+            if(args.length==4){int percent;try{percent=Integer.parseInt(args[3]);}catch(NumberFormatException invalid){throw new IllegalArgumentException("Укажите целый процент от 5 до 15.");}if(percent<5 || percent>15)throw new IllegalArgumentException("Комиссия должна быть от 5 до 15%.");
+                try(var s=db.prepareStatement("INSERT INTO "+table+"(town_id,fee) VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET fee=excluded.fee")){s.setLong(1,town);s.setDouble(2,percent/100.0);s.executeUpdate();}}
+            return ids;
+        });
+        for(long build:builds)refreshBuild(build);
+        double fee=storage.query(db->{try(var s=db.prepareStatement("SELECT fee FROM "+table+" WHERE town_id=?")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?r.getDouble(1):.05;}}});
+        player.sendMessage(Component.text("Комиссия для гостей: "+Math.round(fee*100)+"%."));
     }
     private void library(Player player,Point point)throws SQLException {
         var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
@@ -310,6 +339,10 @@ public final class NativeTradeService implements Listener {
             lines=plugin.production().poolLines(point.town(),Integer.parseInt(point.argument()));
         } else if(point.structure().equals("s_stable")) {
             lines=stable.lines(point.build(),point.town(),point.action(),Integer.parseInt(point.argument()));
+        } else if(point.structure().equals("s_store")) {
+            var offer=storage.query(db->BuildingSupplyStore.offer(db,point.town(),Integer.parseInt(point.argument())));
+            double fee=storage.query(db->BuildingSupplyStore.fee(db,point.town()));
+            lines=offer==null?List.of("Магазин","Пустое место","Ассортимент:","/town upgrade"):List.of("Купить 64 шт.",offer.name(),offer.price()+" монет","Гостям: +"+Math.round(fee*100)+"%");
         } else if(point.structure().equals("s_library")) {
             var offer=storage.query(db->LibraryStore.offer(db,point.town(),Integer.parseInt(point.argument())));
             double fee=storage.query(db->LibraryStore.fee(db,point.town()));

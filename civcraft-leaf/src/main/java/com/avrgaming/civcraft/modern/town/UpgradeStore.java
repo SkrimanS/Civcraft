@@ -8,6 +8,7 @@ public final class UpgradeStore {
     public static void install(Connection db)throws SQLException {
         com.avrgaming.civcraft.modern.trade.GrocerStore.install(db);
         com.avrgaming.civcraft.modern.trade.LibraryStore.install(db);
+        com.avrgaming.civcraft.modern.trade.BuildingSupplyStore.install(db);
         ProductionStore.install(db);
         com.avrgaming.civcraft.modern.trade.TradeShipStore.install(db);
         try(var statement=db.createStatement()) {
@@ -82,6 +83,7 @@ public final class UpgradeStore {
             case "set_trommel_level" -> ProductionStore.trommelLevel(db,town,Integer.parseInt(upgrade.value()));
             case "set_quarry_level" -> ProductionStore.quarryLevel(db,town,Integer.parseInt(upgrade.value()));
             case "enable_library_enchantment" -> com.avrgaming.civcraft.modern.trade.LibraryStore.add(db,town,com.avrgaming.civcraft.modern.trade.LibraryOffer.parse(upgrade.value()));
+            case "set_store_material" -> com.avrgaming.civcraft.modern.trade.BuildingSupplyStore.add(db,town,com.avrgaming.civcraft.modern.trade.BuildingSupplyStore.Offer.parse(upgrade.value()));
             case "set_tradeship_upgrade_level" -> com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,town,Integer.parseInt(upgrade.value()));
             default -> throw new IllegalArgumentException("Unknown upgrade action");
         }

@@ -229,11 +229,13 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         if(args.length>=3 && args[1].equalsIgnoreCase("info") && args[2].equalsIgnoreCase("culture")){plugin.culture().info(player);return;}
         if(args.length>=3 && args[1].equalsIgnoreCase("set") && args[2].equalsIgnoreCase("stablefee")){plugin.trades().stableSettings(player,args);return;}
+        if(args.length>=3 && args[1].equalsIgnoreCase("set") && List.of("storefee","libraryfee","grocerfee").contains(args[2].toLowerCase(java.util.Locale.ROOT))){plugin.trades().buildingFee(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("set")){plugin.taxes().settings(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upkeep")){plugin.upkeep().command(player,args,false);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("upgrade")){plugin.townUpgrades().command(player,args);return;}
         if(args.length>=2 && args[1].equalsIgnoreCase("reset")) {
-            if(args.length!=3 || !args[2].equalsIgnoreCase("library"))throw new IllegalArgumentException("Использование: /town reset library (исследования удаляются без возврата монет)");
+            if(args.length==3 && args[2].equalsIgnoreCase("store")){plugin.townUpgrades().resetStore(player);return;}
+            if(args.length!=3 || !args[2].equalsIgnoreCase("library"))throw new IllegalArgumentException("Использование: /town reset library|store (улучшения удаляются без возврата монет)");
             plugin.townUpgrades().resetLibrary(player);return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("help")) {
@@ -249,6 +251,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             send(player,"&e/res taxes, /res paydebt &7- ваш налоговый долг и его погашение");
             send(player,"&e/town info culture / info growth &7- культурная территория и рост");
             send(player,"&e/town info structures / enablestructure <ID или мир,x,y,z> &7- активность построек");
+            send(player,"&e/town reset library|store &7- очистить исследования или ассортимент без возврата монет");
+            send(player,"&e/town set storefee|grocerfee|libraryfee [5–15] &7- комиссия для гостей");
             send(player,"&e/town outlaw list|add|remove <ник> &7- преступники города");
             return;
         }
@@ -743,7 +747,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("taxes");
         if(primary.equals("civ") && args.length==2 && args[0].equalsIgnoreCase("revolution"))return List.of("yes");
         if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("outlaw"))return List.of("list","add","remove","addall","removeall","addallciv","removeallciv");
-        if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("reset"))return List.of("library");
+        if(List.of("town","t").contains(primary)&&args.length==2&&args[0].equalsIgnoreCase("reset"))return List.of("library","store");
         if(List.of("town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("set"))return List.of("flattax","taxrate");
         if(List.of("civ","town","t").contains(primary) && args.length==2 && args[0].equalsIgnoreCase("upkeep"))return List.of("pay");
         if(List.of("town","t").contains(primary) && args.length>=2 && args[0].equalsIgnoreCase("upgrade")) {

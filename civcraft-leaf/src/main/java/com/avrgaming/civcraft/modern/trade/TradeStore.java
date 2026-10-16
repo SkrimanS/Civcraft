@@ -12,6 +12,7 @@ public final class TradeStore {
     public static void install(Connection db)throws SQLException {
         GrocerStore.install(db);
         LibraryStore.install(db);
+        BuildingSupplyStore.install(db);
         try(var statement=db.createStatement()) {
             statement.executeUpdate("""
                     CREATE TABLE IF NOT EXISTS structure_trade_points(
