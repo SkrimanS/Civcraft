@@ -962,7 +962,7 @@ public final class BuildQueue {
                 origin.getBlockY() + legacyBlock.y(),
                 origin.getBlockZ() + legacyBlock.z()
         );
-        if(TowerMarker.firing(legacyBlock.signLines())){block.setType(Material.AIR,false);return null;}
+        if(TowerMarker.hidden(legacyBlock.signLines())){block.setType(Material.AIR,false);return null;}
         var tradePoint=com.avrgaming.civcraft.modern.trade.TradePoint.parse(legacyBlock.signLines()).orElse(null);
         if(tradePoint!=null && (tradePoint.action().equals("stable_horse_spawn") || tradePoint.action().equals("stable_mule_spawn"))){block.setType(Material.AIR,false);return new BlockPlacement(block.getWorld().getName(),block.getX(),block.getY(),block.getZ(),"AIR",legacyBlock.signLines());}
         if(ChestMarker.parse(legacyBlock.signLines()).isPresent()) {

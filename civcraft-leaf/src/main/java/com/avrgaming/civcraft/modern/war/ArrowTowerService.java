@@ -16,7 +16,7 @@ public final class ArrowTowerService implements Listener {
     private final double teslaRange,teslaMinimum;private final TeslaFireClock teslaClock;
     private final double cannonRange,cannonMinimum;private final TeslaFireClock cannonClock;private final CannonProjectileService cannonProjectiles;
     private final double waterRange;
-    private record Geometry(double x,double y,double z,List<org.bukkit.util.Vector> turrets) {}
+    private record Geometry(double x,double y,double z,List<org.bukkit.util.Vector> turrets,boolean cannon) {}
     private record Tower(long id,long town,String type,String world,String path,int x,int y,int z,boolean admin) {}
     private static final class Flight {final Arrow arrow;final Player target;final long town,expires;Location aim;Flight(Arrow arrow,Player target,long town,long now){this.arrow=arrow;this.target=target;this.town=town;expires=now+5000;aim=target.getLocation().clone();}}
     private final Map<String,List<Geometry>> templates=new HashMap<>();private final Map<UUID,Flight> flights=new HashMap<>();
@@ -38,25 +38,35 @@ public final class ArrowTowerService implements Listener {
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::fire,period,period);plugin.getServer().getScheduler().runTaskTimer(plugin,this::steer,5L,5L);
         for(var world:plugin.getServer().getWorlds())for(var arrow:world.getEntitiesByClass(Arrow.class))if(arrow.getPersistentDataContainer().has(identity,PersistentDataType.LONG))arrow.remove();
     }
-    private List<Geometry> geometry(String path,boolean ship)throws java.io.IOException {
-        String key=path+(ship?"#ship":"#single");var result=templates.get(key);if(result!=null)return result;
-        var template=new LegacyDefTemplateLoader().load(Path.of(path));var turrets=new ArrayList<org.bukkit.util.Vector>();
-        for(var block:template.blocks())if(com.avrgaming.civcraft.modern.build.TowerMarker.firing(block.signLines()))turrets.add(new org.bukkit.util.Vector(block.x(),block.y(),block.z()));
-        if(turrets.isEmpty())throw new java.io.IOException("Arrow tower template lacks /towerfire markers");
-        var batteries=new ArrayList<Geometry>();batteries.add(new Geometry(template.sizeX()/2,template.sizeY()/2,template.sizeZ()/2,List.copyOf(turrets)));
-        if(ship)for(var marker:com.avrgaming.civcraft.modern.build.ShipBatteryPlan.groups(template)){var position=new org.bukkit.util.Vector(marker.x(),marker.y(),marker.z());batteries.add(new Geometry(marker.x(),marker.y(),marker.z(),List.of(position)));}
+    private List<Geometry> geometry(String path,String type)throws java.io.IOException {
+        String key=path+"#"+type;var result=templates.get(key);if(result!=null)return result;
+        var template=new LegacyDefTemplateLoader().load(Path.of(path));
+        boolean ingermanland=type.equals("w_grand_ship_ingermanland"),cannon=type.equals("s_cannontower")||type.equals("s_cannonship");
+        var arrows=new ArrayList<org.bukkit.util.Vector>();var cannons=new ArrayList<org.bukkit.util.Vector>();
+        for(var block:template.blocks()) {
+            var position=new org.bukkit.util.Vector(block.x(),block.y(),block.z());
+            if(ingermanland) {
+                if(com.avrgaming.civcraft.modern.build.TowerMarker.arrow(block.signLines()))arrows.add(position);
+                if(com.avrgaming.civcraft.modern.build.TowerMarker.cannon(block.signLines()))cannons.add(position);
+            } else if(com.avrgaming.civcraft.modern.build.TowerMarker.firing(block.signLines()))arrows.add(position);
+        }
+        if(arrows.isEmpty() || (ingermanland&&cannons.isEmpty()))throw new java.io.IOException("Ship or tower template lacks firing markers");
+        var batteries=new ArrayList<Geometry>();
+        batteries.add(new Geometry(template.sizeX()/2,template.sizeY()/2,template.sizeZ()/2,List.copyOf(arrows),cannon));
+        if(ingermanland)batteries.add(new Geometry(template.sizeX()/2,template.sizeY()/2,template.sizeZ()/2,List.copyOf(cannons),true));
+        if(type.equals("s_arrowship"))for(var marker:com.avrgaming.civcraft.modern.build.ShipBatteryPlan.groups(template)){var position=new org.bukkit.util.Vector(marker.x(),marker.y(),marker.z());batteries.add(new Geometry(marker.x(),marker.y(),marker.z(),List.of(position),false));}
         result=List.copyOf(batteries);templates.put(key,result);return result;
     }
     private void fire() {
         try {
-            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM active_structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id IN ('s_arrowtower','s_teslatower','s_cannontower','s_arrowship','s_cannonship') AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("structure_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
+            var towers=storage.query(db->{var out=new ArrayList<Tower>();try(var s=db.createStatement();var r=s.executeQuery("SELECT b.*,EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id) AS admin_civ FROM active_structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id WHERE b.structure_id IN ('s_arrowtower','s_teslatower','s_cannontower','s_arrowship','s_cannonship','w_grand_ship_ingermanland') AND b.status='COMPLETE'")){while(r.next())out.add(new Tower(r.getLong("id"),r.getLong("town_id"),r.getString("structure_id"),r.getString("world"),r.getString("template_path"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getBoolean("admin_civ")));}return out;});
             for(var tower:towers) {
                 if(storage.query(db->BuildingDamageStore.health(db,tower.id()).hitpoints())==0||(!tower.admin()&&!storage.query(db->HallValidationStore.state(db,tower.id()).valid())))continue;
                 var world=Bukkit.getWorld(tower.world());if(world==null)continue;
-                for(var shape:geometry(tower.path(),tower.type().equals("s_arrowship"))) {
+                for(var shape:geometry(tower.path(),tower.type())) {
                 var center=new Location(world,tower.x()+shape.x(),tower.y()+shape.y(),tower.z()+shape.z());
                 boolean tesla=tower.type().equals("s_teslatower");
-                boolean cannon=tower.type().equals("s_cannontower")||tower.type().equals("s_cannonship");boolean ship=tower.type().equals("s_arrowship")||tower.type().equals("s_cannonship");
+                boolean cannon=shape.cannon();boolean ship=tower.type().equals("s_arrowship")||tower.type().equals("s_cannonship")||tower.type().equals("w_grand_ship_ingermanland");
                 double baseRange=tesla?teslaRange:cannon?cannonRange:range;
                 double firingRange=storage.query(db->ship?TowerTargetStore.waterRange(db,tower.town(),baseRange,waterRange):TowerTargetStore.range(db,tower.town(),baseRange,lighthouse));
                 Player target=null;Location turret=null;double nearest=Double.MAX_VALUE;long now=System.currentTimeMillis();

@@ -17,9 +17,9 @@ public final class TowerTargetStore {
         return Double.isFinite(distanceSquared)&&distanceSquared>minimum*minimum&&distanceSquared<=maximum*maximum;
     }
     public static double range(Connection db,long town,double base,double lighthouse)throws SQLException {
-        try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE town_id=? AND structure_id='w_great_lighthouse' AND status='COMPLETE' LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*lighthouse:base;}}
+        try(var s=db.prepareStatement("SELECT 1 FROM active_structure_builds b LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE b.town_id=? AND b.structure_id='w_great_lighthouse' AND COALESCE(h.hitpoints,b.max_hitpoints)>0 LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*lighthouse:base;}}
     }
     public static double waterRange(Connection db,long town,double base,double multiplier)throws SQLException {
-        try(var s=db.prepareStatement("SELECT 1 FROM towns target JOIN towns source ON source.civ_id=target.civ_id JOIN structure_builds b ON b.town_id=source.id WHERE target.id=? AND b.structure_id='w_grand_ship_ingermanland' AND b.status='COMPLETE' LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*multiplier:base;}}
+        try(var s=db.prepareStatement("SELECT 1 FROM towns target JOIN towns source ON source.civ_id=target.civ_id JOIN active_structure_builds b ON b.town_id=source.id LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE target.id=? AND b.structure_id='w_grand_ship_ingermanland' AND COALESCE(h.hitpoints,b.max_hitpoints)>0 LIMIT 1")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next()?base*multiplier:base;}}
     }
 }
