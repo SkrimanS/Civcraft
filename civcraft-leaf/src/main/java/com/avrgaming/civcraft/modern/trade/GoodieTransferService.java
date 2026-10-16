@@ -22,6 +22,7 @@ public final class GoodieTransferService implements Listener {
     private final StorageBootstrap storage;
     private final GoodieFrameService frames;
     private final BonusGoodieItems items;
+    private final GoodieDepartureService departures;
     private final NamespacedKey applied,dropKey;
     private final Set<UUID> frozen=ConcurrentHashMap.newKeySet();
     private final Map<UUID,Long> clicks=new HashMap<>();
@@ -35,9 +36,11 @@ public final class GoodieTransferService implements Listener {
         applied=new NamespacedKey(plugin,"last-applied-trade");dropKey=new NamespacedKey(plugin,"goodie-drop");
         for(var operation:storage.query(GoodieTransferStore::pending))frozen.add(operation.player());
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        departures=new GoodieDepartureService(plugin,storage,items);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,80L,20L);
     }
     public void requireUnlocked(UUID player) {
+        departures.requireUnlocked(player);
         if(frozen.contains(player))throw new IllegalArgumentException("Перенос торгового товара ещё сохраняется.");
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
@@ -225,8 +228,10 @@ public final class GoodieTransferService implements Listener {
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void unload(org.bukkit.event.world.ChunkUnloadEvent e) {
         for(var entity:e.getChunk().getEntities())if(entity instanceof Item item && items.token(item.getItemStack())!=null)try {
-            if(returnGround(item))item.remove();else e.setCancelled(true);
-        }catch(SQLException failure){e.setCancelled(true);warn("Goodie chunk unload recovery failed",failure);}
+            // Modern Paper cannot cancel ChunkUnloadEvent. An unfinished transfer's
+            // item remains in the chunk save and is recovered when entities load again.
+            if(returnGround(item))item.remove();
+        }catch(SQLException failure){warn("Goodie chunk unload recovery failed",failure);}
     }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void merge(ItemMergeEvent e){if(items.token(e.getEntity().getItemStack())!=null || items.token(e.getTarget().getItemStack())!=null)e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void hopper(InventoryPickupItemEvent e){if(items.token(e.getItem().getItemStack())!=null)e.setCancelled(true);}
