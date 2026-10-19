@@ -440,6 +440,23 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("recovery")) {
+            if(args.length>=3 && args[2].equalsIgnoreCase("payment")) {
+                if(args.length<4 || args.length>5)throw new IllegalArgumentException("Использование: /civadmin recovery payment <ID основания> [status|charged|notcharged|refunded|refundnotpaid]");
+                String id=args[3],action=args.length==5?args[4].toLowerCase(Locale.ROOT):"status";
+                var payment=plugin.storage().query(db->com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.find(db,id));
+                if(payment==null)throw new IllegalArgumentException("Квитанция не найдена: основание бесплатное либо создано старой сборкой без журнала оплаты.");
+                if(action.equals("status")) {
+                    send(sender,"&e"+payment.id()+" &7"+payment.amount()+" монет; "+payment.mode()+"; "+com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.stateName(payment.state()));
+                    send(sender,"&7Провайдер: "+payment.provider()+"; валюта: "+payment.currency()+"; игрок: "+payment.player());
+                    if(payment.error()!=null)send(sender,"&7Последний ответ: "+payment.error());
+                    send(sender,"&7Решения charged/notcharged и refunded/refundnotpaid применяйте только после сверки с журналом внешнего провайдера.");
+                }else {
+                    String actor=sender instanceof Player player?player.getUniqueId().toString():"CONSOLE:"+sender.getName();
+                    plugin.storage().transaction(db->{com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.resolve(db,id,action,actor);return null;});
+                    success(sender,"Результат сверки сохранён. Обработчик продолжит восстановление основания.");
+                }
+                return;
+            }
             if (args.length >= 3 && !args[2].equalsIgnoreCase("status")) {
                 throw new IllegalArgumentException("Использование: /civadmin recovery status");
             }
@@ -461,6 +478,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             for(var foundation:foundations.stream().limit(15).toList()) {
                 String player=plugin.storage().findResident(foundation.player()).map(ResidentProfile::name).orElse(foundation.player().toString());
                 send(sender,"&e"+foundation.id()+" &7"+player+": "+com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.stateName(foundation.state()));
+                var payment=plugin.storage().query(db->com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.find(db,foundation.id()));
+                if(payment!=null)send(sender,"&7Оплата: "+com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.stateName(payment.state())+"; "+payment.amount()+" монет ("+payment.mode()+").");
             }
             return;
         }
@@ -630,6 +649,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 "&e/civadmin reload&7 - перезагрузить конфиги",
                 "&e/civadmin integrations&7 - статус интеграций",
                 "&e/civadmin recovery status&7 - незавершённые стройки и восстановление",
+                "&e/civadmin recovery payment <ID> status&7 - квитанция платежа основания и варианты сверки",
                 "&e/civadmin npc reload&7 - перезагрузить NPC/GUI лагерей",
                 "&e/civadmin foundation give <игрок> <camp|civilization|town> [1-64]&7 - выдать основание",
                 "&e/civadmin funds give <игрок> <сумма>&7 - выдать монеты для настройки экономики",
@@ -793,8 +813,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 return List.of("reload", "integrations", "recovery", "npc", "build", "foundation", "funds", "item", "warcampcheck", "warcampprepare", "adminciv");
             }
             if (args.length == 2 && args[0].equalsIgnoreCase("recovery")) {
-                return List.of("status");
+                return List.of("status","payment");
             }
+            if(args.length==4 && args[0].equalsIgnoreCase("recovery") && args[1].equalsIgnoreCase("payment"))return List.of("status","charged","notcharged","refunded","refundnotpaid");
             if (args.length == 2 && args[0].equalsIgnoreCase("npc")) {
                 return List.of("reload");
             }

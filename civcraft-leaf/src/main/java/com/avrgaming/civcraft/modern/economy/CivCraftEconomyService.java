@@ -47,6 +47,14 @@ public final class CivCraftEconomyService {
         return vaultEconomy != null;
     }
     public String externalProviderName(){return vaultEconomy==null?null:vaultEconomy.getName();}
+    public void requireFoundationProvider(String provider,String currency) {
+        if(vaultEconomy==null || !java.util.Objects.equals(provider,vaultEconomy.getName()) || !java.util.Objects.equals(currency,currencyId()))
+            throw new IllegalArgumentException("Для платежа основания нужен прежний провайдер Vault и прежняя валюта.");
+    }
+    public EconomyResponse foundationVaultPayment(OfflinePlayer player,long amount,String provider,String currency,boolean refund)throws SQLException {
+        validateAmount(amount);requireFoundationProvider(provider,currency);
+        return refund?vaultEconomy.depositPlayer(player,amount):vaultEconomy.withdrawPlayer(player,amount);
+    }
 
     public double balance(Player player) throws SQLException {
         if (vaultEconomy != null) {

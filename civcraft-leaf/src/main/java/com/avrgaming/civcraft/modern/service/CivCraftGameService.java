@@ -200,6 +200,11 @@ public final class CivCraftGameService {
     public TownRecord createTownAt(Player player, String name, Location location) throws SQLException, IllegalArgumentException {
         return createTownAt(player,name,location,settings.townCost());
     }
+    public TownRecord createTownFromFoundationAt(Player player,String name,Location location,String escrow)throws SQLException {
+        storage.query(db->{var plan=com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.find(db,escrow);
+            if(plan==null || !plan.state().equals("CREATING") || !plan.kind().equals("TOWN") || plan.nativeSettler() || !plan.player().equals(player.getUniqueId()) || !plan.townName().equals(name) || !com.avrgaming.civcraft.modern.foundation.FoundationPaymentStore.paid(db,escrow))throw new SQLException("Administrative foundation payment is not confirmed");return null;});
+        return createTownAt(player,name,location,0);
+    }
     public TownRecord createCapitalAt(Player player,String name,Location location)throws SQLException {
         return createTownAt(player,name,location,0);
     }

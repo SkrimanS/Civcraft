@@ -25,6 +25,7 @@ public final class FoundationCreationStore {
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS foundation_creation_build ON foundation_creation_plans(created_build) WHERE created_build IS NOT NULL");
         }
         FoundationCreationRollback.install(db);
+        FoundationPaymentStore.install(db);
     }
     private static Long number(ResultSet r,String column)throws SQLException{return r.getObject(column)==null?null:r.getLong(column);}
     public static Plan find(Connection db,String id)throws SQLException {
@@ -89,13 +90,13 @@ public final class FoundationCreationStore {
         }
         try(var s=db.prepareStatement("INSERT INTO town_claims(world,chunk_x,chunk_z,town_id,civ_id,claimed_by_uuid,claimed_at) VALUES(?,?,?,?,?,?,?)")){s.setString(1,p.world());s.setInt(2,p.centerX()>>4);s.setInt(3,p.centerZ()>>4);s.setLong(4,town);s.setLong(5,civ);s.setString(6,p.player().toString());s.setLong(7,System.currentTimeMillis());s.executeUpdate();}
     }
-    public static void commitReady(Connection db,String id,boolean livePaidResult)throws SQLException {
+    public static void commitReady(Connection db,String id)throws SQLException {
         transaction(db);var p=find(db,id);if(p==null)throw new SQLException("Missing foundation creation plan");
         if(p.state().equals("COMMITTED"))return;
         FoundationCreationProtection.permit(db,id,"COMMIT");
         try {
         if(!p.state().equals("CREATING") || !p.ready() || p.build()==null)throw new SQLException("Foundation structure is not fully registered");
-        if(p.fee()>0 && !livePaidResult)throw new SQLException("Paid foundation awaits payment reconciliation");
+        if(!FoundationPaymentStore.paid(db,id))throw new SQLException("Foundation payment is not confirmed");
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE id=? AND builder_uuid=? AND town_id IS ? AND structure_id=? AND direction=? AND world=? AND x=? AND y=? AND z=? AND status IN ('QUEUED','BUILDING','COMPLETE')")) {
             s.setLong(1,p.build());s.setString(2,p.player().toString());s.setObject(3,p.kind().equals("CAMP")?null:p.town());s.setString(4,p.structure());s.setString(5,p.direction());s.setString(6,p.world());s.setInt(7,p.x());s.setInt(8,p.y());s.setInt(9,p.z());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Foundation structure record changed or is missing");}
         }

@@ -105,9 +105,9 @@ public final class FoundationCreationRollback {
         }
     }
     public static void cancelIncomplete(Connection db,String id)throws SQLException {
-        transaction(db);if(completed(db,id))return;
+        transaction(db);if(completed(db,id)){FoundationPaymentStore.finishCancellation(db,id);return;}
         var p=FoundationCreationStore.find(db,id);
-        if(p==null || !p.state().equals("CREATING") || p.fee()!=0 || p.ready() || p.build()!=null)throw new SQLException("Foundation is not an incomplete unpaid creation");
+        if(p==null || !p.state().equals("CREATING") || !FoundationPaymentStore.compensatable(db,id) || p.ready() || p.build()!=null)throw new SQLException("Foundation is not an incomplete creation with a reconciled payment");
         if(p.camp()!=null){requireSnapshot(db,id,"camps",p.camp());requireSnapshot(db,id,"camp_members",p.camp());}
         if(p.town()!=null)requireSnapshot(db,id,"towns",p.town());
         if(p.civ()!=null)requireSnapshot(db,id,"civilizations",p.civ());
@@ -126,7 +126,7 @@ public final class FoundationCreationRollback {
         if(p.camp()!=null)try(var s=db.prepareStatement("DELETE FROM camp_members WHERE camp_id=? AND uuid=?")){s.setLong(1,p.camp());s.setString(2,p.player().toString());s.executeUpdate();}
         delete(db,"towns",p.town());delete(db,"civilizations",p.civ());delete(db,"camps",p.camp());
         try(var s=db.prepareStatement("INSERT INTO foundation_creation_rollbacks VALUES(?,?)")){s.setString(1,id);s.setLong(2,System.currentTimeMillis());s.executeUpdate();}
-        FoundationEscrowStore.cancel(db,id,true);
+        if(FoundationPaymentStore.refundForRollback(db,id))FoundationPaymentStore.finishCancellation(db,id);
         }finally{FoundationCreationProtection.release(db,id);}
     }
     private static void delete(Connection db,String table,Long id)throws SQLException {
