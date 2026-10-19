@@ -128,6 +128,12 @@ public final class CivCraftBridge {
         catch(ReflectiveOperationException failure){return true;}
     }
 
+    public boolean canApplyCampQuest(long campId,UUID player) {
+        if(api==null)return false;
+        try{return Boolean.TRUE.equals(api.getClass().getMethod("canApplyCampQuest",long.class,UUID.class).invoke(api,campId,player));}
+        catch(ReflectiveOperationException failure){return false;}
+    }
+
 
     public Optional<Location> getCampFoodChestLocation(long campId) {
         if (api == null) {

@@ -62,6 +62,7 @@ public final class CampNpcMenusService {
     }
 
     public void shutdown() {
+        if(quests!=null)quests.close();
         if (bonuses != null) {
             bonuses.resetAllOnline();
         }

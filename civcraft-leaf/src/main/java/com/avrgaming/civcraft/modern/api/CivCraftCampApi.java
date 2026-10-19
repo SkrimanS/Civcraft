@@ -191,6 +191,56 @@ public final class CivCraftCampApi {
         }catch(SQLException exception){plugin.getLogger().warning("Unable to check camp removal: "+exception.getMessage());return true;}
     }
 
+    /** Main-thread NPC entry point: include both chest halves and both affected players. */
+    public boolean canApplyCampQuest(long campId, UUID actor) {
+        if (!Bukkit.isPrimaryThread() || actor == null) return false;
+        try (Connection connection = connect()) {
+            com.avrgaming.civcraft.modern.camp.CampLonghouseStore.requireUnlocked(connection, campId);
+            UUID leader;
+            String worldName;
+            int x, y, z;
+            try (var statement = connection.prepareStatement("SELECT owner_uuid,food_chest_world,food_chest_x,food_chest_y,food_chest_z FROM camps WHERE id=?")) {
+                statement.setLong(1, campId);
+                try (var rs = statement.executeQuery()) {
+                    if (!rs.next()) return false;
+                    leader = UUID.fromString(rs.getString(1)); worldName = rs.getString(2);
+                    x = rs.getInt(3); y = rs.getInt(4); z = rs.getInt(5);
+                }
+            }
+            var points = new HashSet<com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position>();
+            if (worldName != null && !worldName.isBlank()) {
+                var world = Bukkit.getWorld(worldName); if (world == null) return false;
+                var block = world.getBlockAt(x,y,z);
+                points.add(new com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position(worldName,x,y,z));
+                if (block.getState() instanceof org.bukkit.block.Chest chest) questChestPositions(chest.getInventory().getHolder(), points);
+            }
+            com.avrgaming.civcraft.modern.trade.GoodieChestStore.requirePositionsAvailable(connection, points);
+            for (var uuid : Set.copyOf(java.util.Arrays.asList(actor, leader))) {
+                try (var statement = connection.prepareStatement("SELECT 1 FROM trade_receipts WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_transfers WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_chest_transfers WHERE player_uuid=? AND status='PREPARED'")) {
+                    for (int i=1;i<=3;i++) statement.setString(i,uuid.toString());
+                    try(var rs=statement.executeQuery()){if(rs.next())return false;}
+                }
+                var player=Bukkit.getPlayer(uuid); if(player!=null && player.isDead())return false;
+                if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern) {
+                    if(modern.isFoundationPending(uuid) || modern.isWarCampPending(uuid))return false;
+                    if(modern.goodieTransfers()!=null)modern.goodieTransfers().requireUnlocked(uuid);
+                }
+            }
+            return true;
+        } catch (IllegalArgumentException waiting) {
+            return false;
+        } catch (SQLException | IllegalStateException failure) {
+            plugin.getLogger().warning("Unable to check camp quest inventory: " + failure.getMessage());
+            return false;
+        }
+    }
+
+    private static void questChestPositions(org.bukkit.inventory.InventoryHolder holder,
+            Set<com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position> points) {
+        if(holder instanceof org.bukkit.block.Chest chest)points.add(new com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position(chest.getWorld().getName(),chest.getX(),chest.getY(),chest.getZ()));
+        else if(holder instanceof org.bukkit.block.DoubleChest pair){questChestPositions(pair.getLeftSide(),points);questChestPositions(pair.getRightSide(),points);}
+    }
+
 
     public Optional<Location> getCampFoodChestLocation(long campId) {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""

@@ -46,6 +46,7 @@ public final class QuestRewardService {
     }
 
     public void give(Player completer, long campId, QuestDefinition quest) {
+        if(!civCraft.canApplyCampQuest(campId,completer.getUniqueId()))throw new IllegalStateException("Camp reward inventories are still being recovered");
         for (QuestReward reward : quest.rewards()) {
             applyReward(completer, campId, quest, reward);
         }
@@ -171,6 +172,7 @@ public final class QuestRewardService {
         Optional<Location> chestLocation = civCraft.getCampFoodChestLocation(campId);
         if (chestLocation.isPresent() && chestLocation.get().getBlock().getState() instanceof Chest chest) {
             leftovers = addItems(chest.getInventory(), leftovers);
+            chest.getWorld().save(true);
         }
         if (leftovers.isEmpty()) {
             return;
@@ -179,6 +181,8 @@ public final class QuestRewardService {
         Player leader = leaderUuid == null ? null : Bukkit.getPlayer(leaderUuid);
         if (leader != null) {
             leftovers = addItems(leader.getInventory(), leftovers);
+            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern && modern.goodieTransfers()!=null)modern.goodieTransfers().checkpointCursor(leader);
+            leader.saveData();
         }
         if (!leftovers.isEmpty()) {
             Location drop = chestLocation.orElse(leader == null ? null : leader.getLocation());
@@ -186,6 +190,7 @@ public final class QuestRewardService {
                 for (ItemStack item : leftovers) {
                     drop.getWorld().dropItemNaturally(drop, item);
                 }
+                drop.getWorld().save(true);
             }
         }
     }

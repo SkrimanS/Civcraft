@@ -35,6 +35,8 @@ public final class QuestManager {
     private final Map<Integer, List<QuestDefinition>> questsByLevel = new HashMap<>();
     private final Map<String, Long> locationProgressCooldowns = new ConcurrentHashMap<>();
     private int visibleQuestLimit = 21;
+    private final org.bukkit.scheduler.BukkitTask recovery;
+    private long lastRecoveryWarning;
 
     public QuestManager(JavaPlugin plugin, PluginStorage storage, CivCraftBridge civCraft, QuestRewardService rewards, Lang lang) {
         this.plugin = plugin;
@@ -42,6 +44,7 @@ public final class QuestManager {
         this.civCraft = civCraft;
         this.rewards = rewards;
         this.lang = lang;
+        recovery=plugin.getServer().getScheduler().runTaskTimer(plugin,this::recoverRewards,20L,20L);
     }
 
     public void reload() {
@@ -166,14 +169,15 @@ public final class QuestManager {
         if (!isQuestAvailableForCamp(campId, quest)) {
             return new SubmitResult(false, lang.msg("camp-npc.quest-wrong-level", "&cЭтот квест недоступен на текущем уровне лагеря."));
         }
+        if(!civCraft.canApplyCampQuest(campId,player.getUniqueId()))return new SubmitResult(false,"§eИнвентари лагеря или игрока ещё сохраняются. Повторите сдачу после завершения операции.");
         QuestProgress progress = progress(campId, quest.id());
         if (progress.completed()) {
+            if(!progress.rewarded())return completionResult(player,campId,quest);
             return new SubmitResult(false, lang.msg("camp-npc.quest-already-completed", "&eКвест уже выполнен."));
         }
         int remaining = quest.target() - progress.amount();
         if (remaining <= 0) {
-            completeQuest(player, campId, quest);
-            return new SubmitResult(true, lang.msg("camp-npc.quest-completed", "&aКвест выполнен."));
+            return completionResult(player,campId,quest);
         }
         int removed = removeMatching(player, quest, remaining);
         if (removed <= 0) {
@@ -236,14 +240,13 @@ public final class QuestManager {
         int newAmount = Math.min(quest.target(), progress.amount() + Math.max(0, amount));
         boolean completed = newAmount >= quest.target();
         try (Connection connection = storage.connect()) {
-            setProgress(connection, campId, quest.id(), newAmount, completed, progress.rewarded());
+            setProgress(connection, campId, quest.id(), newAmount, completed, progress.rewarded(),player.getUniqueId());
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to save quest progress: " + exception.getMessage());
             return new SubmitResult(false, lang.msg("camp-npc.quest-save-error", "&cОшибка сохранения прогресса."));
         }
         if (completed) {
-            completeQuest(player, campId, quest);
-            return new SubmitResult(true, lang.msg("camp-npc.quest-completed", "&aКвест выполнен."));
+            return completionResult(player,campId,quest);
         }
         if (prefixMessage != null) {
             return new SubmitResult(true, lang.msg("camp-npc.quest-submitted", "&aСдано {amount}. Прогресс: {progress}/{target}", "amount", String.valueOf(amount), "progress", String.valueOf(newAmount), "target", String.valueOf(quest.target())));
@@ -251,36 +254,56 @@ public final class QuestManager {
         return new SubmitResult(true, lang.msg("camp-npc.quest-progress", "&aПрогресс: {progress}/{target}", "progress", String.valueOf(newAmount), "target", String.valueOf(quest.target())));
     }
 
-    private void completeQuest(Player player, long campId, QuestDefinition quest) {
-        if (!isQuestAvailableForCamp(campId, quest)) {
-            return;
-        }
+    private SubmitResult completionResult(Player player,long campId,QuestDefinition quest) {
+        return new SubmitResult(true,completeQuest(player,campId,quest)?lang.msg("camp-npc.quest-completed", "&aКвест выполнен."):"§eКвест выполнен. Награда ожидает завершения операции с инвентарями.");
+    }
+
+    private boolean completeQuest(Player player, long campId, QuestDefinition quest) {
+        if (civCraft.isCampBeingRemoved(campId)) return false;
         QuestProgress progress = progress(campId, quest.id());
         if (progress.rewarded()) {
-            return;
+            return true;
         }
+        if(!civCraft.canApplyCampQuest(campId,player.getUniqueId()))return false;
         try (Connection connection = storage.connect()) {
-            setProgress(connection, campId, quest.id(), quest.target(), true, true);
+            setProgress(connection, campId, quest.id(), quest.target(), true, true,player.getUniqueId());
             rewards.give(player, campId, quest);
+            return true;
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to complete quest: " + exception.getMessage());
+            return false;
         }
     }
 
-    private void setProgress(Connection connection, long campId, String questId, int amount, boolean completed, boolean rewarded) throws SQLException {
+    private void recoverRewards() {
+        record Due(long camp,String quest,java.util.UUID player){}
+        try {
+            var due=new ArrayList<Due>();
+            try(Connection connection=storage.connect();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT camp_id,quest_id,completer_uuid FROM camp_quest_progress WHERE completed=1 AND rewarded=0 AND completer_uuid IS NOT NULL")) {
+                while(rows.next())due.add(new Due(rows.getLong(1),rows.getString(2),java.util.UUID.fromString(rows.getString(3))));
+            }
+            for(var entry:due){var player=org.bukkit.Bukkit.getPlayer(entry.player());if(player==null || player.isDead())continue;var definition=quest(entry.quest());if(definition.isPresent())completeQuest(player,entry.camp(),definition.get());}
+        }catch(SQLException|RuntimeException failure){long now=System.currentTimeMillis();if(now-lastRecoveryWarning>30000){lastRecoveryWarning=now;plugin.getLogger().warning("Unable to resume pending camp rewards: "+failure.getMessage());}}
+    }
+
+    public void close(){recovery.cancel();}
+
+    private void setProgress(Connection connection, long campId, String questId, int amount, boolean completed, boolean rewarded,java.util.UUID completer) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO camp_quest_progress(camp_id, quest_id, amount, completed, rewarded)
-                VALUES(?,?,?,?,?)
+                INSERT INTO camp_quest_progress(camp_id, quest_id, amount, completed, rewarded,completer_uuid)
+                VALUES(?,?,?,?,?,?)
                 ON CONFLICT(camp_id, quest_id) DO UPDATE SET
                     amount = excluded.amount,
                     completed = excluded.completed,
-                    rewarded = excluded.rewarded
+                    rewarded = excluded.rewarded,
+                    completer_uuid = excluded.completer_uuid
                 """)) {
             statement.setLong(1, campId);
             statement.setString(2, questId);
             statement.setInt(3, amount);
             statement.setInt(4, completed ? 1 : 0);
             statement.setInt(5, rewarded ? 1 : 0);
+            statement.setString(6,completer.toString());
             statement.executeUpdate();
         }
     }

@@ -45,6 +45,9 @@ public final class PluginStorage {
                         damage_bonus REAL NOT NULL DEFAULT 0
                     )
                     """);
+            boolean completer=false;
+            try(var rs=statement.executeQuery("PRAGMA table_info(camp_quest_progress)")){while(rs.next())if(rs.getString("name").equals("completer_uuid"))completer=true;}
+            if(!completer)statement.executeUpdate("ALTER TABLE camp_quest_progress ADD COLUMN completer_uuid TEXT");
         } catch (SQLException exception) {
             plugin.getLogger().severe("Unable to initialize storage: " + exception.getMessage());
         }
