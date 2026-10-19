@@ -129,8 +129,11 @@ public final class CampService {
         }
         try {
             disband(player);
-        } catch (SQLException | IllegalArgumentException exception) {
+        } catch (IllegalArgumentException exception) {
             player.sendMessage(message("camp.error-format", "Ошибка: {error}").replace("{error}", exception.getMessage()));
+        } catch (SQLException exception) {
+            plugin.getLogger().warning("Camp disband failed for " + player.getName() + ": " + exception.getMessage());
+            player.sendMessage(message("camp.error-format", "Ошибка: {error}").replace("{error}", "не удалось завершить роспуск лагеря; подробности находятся в журнале сервера"));
         }
         return true;
     }

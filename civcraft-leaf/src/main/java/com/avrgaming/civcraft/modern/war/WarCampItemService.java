@@ -60,7 +60,8 @@ public final class WarCampItemService implements Listener {
                     if(!player.getWorld().equals(world)||!fresh.origin().equals(plan.origin()))throw new IllegalArgumentException("Место лагеря изменилось во время проверки. Повторите ПКМ.");
                     if(!result.valid()){player.sendMessage(Component.text(result.message()));if(!player.isOp())return;player.sendMessage(Component.text("Оператор: результат проверки опоры принят принудительно."));}
                     success.run();
-                }catch(Exception failure){player.sendMessage(Component.text("Проверка лагеря отклонена: "+failure.getMessage()));}
+                }catch(IllegalArgumentException failure){player.sendMessage(Component.text("Проверка лагеря отклонена: "+failure.getMessage()));}
+                catch(Exception failure){plugin.getLogger().severe("War camp foundation validation failed: "+failure.getMessage());player.sendMessage(Component.text("Не удалось завершить проверку лагеря. Подробности находятся в журнале сервера."));}
             });
         });
     }

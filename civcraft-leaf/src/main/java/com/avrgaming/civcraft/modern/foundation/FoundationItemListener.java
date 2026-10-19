@@ -184,13 +184,19 @@ public final class FoundationItemListener implements Listener {
             rollbackCreatedObjects(player, data);
             structures.cancelPreview(player, true);
             restoreAndRemovePending(player, data);
-            player.sendMessage(component("foundation.error", "&cОшибка: {error}", "error", exception.getMessage()));
+            if (exception instanceof SQLException) {
+                plugin.getLogger().warning("Foundation storage failed for " + player.getName() + ": " + exception.getMessage());
+            }
+            String reason = exception instanceof SQLException
+                    ? "не удалось сохранить основание; подробности находятся в журнале сервера"
+                    : exception.getMessage();
+            player.sendMessage(component("foundation.error", "&cОшибка: {error}", "error", reason));
         } catch (Exception exception) {
             rollbackCreatedObjects(player, data);
             structures.cancelPreview(player, true);
             restoreAndRemovePending(player, data);
             plugin.getLogger().warning("Foundation item failed for " + player.getName() + ": " + exception.getMessage());
-            player.sendMessage(component("foundation.create-error", "&cОшибка создания основания: {error}", "error", exception.getMessage()));
+            player.sendMessage(component("foundation.create-error", "&cОшибка создания основания: {error}", "error", "не удалось завершить создание; подробности находятся в журнале сервера"));
         }
     }
 

@@ -208,6 +208,10 @@ public final class EspionageService implements Listener,CommandExecutor {
     }
     @EventHandler(priority=EventPriority.HIGH,ignoreCancelled=true) public void chat(io.papermc.paper.event.player.AsyncChatEvent event) {
         if(!offers.containsKey(event.getPlayer().getUniqueId()))return;String answer=PlainTextComponentSerializer.plainText().serialize(event.message()).trim();if(!Set.of("yes","no","да","нет").contains(answer.toLowerCase(Locale.ROOT)))return;event.setCancelled(true);
-        plugin.getServer().getScheduler().runTask(plugin,()->{try{confirm(event.getPlayer(),answer);}catch(SQLException|RuntimeException failure){event.getPlayer().sendMessage(Component.text(Objects.toString(failure.getMessage(),"Ошибка запуска миссии.")));}});
+        plugin.getServer().getScheduler().runTask(plugin,()->{
+            try{confirm(event.getPlayer(),answer);}
+            catch(IllegalArgumentException failure){event.getPlayer().sendMessage(Component.text(failure.getMessage()));}
+            catch(SQLException|RuntimeException failure){plugin.getLogger().severe("Spy chat confirmation failed: "+failure.getMessage());event.getPlayer().sendMessage(Component.text("Не удалось подтвердить миссию. Подробности находятся в журнале сервера."));}
+        });
     }
 }

@@ -58,10 +58,10 @@ public final class StructurePreviewChatListener implements Listener {
                 player.sendMessage(lang.component("build.error", "&cОшибка: {error}", "error", exception.getMessage()));
             } catch (SQLException exception) {
                 plugin.getLogger().warning("CivCraft preview build failed: " + exception.getMessage());
-                player.sendMessage(lang.component("build.database-error", "&cОшибка базы данных: {error}", "error", exception.getMessage()));
+                player.sendMessage(lang.component("build.database-error", "&cОшибка базы данных: {error}", "error", "не удалось сохранить строительство; подробности находятся в журнале сервера"));
             } catch (IOException exception) {
                 plugin.getLogger().warning("CivCraft preview template failed: " + exception.getMessage());
-                player.sendMessage(lang.component("build.schematic-error", "&cОшибка схематики: {error}", "error", exception.getMessage()));
+                player.sendMessage(lang.component("build.schematic-error", "&cОшибка схематики: {error}", "error", "не удалось прочитать шаблон постройки; подробности находятся в журнале сервера"));
             }
         });
     }
