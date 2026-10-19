@@ -22,6 +22,7 @@ public final class GoodieChestService implements Listener {
     private final StorageBootstrap storage;
     private final BonusGoodieItems items;
     private final NamespacedKey applied,chestApplied;
+    private final PlainCursorPersistence plainCursors;
     private final Set<UUID> frozen=new HashSet<>();
     private final Set<UUID> cursorOwners=new HashSet<>();
     private final Map<String,GoodieChestStore.Position> knownContainers=new HashMap<>();
@@ -33,9 +34,12 @@ public final class GoodieChestService implements Listener {
     private record Located(ItemStack item,BonusGoodieStore.Kind kind,String holder) {}
     public GoodieChestService(CivCraftModernPlugin plugin,StorageBootstrap storage,BonusGoodieItems items)throws SQLException {
         this.plugin=plugin;this.storage=storage;this.items=items;applied=new NamespacedKey(plugin,"last-applied-trade");chestApplied=new NamespacedKey(plugin,"last-goodie-chest-transfer");
+        plainCursors=new PlainCursorPersistence(plugin,this::good,this::cursorFrozen);
         refreshLocks();knownContainers.putAll(storage.query(GoodieChestStore::knownContainers));cursorOwners.addAll(storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.createStatement();var r=s.executeQuery("SELECT player_uuid FROM goodie_chest_cursor_checkpoints")){while(r.next())out.add(UUID.fromString(r.getString(1)));}return out;}));plugin.getServer().getPluginManager().registerEvents(this,plugin);plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,20L,20L);
+        plugin.getServer().getScheduler().runTask(plugin,()->{for(var player:Bukkit.getOnlinePlayers())try{recoverPlainDelivery(player);plainCursors.restore(player);}catch(Exception failure){warn(failure);}});
     }
     public boolean frozen(UUID player){return frozen.contains(player);}
+    private boolean cursorFrozen(UUID player){try{return storage.query(db->GoodieChestStore.pendingPlayer(db,player));}catch(SQLException failure){warn(failure);return true;}}
     private void refreshLocks()throws SQLException {locks=storage.query(GoodieChestStore::locked);frozen.clear();for(var p:storage.query(GoodieChestStore::pending))frozen.add(p.player());}
     private void warn(Exception failure){long now=System.currentTimeMillis();if(now-lastWarning<30000)return;lastWarning=now;plugin.getLogger().severe("Goodie chest recovery failed: "+failure.getMessage());}
     private boolean good(ItemStack item){return items.token(item)!=null;}
@@ -145,10 +149,11 @@ public final class GoodieChestService implements Listener {
         }
         for(var world:worlds)world.save(true);interrupt("world-saved",intent);
         var inventory=ItemStack.deserializeItemsFromBytes(intent.inventory());var cursor=ItemStack.deserializeItemsFromBytes(intent.cursor());filter(inventory,invalid);filter(cursor,invalid);
-        if(player!=null){player.getInventory().setContents(inventory);player.setItemOnCursor(cursor[0]);player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,intent.id());player.saveData();interrupt("player-saved",intent);}
+        if(player!=null){player.getInventory().setContents(inventory);player.setItemOnCursor(cursor[0]);player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,intent.id());plainCursors.applied(player,intent.id());player.saveData();interrupt("player-saved",intent);}
         // Offline recovery publishes the durable player checkpoint instead of loading
         // playerdata outside Bukkit. NativeTradeService applies it on the next login.
-        storage.transaction(db->{if(GoodieChestStore.complete(db,intent.id()))TradeStore.saveCheckpoint(db,intent.player().toString(),intent.id(),ItemStack.serializeItemsAsBytes(inventory));return null;});if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))cursorOwners.add(intent.player());else cursorOwners.remove(intent.player());refreshLocks();if(player!=null)player.updateInventory();
+        byte[] plain=!GoodieChestPlan.empty(cursor[0]) && !good(cursor[0])?ItemStack.serializeItemsAsBytes(cursor):null;
+        storage.transaction(db->{if(GoodieChestStore.complete(db,intent.id(),plain))TradeStore.saveCheckpoint(db,intent.player().toString(),intent.id(),ItemStack.serializeItemsAsBytes(inventory));return null;});if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))cursorOwners.add(intent.player());else cursorOwners.remove(intent.player());refreshLocks();if(player!=null){recoverPlainDelivery(player);player.updateInventory();}
     }
     private boolean unit(ItemStack item){String id=plugin.nativeItems().id(item);return "u_spy".equals(id)||"u_settler".equals(id);}
     private void validateUnits(Player player,ItemStack[] before,ItemStack[] after)throws SQLException {
@@ -168,9 +173,16 @@ public final class GoodieChestService implements Listener {
         for(var item:player.getInventory().getContents())if(items.matches(item,state))return;if(items.matches(player.getItemOnCursor(),state))return;
         var item=ItemStack.deserializeItemsFromBytes(saved.item())[0];if(GoodieChestPlan.empty(player.getItemOnCursor()))player.setItemOnCursor(item);else{int slot=player.getInventory().firstEmpty();if(slot<0)return;player.getInventory().setItem(slot,item);}player.saveData();
     }
+    private void recoverPlainDelivery(Player player)throws SQLException {
+        var saved=storage.query(db->GoodieChestStore.plainCursor(db,player.getUniqueId()));if(saved==null)return;
+        if(!plainCursors.delivered(player,saved.receipt())){if(saved.clear())plainCursors.clear(player,saved.receipt());else plainCursors.deliver(player,saved.receipt(),saved.item());}
+        storage.transaction(db->{GoodieChestStore.deliveredPlainCursor(db,player.getUniqueId(),saved.receipt());return null;});
+    }
+    public void checkpointCursor(Player player){plainCursors.beforeSave(player);}
+    public void shutdown(){plainCursors.shutdown();}
     private void tick() {
         if(paused)return;
-        try{for(var intent:storage.query(GoodieChestStore::pending)){var player=Bukkit.getPlayer(intent.player());var cursor=ItemStack.deserializeItemsFromBytes(intent.cursor())[0];if(player!=null && !player.isDead() || player==null && (GoodieChestPlan.empty(cursor) || good(cursor)))try{finish(player,intent);}catch(Exception failure){warn(failure);}}refreshLocks();for(var player:Bukkit.getOnlinePlayers())if(cursorOwners.contains(player.getUniqueId()) && !player.isDead() && !storage.query(db->GoodieDepartureStore.waiting(db,player.getUniqueId())))restoreCursor(player);checkContainers();}catch(Exception failure){warn(failure);}
+        try{for(var intent:storage.query(GoodieChestStore::pending)){var player=Bukkit.getPlayer(intent.player());if(player==null || !player.isDead())try{finish(player,intent);}catch(Exception failure){warn(failure);}}refreshLocks();for(var player:Bukkit.getOnlinePlayers())if(!player.isDead()){recoverPlainDelivery(player);if(cursorOwners.contains(player.getUniqueId()) && !storage.query(db->GoodieDepartureStore.waiting(db,player.getUniqueId())))restoreCursor(player);}checkContainers();}catch(Exception failure){warn(failure);}
     }
     private void checkContainers()throws SQLException {
         if(checkContainers.isEmpty())checkContainers.addAll(storage.query(GoodieChestStore::storedContainers));
@@ -181,7 +193,7 @@ public final class GoodieChestService implements Listener {
             }catch(IllegalArgumentException waiting){/* Retain ownership until the other journal finishes. */}
         }
     }
-    @EventHandler(priority=EventPriority.HIGHEST) public void join(PlayerJoinEvent event){if(paused)return;try{for(var p:storage.query(GoodieChestStore::pending))if(p.player().equals(event.getPlayer().getUniqueId()))finish(event.getPlayer(),p);restoreCursor(event.getPlayer());}catch(Exception failure){warn(failure);event.getPlayer().kick(Component.text("Не удалось восстановить перенос товара через сундук."));}}
+    @EventHandler(priority=EventPriority.HIGHEST) public void join(PlayerJoinEvent event){if(paused)return;try{for(var p:storage.query(GoodieChestStore::pending))if(p.player().equals(event.getPlayer().getUniqueId()))finish(event.getPlayer(),p);recoverPlainDelivery(event.getPlayer());restoreCursor(event.getPlayer());plainCursors.restore(event.getPlayer());}catch(Exception failure){warn(failure);event.getPlayer().kick(Component.text("Не удалось восстановить перенос товара через сундук."));}}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent event){
         if(frozen.contains(event.getPlayer().getUniqueId()) || locked(event.getInventory())){event.setCancelled(true);return;}
         var holder=event.getInventory().getHolder();if(!(holder instanceof Chest) && !(holder instanceof DoubleChest))return;

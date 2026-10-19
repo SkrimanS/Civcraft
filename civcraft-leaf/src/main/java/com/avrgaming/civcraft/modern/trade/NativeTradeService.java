@@ -387,6 +387,7 @@ public final class NativeTradeService implements Listener {
         if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Saved trade inventory has wrong size");
         player.getInventory().setContents(contents);
         player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,id);
+        if(plugin.goodieTransfers()!=null)plugin.goodieTransfers().checkpointCursor(player);
         player.saveData();
     }
     /** Explicit JVM flags are used by the isolated crash-recovery integration tests. */

@@ -48,6 +48,8 @@ public final class GoodieTransferService implements Listener {
         if(frozen.contains(player))throw new IllegalArgumentException("Перенос торгового товара ещё сохраняется.");
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
+    public void checkpointCursor(Player player){chests.checkpointCursor(player);}
+    public void shutdown(){chests.shutdown();}
     public GoodieTransferStore.Pending preparePiracy(Connection db,Player player,long build,byte[] inventory,String id)throws SQLException {
         var before=BonusGoodieStore.origin(db,build);if(before==null || before.kind()!=BonusGoodieStore.Kind.SOURCE)throw new IllegalArgumentException("В исходной рамке больше нет товара.");
         var at=player.getLocation();return GoodieTransferStore.prepare(db,id,player.getUniqueId(),before,BonusGoodieStore.Kind.ITEM,id,null,inventory,new GoodieTransferStore.Drop(at.getWorld().getName(),at.getX(),at.getY(),at.getZ()),System.currentTimeMillis());

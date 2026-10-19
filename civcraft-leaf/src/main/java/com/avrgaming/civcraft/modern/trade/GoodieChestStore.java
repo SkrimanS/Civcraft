@@ -33,6 +33,7 @@ public final class GoodieChestStore {
         public Cursor{item=bounded(item);}
         @Override public byte[] item(){return item.clone();}
     }
+    public record PlainCursor(String receipt,byte[] item,boolean clear){public PlainCursor{item=bounded(item);}@Override public byte[] item(){return item.clone();}}
     private static byte[] bounded(byte[] data){if(data==null || data.length<1 || data.length>16*1024*1024)throw new IllegalArgumentException("Invalid chest inventory image");return data.clone();}
     private static void transaction(Connection db)throws SQLException{if(db.getAutoCommit())throw new SQLException("Chest transfer requires a transaction");}
     public static void install(Connection db)throws SQLException {
@@ -44,6 +45,7 @@ public final class GoodieChestStore {
             var columns=new HashSet<String>();try(var r=s.executeQuery("PRAGMA table_info(goodie_chest_moves)")){while(r.next())columns.add(r.getString("name"));}
             for(String column:List.of("drop_world","drop_x","drop_y","drop_z"))if(!columns.contains(column))s.executeUpdate("ALTER TABLE goodie_chest_moves ADD COLUMN "+column+(column.equals("drop_world")?" TEXT":" REAL"));
             s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_chest_cursor_checkpoints(player_uuid TEXT PRIMARY KEY,receipt_id TEXT NOT NULL,token TEXT NOT NULL,revision INTEGER NOT NULL,item BLOB NOT NULL)");
+            s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_plain_cursor_deliveries(player_uuid TEXT PRIMARY KEY,receipt_id TEXT NOT NULL,item BLOB NOT NULL,status TEXT NOT NULL CHECK(status IN ('PREPARED','CLEAR','DELIVERED')))");
         }
     }
     public static boolean pendingPlayer(Connection db,UUID player)throws SQLException {
@@ -149,16 +151,27 @@ public final class GoodieChestStore {
         var tokens=new HashSet<String>();for(var move:pending.moves()){var current=BonusGoodieStore.origin(db,move.before().origin());if(current==null)tokens.add(move.before().token());else if(!move.before().equals(current))throw new SQLException("Goodie changed while chest transfer was pending");}return tokens;
     }
     public static boolean complete(Connection db,String id)throws SQLException {
+        return complete(db,id,null);
+    }
+    public static boolean complete(Connection db,String id,byte[] plainCursor)throws SQLException {
         transaction(db);boolean active;try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_transfers WHERE id=? AND status='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){active=r.next();}}if(!active)return false;
         var intent=read(db,id);var invalid=invalidated(db,intent);
         for(var move:intent.moves())if(!invalid.contains(move.before().token())){var after=BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);if(move.drop()!=null)GoodieDepartureStore.queueGround(db,intent.player(),after,move.drop());}
         try(var s=db.prepareStatement("DELETE FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
         if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))try(var s=db.prepareStatement("INSERT INTO goodie_chest_cursor_checkpoints VALUES(?,?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setString(3,intent.cursorToken());s.setLong(4,intent.cursorRevision());s.setBytes(5,intent.cursor());s.executeUpdate();}
+        try(var s=db.prepareStatement("DELETE FROM goodie_plain_cursor_deliveries WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
+        try(var s=db.prepareStatement("INSERT INTO goodie_plain_cursor_deliveries VALUES(?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setBytes(3,plainCursor==null?intent.cursor():bounded(plainCursor));s.setString(4,plainCursor==null?"CLEAR":"PREPARED");s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE goodie_chest_transfers SET status='COMPLETE',inventory=X'',cursor=X'' WHERE id=?")){s.setString(1,id);s.executeUpdate();}
         try(var s=db.prepareStatement("UPDATE goodie_chest_images SET before_data=X'',after_data=X'' WHERE operation_id=?")){s.setString(1,id);s.executeUpdate();}return true;
     }
     public static Cursor cursor(Connection db,UUID player)throws SQLException {
         try(var s=db.prepareStatement("SELECT receipt_id,token,revision,item FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,player.toString());try(var r=s.executeQuery()){return r.next()?new Cursor(r.getString(1),r.getString(2),r.getLong(3),r.getBytes(4)):null;}}
+    }
+    public static PlainCursor plainCursor(Connection db,UUID player)throws SQLException {
+        try(var s=db.prepareStatement("SELECT receipt_id,item,status FROM goodie_plain_cursor_deliveries WHERE player_uuid=? AND status IN ('PREPARED','CLEAR')")){s.setString(1,player.toString());try(var r=s.executeQuery()){return r.next()?new PlainCursor(r.getString(1),r.getBytes(2),r.getString(3).equals("CLEAR")):null;}}
+    }
+    public static void deliveredPlainCursor(Connection db,UUID player,String receipt)throws SQLException {
+        transaction(db);try(var s=db.prepareStatement("UPDATE goodie_plain_cursor_deliveries SET status='DELIVERED',item=X'' WHERE player_uuid=? AND receipt_id=? AND status IN ('PREPARED','CLEAR')")){s.setString(1,player.toString());s.setString(2,receipt);s.executeUpdate();}
     }
     public static Map<String,Position> knownContainers(Connection db)throws SQLException {
         var out=new HashMap<String,Position>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT world,x,y,z FROM goodie_chest_images")){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));out.put(p.holder(),p);}}return out;

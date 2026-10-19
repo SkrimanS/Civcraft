@@ -330,6 +330,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if(goodieTransfers!=null)goodieTransfers.shutdown();
         if(roads!=null)roads.close();
         if(siegeCannons!=null)siegeCannons.close();
         if(arrowTowers!=null)arrowTowers.close();
