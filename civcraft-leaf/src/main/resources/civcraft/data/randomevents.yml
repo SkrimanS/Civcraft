@@ -52,11 +52,11 @@ random_events:
 # ========= Maintenence Events =========
 
     - id: 'event_slime_plague'
-      name: "Slime Plague"
+      name: "Нашествие слизней"
       chance: 50
       message: 
-        - "Holy moth balls! A Slime plague is threatening to destroy the town." 
-        - "Slaughter 20 of them or suffer a happiness penalty!"
+        - "Нашествие слизней угрожает городу!"
+        - "Уничтожьте 20 слизней, иначе город получит штраф к счастью!"
       length: 48
       actions:
         - name: 'SpawnMobs'
@@ -71,10 +71,10 @@ random_events:
            amount: '4'
       success:
          - name: 'MessageTown'
-           message: "We've cleared enough slime. We've averted the happiness penalty."
+           message: "Горожане уничтожили достаточно слизней. Штрафа к счастью удалось избежать."
       failure:
          - name: 'MessageTown'
-           message: "Arg! Our people are terrified and scared! We suffer a happiness penalty"
+           message: "Жители напуганы нашествием слизней! Город получает штраф к счастью."
          - name: 'Unhappiness'
            value: '3'
            duration: '48'
@@ -82,11 +82,11 @@ random_events:
 # ====== Events that Just kinda happen ============
     # Happiness Events
     - id: 'event_truffles'
-      name: 'Truffles!'
+      name: "Трюфели!"
       chance: 50
       message:
-        - "Our local bakery have made some of the best truffles in all of CivCraft!"
-        - "Since they're so good, our people are going to be happier for the next 3 days!"
+        - "Наша пекарня приготовила лучшие трюфели во всём CivCraft!"
+        - "Они так хороши, что жители будут счастливее в течение следующих 3 дней!"
       length: 72
       actions:
         - name: 'Happiness'
@@ -96,7 +96,7 @@ random_events:
       success:
       failure:
          - name: 'MessageTown'
-           message: "The happiness we've been getting from our truffles has expired. It's yesterday's jam."
+           message: "Трюфели закончились. Их бонус к счастью больше не действует."
     
 #    - id: 'event_dispute'
 #      name: 'Land Dispute'
@@ -119,12 +119,12 @@ random_events:
       
     # Hammer Events
     - id: 'event_productivity'
-      name: 'Productivity Soars!'
+      name: "Рост производительности!"
       chance: 50
       message:
-        - "The streets are bustling with activity! Everyone in the town is doing their best and working their hardest."
-        - "Due to carefully planning and skilled management. We've managed to increase the productivity in our town."
-        - "Our town is going to expreience increased hammer rates for the next 3 days!"
+        - "На улицах кипит жизнь! Все жители города трудятся изо всех сил."
+        - "Тщательное планирование и умелое управление повысили производительность города."
+        - "В следующие 3 дня город будет производить больше молотков!"
       length: 72
       actions:
          - name: 'HammerRate'
@@ -134,7 +134,7 @@ random_events:
       success:
       failure:
          - name: 'MessageTown'
-           message: "The locals are burnt out and we're no longer getting our hammer bonus."
+           message: "Жители устали. Бонус к производству молотков больше не действует."
       
 #    - id: 'event_lazy'
 #      name: 'Lazyiness'
@@ -157,12 +157,12 @@ random_events:
 # ========== Opportunities ============
 
     - id: 'event_herbs'
-      name: 'Herbs'
+      name: "Лечебные травы"
       chance: 50
       message:
-        - "Our medical scientists think they might be able to cure one of the many annoying illnesses that have"
-        - "plauged our civlization for so long. If we're able to retrieve the right herbs our scientists will have"
-        - "a chance to cure it, giving our town a happiness boost. We have 8 hours to find the herbs."
+        - "Наши учёные считают, что нашли способ вылечить одну из болезней, давно мучающих цивилизацию."
+        - "Если мы принесём нужные травы, у них появится шанс создать лекарство и повысить счастье города."
+        - "На поиски трав у нас есть 8 часов."
       length: 8
       actions:
         - name: 'PickRandomLocation'
@@ -172,21 +172,21 @@ random_events:
           varname: 'loc'
       success:
          - name: 'MessageTown'
-           message: "We've found the herbs! The people rejoice!"
+           message: "Травы найдены! Жители ликуют!"
          - name: 'Happiness'
            value: '5'
            duration: '120'
       failure:
          - name: 'MessageTown'
-           message: "We couldn't find the herbs in time!"
+           message: "Мы не успели найти травы вовремя!"
  
     - id: 'event_gold_rush'
-      name: 'Gold Rush!'
+      name: "Золотая лихорадка!"
       chance: 50
       message:
-        - "There is a rumor going around the town that there is a large cache of coins, hidden somewhere out in"
-        - "the world. If we can find the block it's hidden in and break it, we'll be able to collect a massive"
-        - "reward! The first person to break the block recieves a reward. We have 12 hours to find the coins."
+        - "По городу ходят слухи о большом тайнике монет, спрятанном где-то в мире."
+        - "Найдите блок с тайником и сломайте его, чтобы получить огромную награду!"
+        - "Награду получит первый, кто сломает этот блок. На поиски монет есть 12 часов."
       length: 12
       actions:
         - name: 'PickRandomBlock'
@@ -197,11 +197,11 @@ random_events:
           playername_var: 'player'
       success:
          - name: 'MessageTown'
-           message: "One of the town residents have found the cache of coins!"
+           message: "Один из жителей нашёл тайник с монетами!"
          - name: 'PayPlayer'
            playername_var: 'player'
            amount: '75000'
       failure:
          - name: 'MessageTown'
-           message: "We couldn't find the coins in time!"
+           message: "Мы не успели найти монеты вовремя!"
         

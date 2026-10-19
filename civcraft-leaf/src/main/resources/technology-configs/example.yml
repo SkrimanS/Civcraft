@@ -1,6 +1,6 @@
 # Technology config placeholder folder.
 # Put per-technology config files here later.
 example_technology:
-  display-name: 'Example Technology'
+  display-name: 'Пример технологии'
   enabled: false
   cost-science: 1000

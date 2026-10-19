@@ -6,7 +6,7 @@ items:
     # itemsadder: namespace:item_id
     # mmoitems-type: CONSUMABLE
     # mmoitems-id: CAMP_RATION
-    name: '&eCamp Ration'
+    name: '&eЛагерный паёк'
     lore:
       - '&7Использований: &e{uses}/{max_uses}'
     uses: 3

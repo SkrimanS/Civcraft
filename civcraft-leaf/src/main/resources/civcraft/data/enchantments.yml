@@ -4,26 +4,26 @@
 
 enchants:
    - id: 'ench_fire_aspect'
-     name: 'Fire Aspect'
+     name: "Заговор огня"
      cost: 50000.0
-     description: 'Adds fire aspect to your weapon.'
+     description: "Накладывает на оружие «Заговор огня»."
      enchant_id: 'FIRE_ASPECT'
 
    - id: 'ench_fire_protection'
-     name: 'Fire Protection'
+     name: "Огнеупорность"
      cost: 25000.0
-     description: 'Adds fire protection to your armor.'
+     description: "Накладывает на броню «Огнеупорность»."
      enchant_id: 'PROTECTION_FIRE'  
  
    - id: 'ench_flame'
-     name: 'Flame (Bow)'
+     name: "Горящая стрела"
      cost: 50000.0
-     description: 'Adds flame enchantment to your bow.'
+     description: "Накладывает на лук «Горящую стрелу»."
      enchant_id: 'ARROW_FIRE'
    
    - id: 'ench_punchout'
-     name: 'Punchout'
+     name: "Дробление"
      cost: 20000.0
-     description: '% chance to do extra damage to a structure.'
+     description: "Даёт шанс нанести постройке дополнительный урон."
      enchant_id: 'LoreEnhancementPunchout'
 

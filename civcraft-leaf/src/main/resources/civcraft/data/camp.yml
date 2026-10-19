@@ -55,17 +55,17 @@ longhouse_levels:
      
 upgrades:
     - id: 'camp_upgrade_sifter'
-      name: 'Enable Sifter'
+      name: 'Включить просеиватель'
       cost: 500.0
       action: 'enable_sifter'
       require_upgrade:
     - id: 'camp_upgrade_longhouse'
-      name: 'Enable Longhouse'
+      name: 'Включить большой дом'
       cost: 500.0
       action: 'enable_longhouse'
       require_upgrade:
     - id: 'camp_upgrade_garden'
-      name: 'Enable Garden'
+      name: 'Включить огород'
       cost: 500.0
       action: 'enable_garden'
       require_upgrade:

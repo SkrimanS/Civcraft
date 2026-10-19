@@ -61,7 +61,7 @@ public final class MenuManager {
     public void openStatic(Player player, GuiContext context, GuiType type, String id) {
         YamlConfiguration config = menuFiles.get(id);
         if (config == null) {
-            player.sendMessage("§cMenu not found: " + id);
+            player.sendMessage("§cМеню не найдено: " + id);
             return;
         }
         MenuConfig menu = MenuConfig.from(id, config, itemBuilder, context.placeholders());

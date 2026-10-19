@@ -76,7 +76,7 @@ happiness:
     #
     states:
         - level: 0
-          name: 'Revolt'
+          name: 'Бунт'
           color: 'Red'
           amount: 0.0
           beaker_rate: 0.20
@@ -85,7 +85,7 @@ happiness:
           hammer_rate: 0.20
 
         - level: 1
-          name: 'Unrest'
+          name: 'Недовольство'
           color: 'Rose'
           amount: 0.2
           beaker_rate: 0.5
@@ -94,7 +94,7 @@ happiness:
           hammer_rate: 0.5
 
         - level: 2
-          name: 'Unhappy'
+          name: 'Несчастье'
           color: 'Gold'
           amount: 0.4
           beaker_rate: 0.75
@@ -103,7 +103,7 @@ happiness:
           hammer_rate: 0.75
 
         - level: 3
-          name:  'Content'
+          name: 'Довольство'
           color: 'White'
           amount: 0.5
           beaker_rate: 1.0
@@ -112,7 +112,7 @@ happiness:
           hammer_rate: 1.0
 
         - level: 4
-          name:  'Happy'
+          name: 'Счастье'
           color: 'LightGreen'
           amount: 0.7
           beaker_rate: 1.15
@@ -121,7 +121,7 @@ happiness:
           hammer_rate: 1.15
 
         - level: 5
-          name:  'Elated'
+          name: 'Ликование'
           color: 'LightBlue'
           amount: 0.85
           beaker_rate: 1.30
@@ -130,7 +130,7 @@ happiness:
           hammer_rate: 1.30
 
         - level: 6
-          name:  'Ecstatic'
+          name: 'Восторг'
           color: 'LightPurple'
           amount: 0.92
           beaker_rate: 1.5

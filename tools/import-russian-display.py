@@ -13,7 +13,7 @@ for filename in ('materials.yml', 'structures.yml', 'wonders.yml', 'techs.yml', 
     def collect(value):
         if isinstance(value, dict):
             if 'id' in value:
-                translated[str(value['id'])] = {k: v for k, v in value.items() if k in fields}
+                translated.setdefault(str(value['id']), {}).update({k: v for k, v in value.items() if k in fields})
             elif 'level' in value and 'title' in value:
                 translated['town-level:'+str(value['level'])]={'title':value['title']}
             for child in value.values(): collect(child)

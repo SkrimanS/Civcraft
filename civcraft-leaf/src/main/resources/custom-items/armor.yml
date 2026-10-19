@@ -5,10 +5,10 @@ items:
     material: IRON_HELMET
     # mmoitems-type: ARMOR
     # mmoitems-id: BRONZE_HELMET
-    name: '&6Bronze Helmet'
+    name: '&6Бронзовый шлем'
     lore:
-      - '&7CivCraft armor'
-      - '&7Durability: &e{durability}%'
+      - '&7Броня CivCraft'
+      - '&7Прочность: &e{durability}%'
     flags:
       - HIDE_ATTRIBUTES
       - HIDE_UNBREAKABLE

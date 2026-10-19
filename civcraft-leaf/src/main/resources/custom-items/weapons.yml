@@ -8,10 +8,10 @@ items:
     # mmoitems-id: BRONZE_SWORD
     # Optional ItemsAdder binding:
     # itemsadder: namespace:item_id
-    name: '&6Bronze Sword'
+    name: '&6Бронзовый меч'
     lore:
-      - '&7CivCraft weapon'
-      - '&7Durability: &e{durability}%'
+      - '&7Оружие CivCraft'
+      - '&7Прочность: &e{durability}%'
     custom-model-data: 0
     flags:
       - HIDE_ATTRIBUTES

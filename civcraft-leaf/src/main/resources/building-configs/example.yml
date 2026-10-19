@@ -2,6 +2,6 @@
 # Schematic files stay in the existing buildings folder.
 # Put per-building gameplay config files here later.
 example_building:
-  display-name: 'Example Building'
+  display-name: 'Пример постройки'
   schematic: 'example.schem'
   enabled: false

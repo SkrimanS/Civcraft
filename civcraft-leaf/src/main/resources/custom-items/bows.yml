@@ -4,10 +4,10 @@ items:
     material: BOW
     # mmoitems-type: BOW
     # mmoitems-id: HUNTER_BOW
-    name: '&aHunter Bow'
+    name: '&aОхотничий лук'
     lore:
-      - '&7CivCraft bow'
-      - '&7Durability: &e{durability}%'
+      - '&7Лук CivCraft'
+      - '&7Прочность: &e{durability}%'
     flags:
       - HIDE_ATTRIBUTES
       - HIDE_UNBREAKABLE

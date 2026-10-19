@@ -18,22 +18,22 @@ items:
       require_tech: 'tech_global_trade'
 
 potions:
-   - name: 'Fire Resist'
+   - name: 'Огнестойкость'
      effect: 'FIRE_RESISTANCE'
      amp: 1
      require_tech: 'tech_alchemy'
 
-   - name: 'Swiftness'
+   - name: 'Стремительность'
      effect: 'SPEED'
      amp: 1
      require_tech: 'tech_malting' 
 
-   - name: 'Healing I'
+   - name: 'Исцеление I'
      effect: 'HEAL'
      amp: 1
      require_tech: 'tech_brewing'
 
-   - name: 'Healing II'
+   - name: 'Исцеление II'
      effect: 'HEAL'
      amp: 2
      require_tech: 'tech_fermentation'

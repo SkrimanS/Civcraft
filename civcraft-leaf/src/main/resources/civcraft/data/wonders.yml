@@ -12,7 +12,7 @@ wonders:
   - id: w_pyramid
     template: the_great_pyramid
     template_y_shift: 0
-    displayName: The Great Pyramid
+    displayName: "Пирамида Хеопса"
     require_tech: 'tech_great_pyramid'
     require_upgrade:
     check_event:
@@ -31,7 +31,7 @@ wonders:
   - id: w_greatlibrary
     template: the_great_library
     template_y_shift: 0
-    displayName: The Great Library
+    displayName: "Александрийская библиотека"
     require_tech: 'tech_great_library'
     require_upgrade:
     check_event:
@@ -50,7 +50,7 @@ wonders:
   - id: w_hanginggardens
     template: the_hanging_gardens
     template_y_shift: 0
-    displayName: The Hanging Gardens
+    displayName: "Висячие сады Семирамиды"
     require_tech: 'tech_hanging_gardens'
     require_upgrade:
     check_event:
@@ -69,7 +69,7 @@ wonders:
   - id: w_colossus
     template: the_colossus
     template_y_shift: 0
-    displayName: The Colossus
+    displayName: "Колосс Родосский"
     require_tech: 'tech_colossus'
     require_upgrade:
     check_event:
@@ -87,7 +87,7 @@ wonders:
   - id: w_notre_dame
     template: notre_dame
     template_y_shift: 0
-    displayName: Notre Dame
+    displayName: "Собор Парижской Богоматери"
     require_tech: 'tech_notre_dame'
     require_upgrade:
     check_event:
@@ -105,7 +105,7 @@ wonders:
   - id: w_chichen_itza
     template: chichen_itza
     template_y_shift: 0
-    displayName: Chichen Itza
+    displayName: "Чичен-Ица"
     require_tech: 'tech_chichen_itza'
     require_upgrade:
     check_event:
@@ -141,7 +141,7 @@ wonders:
   - id: w_colosseum
     template: colosseum
     template_y_shift: -1
-    displayName: Colosseum
+    displayName: "Колизей"
     require_tech: 'tech_colosseum'
     require_upgrade:
     check_event:
@@ -159,7 +159,7 @@ wonders:
   - id: w_globe_theatre
     template: globe_theatre
     template_y_shift: -1
-    displayName: Globe Theatre
+    displayName: "Глобус-театр"
     require_tech: 'tech_globe_theatre'
     require_upgrade:
     check_event:
@@ -177,7 +177,7 @@ wonders:
   - id: w_great_lighthouse
     template: great_lighthouse
     template_y_shift: 0
-    displayName: Great Lighthouse
+    displayName: "Мировой маяк"
     require_tech: 'tech_great_lighthouse'
     require_upgrade:
     check_event:
@@ -195,7 +195,7 @@ wonders:
   - id: w_mother_tree
     template: mother_tree
     template_y_shift: 0
-    displayName: Mother Tree
+    displayName: "Древо Жизни"
     require_tech: 'tech_mother_tree'
     require_upgrade:
     check_event:
@@ -213,7 +213,7 @@ wonders:
   - id: w_grand_ship_ingermanland
     template: grand_ship_ingermanland
     template_y_shift: -8
-    displayName: 'Grand Ship Ingermanland'
+    displayName: "Флагман \"Ингерманланд\""
     require_tech: 'tech_grand_ship_ingermanland'
     require_upgrade:
     check_event:

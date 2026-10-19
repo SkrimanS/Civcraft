@@ -337,21 +337,21 @@ buffs:
 
 # Mother Tree buffs
     - id: 'buff_mother_tree_growth'
-      name: "Древо-мать: рост ферм"
+      name: "Древо Жизни: рост ферм"
       description: "Увеличивает скорость роста ферм во всей цивилизации на 50%."
       value: '0.50'
       stackable: false
       parent:
 
     - id: 'buff_mother_tree_tile_improvement_cost'
-      name: "Древо-мать: стоимость улучшений"
+      name: "Древо Жизни: стоимость улучшений"
       description: "Улучшения территории во всей цивилизации стоят на 20% меньше."
       value: '0.20'
       stackable: false
       parent:
 
     - id: 'buff_mother_tree_tile_improvement_bonus'
-      name: "Древо-мать: число улучшений"
+      name: "Древо Жизни: число улучшений"
       description: "Позволяет строить в этом городе вдвое больше улучшений территории."
       value: '0.20'
       stackable: false

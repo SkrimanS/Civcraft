@@ -4,10 +4,10 @@ items:
     material: IRON_PICKAXE
     # mmoitems-type: TOOL
     # mmoitems-id: COPPER_PICKAXE
-    name: '&6Copper Pickaxe'
+    name: '&6Медная кирка'
     lore:
-      - '&7CivCraft tool'
-      - '&7Durability: &e{durability}%'
+      - '&7Инструмент CivCraft'
+      - '&7Прочность: &e{durability}%'
     flags:
       - HIDE_ATTRIBUTES
       - HIDE_UNBREAKABLE
