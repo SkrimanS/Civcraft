@@ -331,8 +331,8 @@ public final class FoundationItemListener implements Listener {
                     var plan=civ.storage().query(db->FoundationCreationStore.find(db,escrow.id()));
                     if(plan!=null && plan.ready() && plan.fee()==0) {
                         civ.storage().transaction(db->{FoundationCreationStore.commitReady(db,escrow.id(),false);return null;});
-                    }else if(plan!=null && plan.fee()==0 && !civ.storage().query(db->FoundationCreationStore.hasCreatedRecords(db,escrow.id()))) {
-                        civ.storage().transaction(db->{FoundationCreationStore.cancelEmpty(db,escrow.id());return null;});
+                    }else if(plan!=null && plan.fee()==0 && !plan.ready() && plan.build()==null) {
+                        civ.storage().transaction(db->{FoundationCreationRollback.cancelIncomplete(db,escrow.id());return null;});
                     }else {warnRecovery(new IllegalStateException("Foundation creation awaits reconciliation: "+escrow.id()));continue;}
                 }
                 if(escrow.state().equals("RESERVING") || escrow.state().equals("RESERVED"))civ.storage().transaction(db->{FoundationEscrowStore.cancel(db,escrow.id(),false);return null;});
@@ -513,6 +513,7 @@ public final class FoundationItemListener implements Listener {
     private void restoreAndRemovePending(Player player, PendingFoundation data) {
         pending.remove(player.getUniqueId());
         restoreConsumedItem(player, data);
+        if(data.creationStarted)recoverEscrows();
     }
 
     private void restoreConsumedItem(Player player, PendingFoundation data) {

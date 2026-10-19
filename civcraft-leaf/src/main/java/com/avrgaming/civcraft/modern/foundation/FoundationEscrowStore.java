@@ -60,7 +60,7 @@ public final class FoundationEscrowStore {
         transaction(db);try(var s=db.prepareStatement("UPDATE foundation_escrows SET state='COMMITTED',item=X'',updated_at=? WHERE id=? AND state='CREATING'")){s.setLong(1,System.currentTimeMillis());s.setString(2,id);if(s.executeUpdate()!=1)throw new SQLException("Foundation escrow is not creating");}
     }
     public static void cancel(Connection db,String id,boolean creationRolledBack)throws SQLException {
-        transaction(db);if(creationRolledBack && FoundationCreationStore.hasCreatedRecords(db,id))throw new SQLException("Created foundation assets must be reconciled before refund");String allowed=creationRolledBack?"'RESERVING','RESERVED','CREATING'":"'RESERVING','RESERVED'";
+        transaction(db);if(creationRolledBack && FoundationCreationStore.hasCreatedRecords(db,id) && !FoundationCreationRollback.completed(db,id))throw new SQLException("Created foundation assets must be reconciled before refund");String allowed=creationRolledBack?"'RESERVING','RESERVED','CREATING'":"'RESERVING','RESERVED'";
         try(var s=db.prepareStatement("UPDATE foundation_escrows SET state='CANCEL_REQUESTED',updated_at=? WHERE id=? AND state IN ("+allowed+")")){s.setLong(1,System.currentTimeMillis());s.setString(2,id);s.executeUpdate();}
     }
     public static void refund(Connection db,String id,UUID player,String transfer)throws SQLException {

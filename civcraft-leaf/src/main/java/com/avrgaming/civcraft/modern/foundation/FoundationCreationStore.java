@@ -24,6 +24,7 @@ public final class FoundationCreationStore {
                 """);
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS foundation_creation_build ON foundation_creation_plans(created_build) WHERE created_build IS NOT NULL");
         }
+        FoundationCreationRollback.install(db);
     }
     private static Long number(ResultSet r,String column)throws SQLException{return r.getObject(column)==null?null:r.getLong(column);}
     public static Plan find(Connection db,String id)throws SQLException {
@@ -44,6 +45,7 @@ public final class FoundationCreationStore {
         try(var s=db.prepareStatement("INSERT INTO foundation_creation_plans(escrow_id,native_settler,settlement_name,town_name,tag,structure_id,direction,world,x,y,z,center_x,center_y,center_z,fee,before_camp,before_civ,before_town) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             s.setString(1,id);s.setBoolean(2,draft.nativeSettler());s.setString(3,draft.name());s.setString(4,Objects.toString(draft.townName(),""));s.setString(5,Objects.toString(draft.tag(),""));s.setString(6,draft.structure());s.setString(7,draft.direction());s.setString(8,draft.world());s.setInt(9,draft.x());s.setInt(10,draft.y());s.setInt(11,draft.z());s.setInt(12,draft.centerX());s.setInt(13,draft.centerY());s.setInt(14,draft.centerZ());s.setDouble(15,draft.fee());s.setObject(16,camp);s.setObject(17,civ);s.setObject(18,town);s.executeUpdate();
         }
+        FoundationCreationRollback.prepare(db,id,escrow.player());
     }
     private static List<Plan> creating(Connection db,UUID actor)throws SQLException {
         if(!installed(db))return List.of();
@@ -56,13 +58,13 @@ public final class FoundationCreationStore {
         try(var s=db.prepareStatement("UPDATE foundation_creation_plans SET "+column+"=? WHERE escrow_id=?")){s.setLong(1,value);s.setString(2,p.id());s.executeUpdate();}
     }
     public static void captureCamp(Connection db,long id,UUID actor,String name,String world,int x,int y,int z)throws SQLException {
-        for(var p:creating(db,actor)){if(!p.kind().equals("CAMP") || !p.name().equals(name) || !origin(p,world,x,y,z))throw new SQLException("Camp does not match pending foundation plan");bind(db,p,"created_camp",p.camp(),id);}
+        for(var p:creating(db,actor)){if(!p.kind().equals("CAMP") || !p.name().equals(name) || !origin(p,world,x,y,z))throw new SQLException("Camp does not match pending foundation plan");bind(db,p,"created_camp",p.camp(),id);FoundationCreationRollback.capture(db,p.id(),"camps",id);FoundationCreationRollback.capture(db,p.id(),"camp_members",id);}
     }
     public static void captureCivilization(Connection db,long id,UUID actor,String name,String tag)throws SQLException {
-        for(var p:creating(db,actor)){if(!p.kind().equals("CIVILIZATION") || !p.name().equals(name) || !p.tag().equalsIgnoreCase(Objects.toString(tag,"")))throw new SQLException("Civilization does not match pending foundation plan");bind(db,p,"created_civ",p.civ(),id);}
+        for(var p:creating(db,actor)){if(!p.kind().equals("CIVILIZATION") || !p.name().equals(name) || !p.tag().equalsIgnoreCase(Objects.toString(tag,"")))throw new SQLException("Civilization does not match pending foundation plan");bind(db,p,"created_civ",p.civ(),id);FoundationCreationRollback.capture(db,p.id(),"civilizations",id);}
     }
     public static void captureTown(Connection db,long id,UUID actor,long civ,String name,String world,int x,int y,int z)throws SQLException {
-        for(var p:creating(db,actor)){if(p.kind().equals("CAMP") || !p.townName().equals(name) || !Objects.equals(p.kind().equals("CIVILIZATION")?p.civ():p.beforeCiv(),civ) || !origin(p,world,x,y,z))throw new SQLException("Town does not match pending foundation plan");bind(db,p,"created_town",p.town(),id);}
+        for(var p:creating(db,actor)){if(p.kind().equals("CAMP") || !p.townName().equals(name) || !Objects.equals(p.kind().equals("CIVILIZATION")?p.civ():p.beforeCiv(),civ) || !origin(p,world,x,y,z))throw new SQLException("Town does not match pending foundation plan");bind(db,p,"created_town",p.town(),id);FoundationCreationRollback.capture(db,p.id(),"towns",id);}
     }
     public static void captureBuild(Connection db,long id,UUID actor,Long town,String structure,String direction,String world,int x,int y,int z)throws SQLException {
         for(var p:creating(db,actor)){if(!p.structure().equals(structure) || !p.direction().equals(direction) || !origin(p,world,x,y,z) || !(p.kind().equals("CAMP")?town==null && p.camp()!=null:town!=null && town.equals(p.town())))throw new SQLException("Structure does not match pending foundation plan");bind(db,p,"created_build",p.build(),id);}
@@ -109,6 +111,9 @@ public final class FoundationCreationStore {
             }
             if(camp!=null || !Objects.equals(civ,expectedCiv) || !Objects.equals(town,p.town()))throw new SQLException("Foundation town membership changed");
             claim(db,p,p.town(),expectedCiv);
+            if(p.kind().equals("CIVILIZATION"))try(var s=db.prepareStatement("UPDATE civilizations SET capital_town_id=? WHERE id=? AND (capital_town_id IS NULL OR capital_town_id=?)")) {
+                s.setLong(1,p.town());s.setLong(2,p.civ());s.setLong(3,p.town());if(s.executeUpdate()!=1)throw new SQLException("Foundation civilization capital changed");
+            }
         }
         FoundationEscrowStore.committed(db,id);
     }

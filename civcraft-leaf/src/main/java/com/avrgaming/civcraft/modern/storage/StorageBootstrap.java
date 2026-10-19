@@ -894,7 +894,6 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(9, now);
                 statement.executeUpdate();
                 campId = generatedId(statement);
-                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCamp(connection,campId,owner,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, campId);
@@ -909,6 +908,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(4, now);
                 statement.executeUpdate();
             }
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCamp(connection,campId,owner,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             connection.commit();
             return findCampByOwner(owner).orElseThrow();
         } catch (SQLException exception) {
@@ -937,7 +937,6 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(5, now);
                 statement.executeUpdate();
                 civId = generatedId(statement);
-                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCivilization(connection,civId,leader,name,tag);
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET civ_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, civId);
@@ -945,6 +944,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setString(3, leader.toString());
                 statement.executeUpdate();
             }
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCivilization(connection,civId,leader,name,tag);
             connection.commit();
             return findCiv(civId).orElseThrow();
         } catch (SQLException exception) {
@@ -976,7 +976,6 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(9, now);
                 statement.executeUpdate();
                 townId = generatedId(statement);
-                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureTown(connection,townId,mayor,civId,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET town_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, townId);
@@ -984,6 +983,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setString(3, mayor.toString());
                 statement.executeUpdate();
             }
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureTown(connection,townId,mayor,civId,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             connection.commit();
             return findTown(townId).orElseThrow();
         } catch (SQLException exception) {
