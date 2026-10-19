@@ -46,13 +46,13 @@ public final class EndGameService {
         if(args.length>=2 && args[1].equalsIgnoreCase("top5")) {
             var lines=storage.query(db->{
                 var out=new ArrayList<String>();boolean finished=EndGameStore.winner(db)!=null;
-                String query=finished?"SELECT name,points FROM endgame_final_scores WHERE ranked=1 ORDER BY points DESC,civ_id LIMIT 5":"SELECT c.name,s.points FROM legacy_civ_scores s JOIN civilizations c ON c.id=s.civ_id WHERE s.ranked=1 ORDER BY s.points DESC,s.civ_id LIMIT 5";
+                String query=finished?"SELECT name,points FROM endgame_final_scores WHERE ranked=1 ORDER BY points DESC,civ_id LIMIT 5":"SELECT c.name,s.points FROM legacy_civ_scores s JOIN civilizations c ON c.id=s.civ_id WHERE s.ranked=1 AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"civilizations","c.id")+" ORDER BY s.points DESC,s.civ_id LIMIT 5";
                 try(var s=db.createStatement();var r=s.executeQuery(query)){int rank=1;while(r.next())out.add((rank++)+") "+r.getString(1)+" — "+r.getLong(2)+" очков");}return out;
             });
             player.sendMessage(Component.text("Пять ведущих цивилизаций:"));for(String line:lines)player.sendMessage(Component.text(line));return;
         }
         if(args.length>=2 && args[1].equalsIgnoreCase("votes")) {
-            var lines=storage.query(db->{var out=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.name,v.votes FROM diplomatic_votes v JOIN civilizations c ON c.id=v.civ_id WHERE v.votes>0 AND NOT EXISTS(SELECT 1 FROM civ_conquests cc WHERE cc.civ_id=c.id) ORDER BY v.votes DESC,c.id")){while(r.next())out.add(r.getString(1)+": "+r.getLong(2)+" голосов");}return out;});
+            var lines=storage.query(db->{var out=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.name,v.votes FROM diplomatic_votes v JOIN civilizations c ON c.id=v.civ_id WHERE v.votes>0 AND NOT EXISTS(SELECT 1 FROM civ_conquests cc WHERE cc.civ_id=c.id) AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"civilizations","c.id")+" ORDER BY v.votes DESC,c.id")){while(r.next())out.add(r.getString(1)+": "+r.getLong(2)+" голосов");}return out;});
             player.sendMessage(Component.text(lines.isEmpty()?"Голосов пока нет.":"Голоса за дипломатическую победу:"));for(String line:lines)player.sendMessage(Component.text(line));return;
         }
         if(args.length>=2 && args[1].equalsIgnoreCase("vote")) {
@@ -81,7 +81,7 @@ public final class EndGameService {
         var progress=storage.query(EndGameStore::progress);
         if(progress.isEmpty())player.sendMessage(Component.text("Активных отсчётов победы нет."));
         for(var p:progress)player.sendMessage(Component.text(p.name()+" — "+EndGameRules.name(p.condition())+": "+p.held()+"/"+rules.condition(p.condition()).days()+" дн."));
-        var totals=storage.query(db->{var out=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.name,COALESCE(v.votes,0),COALESCE(sc.extra_beakers,0) FROM civilizations c LEFT JOIN diplomatic_votes v ON v.civ_id=c.id LEFT JOIN civilization_science sc ON sc.civ_id=c.id WHERE NOT EXISTS(SELECT 1 FROM civ_conquests cc WHERE cc.civ_id=c.id) ORDER BY c.name")){while(r.next())out.add(r.getString(1)+": голосов — "+r.getLong(2)+", накоплено колб — "+String.format(Locale.ROOT,"%.1f",r.getDouble(3)));}return out;});
+        var totals=storage.query(db->{var out=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.name,COALESCE(v.votes,0),COALESCE(sc.extra_beakers,0) FROM civilizations c LEFT JOIN diplomatic_votes v ON v.civ_id=c.id LEFT JOIN civilization_science sc ON sc.civ_id=c.id WHERE NOT EXISTS(SELECT 1 FROM civ_conquests cc WHERE cc.civ_id=c.id) AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"civilizations","c.id")+" ORDER BY c.name")){while(r.next())out.add(r.getString(1)+": голосов — "+r.getLong(2)+", накоплено колб — "+String.format(Locale.ROOT,"%.1f",r.getDouble(3)));}return out;});
         for(String total:totals)player.sendMessage(Component.text(total));
     }
 }

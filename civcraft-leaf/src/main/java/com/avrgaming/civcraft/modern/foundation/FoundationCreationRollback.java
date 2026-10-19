@@ -70,6 +70,10 @@ public final class FoundationCreationRollback {
         if(id==null)return;
         var tables=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'foundation_%'")){while(r.next())tables.add(r.getString(1));}
         for(String target:tables) {
+            String assetColumn=switch(asset){case "camps"->"created_camp";case "towns"->"created_town";case "civilizations"->"created_civ";default->throw new SQLException("Unknown foundation asset");};
+            for(var reference:FoundationCreationProtection.taggedReferences(target))if(reference.asset().equals(assetColumn)) {
+                try(var s=db.prepareStatement("SELECT 1 FROM "+quote(target)+" WHERE "+quote(reference.kindColumn())+"=? AND "+quote(reference.idColumn())+"=? LIMIT 1")){s.setString(1,reference.kind());s.setLong(2,id);try(var r=s.executeQuery()){if(r.next())throw new SQLException("Foundation acquired tagged related records: "+target);}}
+            }
             var columns=new LinkedHashSet<String>();
             try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info("+quote(target)+")")){while(r.next())if(namedReference(r.getString("name"),asset))columns.add(r.getString("name"));}
             try(var s=db.createStatement();var r=s.executeQuery("PRAGMA foreign_key_list("+quote(target)+")")){while(r.next())if(asset.equals(r.getString("table")) && (r.getString("to")==null || r.getString("to").equals("id")))columns.add(r.getString("from"));}

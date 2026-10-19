@@ -1774,7 +1774,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     public synchronized List<ActiveResearch> activeResearches() throws SQLException {
         List<ActiveResearch> researches = new ArrayList<>();
-        try (PreparedStatement statement = connection.prepareStatement("SELECT civ_id, tech_id, progress FROM civ_research")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT civ_id, tech_id, progress FROM civ_research WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"civilizations","civ_research.civ_id"))) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     researches.add(new ActiveResearch(rs.getLong("civ_id"), rs.getString("tech_id"), rs.getDouble("progress")));
@@ -1836,7 +1836,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     public synchronized int civTownCount(long civId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT COUNT(*) FROM towns WHERE civ_id = ?")) {
+                "SELECT COUNT(*) FROM towns WHERE civ_id = ? AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","towns.id"))) {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
@@ -1924,7 +1924,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     private List<TownBaseProduction> townBaseProductions(long civId) throws SQLException {
         List<TownBaseProduction> towns = new ArrayList<>();
-        try (PreparedStatement statement = connection.prepareStatement("SELECT id, hammers_per_hour, beakers_per_hour, money_per_hour, base_happiness FROM towns WHERE civ_id = ?")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT id, hammers_per_hour, beakers_per_hour, money_per_hour, base_happiness FROM towns WHERE civ_id = ? AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","towns.id"))) {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
@@ -2028,10 +2028,10 @@ public final class StorageBootstrap implements AutoCloseable {
     private com.avrgaming.civcraft.modern.town.HappinessRules.Result townMood(long town,double happy,double unhappy)throws SQLException {
         long civ,capital;int level,residents,count;
         try(var s=connection.prepareStatement("""
-            SELECT t.civ_id,t.level,COALESCE(c.capital_town_id,(SELECT MIN(id) FROM towns WHERE civ_id=c.id)),
-              (SELECT COUNT(*) FROM residents WHERE town_id=t.id),(SELECT COUNT(*) FROM towns WHERE civ_id=t.civ_id),t.base_unhappiness
+            SELECT t.civ_id,t.level,COALESCE(c.capital_town_id,(SELECT MIN(visible_capital.id) FROM towns visible_capital WHERE visible_capital.civ_id=c.id AND %s)),
+              (SELECT COUNT(*) FROM residents WHERE town_id=t.id),(SELECT COUNT(*) FROM towns visible_town WHERE visible_town.civ_id=t.civ_id AND %s),t.base_unhappiness
             FROM towns t JOIN civilizations c ON c.id=t.civ_id WHERE t.id=?
-            """)) {
+            """.formatted(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","visible_capital.id"),com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","visible_town.id")))) {
             s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing happiness town");civ=r.getLong(1);level=r.getInt(2);capital=r.getLong(3);residents=r.getInt(4);count=r.getInt(5);unhappy+=r.getDouble(6);}
         }
         happy+=happinessRules.base(level);unhappy+=happinessRules.population(residents,0,0)+happinessRules.empire(Math.max(0,count-1),0);
@@ -2071,7 +2071,7 @@ public final class StorageBootstrap implements AutoCloseable {
     }
 
     public synchronized int townCount(long civId) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM towns WHERE civ_id = ?")) {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM towns WHERE civ_id = ? AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","towns.id"))) {
             statement.setLong(1, civId);
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next() ? rs.getInt("count") : 0;

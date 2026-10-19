@@ -31,7 +31,7 @@ public final class BuildingActivityService {
     private boolean counted(String status){return !Set.of("DEMOLISHED","CANCELLED","DEMOLISH_PENDING","ROLLBACK_PENDING").contains(status);}
     private void reconcile(Connection db,long now)throws SQLException{
         var buildings=new ArrayList<Building>();
-        try(var s=db.createStatement();var r=s.executeQuery("SELECT b.id,b.town_id,b.structure_id,b.status,a.town_id FROM structure_builds b LEFT JOIN structure_activity a ON a.build_id=b.id WHERE b.town_id IS NOT NULL ORDER BY b.id")){while(r.next())if(counted(r.getString(4)))buildings.add(new Building(r.getLong(1),r.getLong(2),r.getString(3),r.getObject(5)==null?null:r.getLong(5)));}
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT b.id,b.town_id,b.structure_id,b.status,a.town_id FROM structure_builds b LEFT JOIN structure_activity a ON a.build_id=b.id WHERE b.town_id IS NOT NULL AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"structure_builds","b.id")+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","b.town_id")+" ORDER BY b.id")){while(r.next())if(counted(r.getString(4)))buildings.add(new Building(r.getLong(1),r.getLong(2),r.getString(3),r.getObject(5)==null?null:r.getLong(5)));}
         var counts=new HashMap<String,Integer>();var tiles=new HashMap<Long,Integer>();
         for(var b:buildings)if(b.registered()!=null && b.registered()==b.town())add(counts,tiles,b);
         for(var b:buildings)if(b.registered()==null || b.registered()!=b.town()){

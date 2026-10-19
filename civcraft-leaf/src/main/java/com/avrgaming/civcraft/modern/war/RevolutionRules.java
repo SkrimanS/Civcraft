@@ -41,7 +41,7 @@ public final class RevolutionRules {
         try(var s=db.prepareStatement("SELECT coins FROM towns WHERE id=?")){s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing score town");score=Math.addExact(score,Math.max(0,r.getLong(1))/coinsPerPoint);}}return score;
     }
     public long civilizationScore(Connection db,long civ)throws SQLException {
-        long score=technologyScore(db,civ);var towns=new ArrayList<Long>();try(var s=db.prepareStatement("SELECT id FROM towns WHERE civ_id=? ORDER BY id")){s.setLong(1,civ);try(var r=s.executeQuery()){while(r.next())towns.add(r.getLong(1));}}for(long town:towns)score=Math.addExact(score,townScore(db,town));return score;
+        long score=technologyScore(db,civ);var towns=new ArrayList<Long>();try(var s=db.prepareStatement("SELECT id FROM towns WHERE civ_id=? AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","towns.id")+" ORDER BY id")){s.setLong(1,civ);try(var r=s.executeQuery()){while(r.next())towns.add(r.getLong(1));}}for(long town:towns)score=Math.addExact(score,townScore(db,town));return score;
     }
     public Fee fee(Connection db,long mother)throws SQLException {
         long points=0;int towns=0;

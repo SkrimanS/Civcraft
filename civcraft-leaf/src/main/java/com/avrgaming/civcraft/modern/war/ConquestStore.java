@@ -45,6 +45,12 @@ public final class ConquestStore {
             try(var s=db.prepareStatement("SELECT town_id,conqueror FROM war_defeated_towns WHERE war_start=? ORDER BY town_id")){s.setLong(1,war);try(var r=s.executeQuery()){while(r.next())towns.add(new Victory(r.getLong(1),r.getLong(2)));}}
             try(var s=db.prepareStatement("SELECT civ_id,conqueror FROM war_defeated_civs WHERE war_start=? ORDER BY civ_id")){s.setLong(1,war);try(var r=s.executeQuery()){while(r.next())civs.add(new Victory(r.getLong(1),r.getLong(2)));}}
             int moved=0;
+            boolean foundationPending=false;
+            for(var v:towns)if(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.settlementChangeHeld(db,v.loser(),null)
+                    || com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.civilizationHeld(db,v.winner())){foundationPending=true;break;}
+            if(!foundationPending)for(var v:civs)if(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.settlementChangeHeld(db,null,v.loser())
+                    || com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.civilizationHeld(db,v.winner())){foundationPending=true;break;}
+            if(foundationPending)continue;
             if(!casual) {
                 for(var v:towns)if(transfer(db,war,v.loser(),v.winner(),now))moved++;
                 for(var v:civs) {

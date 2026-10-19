@@ -19,12 +19,12 @@ public final class WonderIncomeStore {
         try(var s=db.createStatement();var r=s.executeQuery("""
             SELECT b.id,t.id,t.civ_id,b.structure_id,
               CASE WHEN b.structure_id='w_colossus' THEN
-                (SELECT COUNT(*) FROM culture_regions cr JOIN towns ct ON ct.id=cr.town_id WHERE ct.civ_id=t.civ_id)
-              ELSE (SELECT COUNT(*) FROM towns) END
+                (SELECT COUNT(*) FROM culture_regions cr JOIN towns ct ON ct.id=cr.town_id WHERE ct.civ_id=t.civ_id AND %s)
+              ELSE (SELECT COUNT(*) FROM towns world_town WHERE %s) END
             FROM structure_builds b JOIN towns t ON t.id=b.town_id JOIN civilizations c ON c.id=t.civ_id
             WHERE b.structure_id IN ('w_colossus','w_colosseum') AND b.status IN ('QUEUED','BUILDING','COMPLETE')
-              AND NOT EXISTS(SELECT 1 FROM structure_activity a WHERE a.build_id=b.id AND a.enabled=0) ORDER BY b.id
-            """)) {
+              AND NOT EXISTS(SELECT 1 FROM structure_activity a WHERE a.build_id=b.id AND a.enabled=0) AND %s AND %s ORDER BY b.id
+            """.formatted(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","ct.id"),com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","world_town.id"),com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id"),com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"structure_builds","b.id")))) {
             while(r.next()){String type=r.getString(4);long units=r.getLong(5);planned.add(new Credit(r.getLong(1),r.getLong(2),r.getLong(3),type,units,WonderEconomy.coins(type.equals("w_colossus")?economy.cultureCoins():economy.worldTownCoins(),units)));}
         }
         planned.addAll(NotreDameIncomeStore.plan(db,economy.peacefulTownCoins()));

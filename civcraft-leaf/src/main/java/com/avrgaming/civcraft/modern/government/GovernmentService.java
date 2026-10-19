@@ -32,7 +32,7 @@ public final class GovernmentService {
     }
     public void refreshProduction(long civId)throws SQLException {applyTiming(storage.transaction(db->retimeData(db,civId)));}
     public void refreshQueuedProduction()throws SQLException {
-        var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED'")){while(r.next())list.add(r.getLong(1));}return list;});
+        var queued=storage.query(db->{var list=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT DISTINCT t.civ_id FROM towns t JOIN structure_builds sb ON sb.town_id=t.id WHERE sb.status='QUEUED' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id")+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"structure_builds","sb.id"))){while(r.next())list.add(r.getLong(1));}return list;});
         for(long id:queued)refreshProduction(id);
     }
     public List<String> ids(){return definitions.list().stream().map(GovernmentDefinition::id).filter(id->!id.equals("gov_anarchy")).toList();}
@@ -77,8 +77,8 @@ public final class GovernmentService {
             try(var query=db.prepareStatement("""
                     SELECT t.id,COUNT(r.uuid),EXISTS(SELECT 1 FROM structure_builds sb
                         WHERE sb.town_id=t.id AND sb.structure_id='s_broadcast_tower' AND sb.status='COMPLETE')
-                    FROM towns t LEFT JOIN residents r ON r.town_id=t.id WHERE t.civ_id=? GROUP BY t.id
-                    """)) {
+                    FROM towns t LEFT JOIN residents r ON r.town_id=t.id WHERE t.civ_id=?
+                    """+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id")+" GROUP BY t.id")) {
                 query.setLong(1,civId);try(var result=query.executeQuery()) {
                     while(result.next())memberHours+=result.getInt(2)*Math.max(0,1-(result.getBoolean(3)?definitions.broadcastReduction():0)-(notre?definitions.notreReduction():0));
                 }
@@ -90,7 +90,7 @@ public final class GovernmentService {
         try {
             List<Long> ids=storage.query(db->{
                 List<Long> list=new ArrayList<>();
-                try(var result=db.createStatement().executeQuery("SELECT civ_id FROM government_transitions")){while(result.next())list.add(result.getLong(1));}
+                try(var result=db.createStatement().executeQuery("SELECT civ_id FROM government_transitions WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"civilizations","government_transitions.civ_id"))){while(result.next())list.add(result.getLong(1));}
                 return list;
             });
             for(long id:ids) {
@@ -114,7 +114,7 @@ public final class GovernmentService {
         // Changes are persisted before changing the in-memory placement speed.
             Map<Long,Long> changes=new LinkedHashMap<>();
             List<long[]> builds=new ArrayList<>();
-            try(var query=db.prepareStatement("SELECT sb.id,sb.town_id FROM structure_builds sb JOIN towns t ON t.id=sb.town_id WHERE t.civ_id=? AND sb.status='QUEUED'")) {
+            try(var query=db.prepareStatement("SELECT sb.id,sb.town_id FROM structure_builds sb JOIN towns t ON t.id=sb.town_id WHERE t.civ_id=? AND sb.status='QUEUED' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id")+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"structure_builds","sb.id"))) {
                 query.setLong(1,civId);try(var result=query.executeQuery()){while(result.next())builds.add(new long[]{result.getLong(1),result.getLong(2)});}
             }
             long now=System.currentTimeMillis();

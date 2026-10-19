@@ -25,6 +25,14 @@ public final class FoundationCreationProtection {
         return null;
     }
     private static String parent(String table){return switch(table){case "camps"->"created_camp";case "towns"->"created_town";case "civilizations"->"created_civ";case "structure_builds"->"created_build";default->null;};}
+    record TaggedReference(String idColumn,String kindColumn,String kind,String asset) {}
+    static List<TaggedReference> taggedReferences(String table) {
+        return switch(table) {
+            case "settlement_invites" -> List.of(new TaggedReference("settlement_id","kind","CIV","created_civ"),new TaggedReference("settlement_id","kind","TOWN","created_town"));
+            case "upkeep_payments" -> List.of(new TaggedReference("target_id","kind","civ","created_civ"),new TaggedReference("target_id","kind","town","created_town"));
+            default -> List.of();
+        };
+    }
     public static void install(Connection db)throws SQLException {
         transaction(db);suspendForBootstrap(db);
         try(var s=db.createStatement()){s.executeUpdate("CREATE TABLE IF NOT EXISTS foundation_creation_write_permits(escrow_id TEXT PRIMARY KEY REFERENCES foundation_escrows(id),purpose TEXT NOT NULL CHECK(purpose IN ('REGISTER','COMMIT','ROLLBACK')))");}
@@ -34,13 +42,15 @@ public final class FoundationCreationProtection {
             try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info("+quote(table)+")")){while(r.next()){String column=r.getString("name");columns.add(column);String asset=asset(column);if(asset!=null)references.put(column,asset);}}
             try(var s=db.createStatement();var r=s.executeQuery("PRAGMA foreign_key_list("+quote(table)+")")){while(r.next()){String asset=parent(r.getString("table"));if(asset!=null && (r.getString("to")==null || r.getString("to").equals("id")))references.put(r.getString("from"),asset);}}
             String root=parent(table);if(root!=null)references.put("id",root);
-            if(references.isEmpty() && !table.equals("residents"))continue;
+            if(references.isEmpty() && taggedReferences(table).isEmpty() && !table.equals("residents"))continue;
             for(String operation:List.of("INSERT","UPDATE","DELETE")) {
                 var relations=new ArrayList<String>();
                 for(var reference:references.entrySet()) {
                     if(!operation.equals("DELETE"))relations.add("NEW."+quote(reference.getKey())+"=p."+reference.getValue());
                     if(!operation.equals("INSERT"))relations.add("OLD."+quote(reference.getKey())+"=p."+reference.getValue());
                 }
+                for(var reference:taggedReferences(table))for(String row:operation.equals("INSERT")?List.of("NEW"):operation.equals("DELETE")?List.of("OLD"):List.of("OLD","NEW"))
+                    relations.add("("+row+"."+quote(reference.kindColumn())+"='"+reference.kind()+"' AND "+row+"."+quote(reference.idColumn())+"=p."+reference.asset()+")");
                 if(table.equals("residents"))relations.add("e.player_uuid="+(operation.equals("INSERT")?"NEW":"OLD")+".uuid");
                 if(relations.isEmpty())continue;
                 String changed="";
@@ -73,6 +83,21 @@ public final class FoundationCreationProtection {
     public static boolean townHeld(Connection db,long town)throws SQLException {
         if(!FoundationCreationStore.installed(db))return false;
         try(var s=db.prepareStatement("SELECT 1 FROM foundation_creation_plans p JOIN foundation_escrows e ON e.id=p.escrow_id WHERE p.created_town=? AND e.state='CREATING'")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}}
+    }
+    public static boolean civilizationHeld(Connection db,long civ)throws SQLException {
+        if(!FoundationCreationStore.installed(db))return false;
+        try(var s=db.prepareStatement("SELECT 1 FROM foundation_creation_plans p JOIN foundation_escrows e ON e.id=p.escrow_id WHERE p.created_civ=? AND e.state='CREATING'")){s.setLong(1,civ);try(var r=s.executeQuery()){return r.next();}}
+    }
+    /** Check before applying any part of a war result; keep that result queued. */
+    public static boolean settlementChangeHeld(Connection db,Long town,Long civ)throws SQLException {
+        if(!FoundationCreationStore.installed(db))return false;
+        try(var s=db.prepareStatement("""
+            SELECT 1 FROM foundation_escrows e LEFT JOIN foundation_creation_plans p ON p.escrow_id=e.id
+            LEFT JOIN residents r ON r.uuid=e.player_uuid WHERE e.state='CREATING' AND
+            (p.created_town=? OR r.town_id=? OR p.created_civ=? OR r.civ_id=?) LIMIT 1
+            """)) {
+            s.setObject(1,town);s.setObject(2,town);s.setObject(3,civ);s.setObject(4,civ);try(var r=s.executeQuery()){return r.next();}
+        }
     }
     /** Safe to append before the foundation schema has been installed. */
     public static String visible(Connection db,String table,String id)throws SQLException {

@@ -63,7 +63,7 @@ public final class UpkeepStore {
             Payment payment=new Payment("civ",charge.getKey(),charge.getValue(),paid,shortage);audit(db,day,payment);result.add(payment);
         }
         for(String table:List.of("towns","civilizations"))try(var statement=db.createStatement()) {
-            statement.executeUpdate("UPDATE "+table+" SET days_in_debt=CASE WHEN debt>0 THEN days_in_debt+1 ELSE 0 END"+(table.equals("civilizations")?" WHERE NOT EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=civilizations.id)":""));
+            statement.executeUpdate("UPDATE "+table+" SET days_in_debt=CASE WHEN debt>0 THEN days_in_debt+1 ELSE 0 END WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,table,table+".id")+(table.equals("civilizations")?" AND NOT EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=civilizations.id)":""));
         }
         return result;
     }
