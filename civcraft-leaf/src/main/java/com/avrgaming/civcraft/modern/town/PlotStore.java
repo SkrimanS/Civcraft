@@ -10,6 +10,7 @@ public final class PlotStore {
     public static final Set<String> ACTIONS=Set.of("build","destroy","interact","itemuse");
     public static final Set<String> GROUPS=Set.of("default","mayors","assistants");
     public static void installClaims(Connection db)throws SQLException {
+        column(db,"permit_fire","INTEGER NOT NULL DEFAULT 0");
         column(db,"permit_mobs","INTEGER NOT NULL DEFAULT 0");
         column(db,"for_sale","INTEGER NOT NULL DEFAULT 0");
         column(db,"sale_price","INTEGER NOT NULL DEFAULT 0");
@@ -54,6 +55,14 @@ public final class PlotStore {
         try(var s=db.prepareStatement("SELECT permit_mobs FROM town_claims WHERE world=? AND chunk_x=? AND chunk_z=?")){
             key(s,1,key);try(var r=s.executeQuery()){return !r.next() || r.getBoolean(1);}
         }
+    }
+    public static boolean toggleFire(Connection db,Key key,UUID actor)throws SQLException {
+        var plot=find(db,key);requireManager(db,plot,actor);
+        try(var s=db.prepareStatement("UPDATE town_claims SET permit_fire=CASE WHEN permit_fire=0 THEN 1 ELSE 0 END WHERE world=? AND chunk_x=? AND chunk_z=?")){key(s,1,key);s.executeUpdate();}
+        return fire(db,key);
+    }
+    public static boolean fire(Connection db,Key key)throws SQLException {
+        try(var s=db.prepareStatement("SELECT permit_fire FROM town_claims WHERE world=? AND chunk_x=? AND chunk_z=?")){key(s,1,key);try(var r=s.executeQuery()){return !r.next() || r.getBoolean(1);}}
     }
     public static void offer(Connection db,Key key,UUID actor,Long price)throws SQLException {
         var plot=find(db,key);requireManager(db,plot,actor);

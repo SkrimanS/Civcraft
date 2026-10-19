@@ -13,7 +13,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
@@ -126,14 +125,6 @@ public final class TownClaimProtectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
         if (isClaimed(event.getBlock().getLocation())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBlockBurn(BlockBurnEvent event) {
-        if (plugin.getConfig().getBoolean("claim-protection.prevent-environment-damage", true)
-                && isClaimed(event.getBlock().getLocation())) {
             event.setCancelled(true);
         }
     }
