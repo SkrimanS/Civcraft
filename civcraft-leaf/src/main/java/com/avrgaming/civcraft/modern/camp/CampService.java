@@ -895,7 +895,7 @@ public final class CampService {
     private int nextLevelXp(int level) { return longhouse.maximum(level); }
 
     private double upgradeCost(String upgrade) {
-        String action=switch(upgrade){case "farm"->"enable_garden";case "breaker"->"enable_sifter";case "longhouse"->"enable_longhouse";default->throw new IllegalArgumentException("Unknown camp upgrade");};
+        String action=switch(upgrade){case "farm"->"enable_garden";case "breaker"->"enable_sifter";case "longhouse"->"enable_longhouse";default->throw new IllegalArgumentException("Неизвестное улучшение лагеря.");};
         var yaml=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml"));
         for(var row:yaml.getMapList("upgrades"))if(action.equals(row.get("action")) && row.get("cost") instanceof Number value) {
             double cost=value.doubleValue();if(Double.isFinite(cost) && cost>=0)return cost;
@@ -906,7 +906,7 @@ public final class CampService {
     private void buyUpgrade(Player player, long campId, String upgrade) throws SQLException {
         double cost=upgradeCost(upgrade);
         boolean external= economy.usesExternalProvider(),paid=false;
-        String column=switch(upgrade){case "farm"->"farm_upgrade";case "breaker"->"breaker_upgrade";case "longhouse"->"longhouse_upgrade";default->throw new IllegalArgumentException("Unknown camp upgrade");};
+        String column=switch(upgrade){case "farm"->"farm_upgrade";case "breaker"->"breaker_upgrade";case "longhouse"->"longhouse_upgrade";default->throw new IllegalArgumentException("Неизвестное улучшение лагеря.");};
         try (Connection connection = connect()) {
             connection.setAutoCommit(false);
             try {

@@ -93,7 +93,7 @@ public final class LegacyStructureService {
 
     public QueuedLegacyBuild paste(Player player, String type, String templateName, String direction) throws IOException, SQLException {
         if (!settings.legacyTemplatesEnabled()) {
-            throw new IllegalArgumentException("Legacy .def templates are disabled in config.");
+            throw new IllegalArgumentException("Использование шаблонов .def отключено в настройках.");
         }
         TownRecord town = requireMayorTown(player);
         String cleanType = normalize(type);
@@ -1192,11 +1192,11 @@ public final class LegacyStructureService {
         // Legacy structures.yml does not define a camp: it was handled separately
         // by original CivCraft. Model it explicitly for the foundation-item path.
         if (structureId.equalsIgnoreCase(settings.campStructureId())) {
-            return new StructureDefinition(structureId, "camp", "Camp", 0.0, 0.0, 0.0,
+            return new StructureDefinition(structureId, "camp", "Лагерь", 0.0, 0.0, 0.0,
                     0.0, 0.0, 0.0, 0, settings.campHitpoints(), "", 0, false);
         }
         return definitions.find(structureId)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown structure id: " + structureId));
+                .orElseThrow(() -> new IllegalArgumentException("Неизвестный ID постройки: " + structureId));
     }
 
     private TownRecord requireMayorTown(Player player) throws SQLException {
@@ -1391,7 +1391,7 @@ public final class LegacyStructureService {
     private String normalize(String input) {
         String value = input.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_/-]", "");
         if (value.contains("..") || value.isBlank()) {
-            throw new IllegalArgumentException("Invalid template name: " + input);
+            throw new IllegalArgumentException("Недопустимое имя шаблона: " + input);
         }
         return value;
     }

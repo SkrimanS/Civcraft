@@ -96,7 +96,7 @@ levels:
         name: '&cУбить кастомных мобов'
         lore:
           - '&7Убито: &e{progress}/{target}'
-          - '&8MythicMobs id: forest_bandit'
+          - '&8ID существа MythicMobs: forest_bandit'
       rewards:
         - type: MMOITEMS
           mmoitems-type: MATERIAL

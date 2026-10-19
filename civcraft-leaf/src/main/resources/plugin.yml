@@ -3,7 +3,7 @@ main: com.avrgaming.civcraft.modern.CivCraftModernPlugin
 version: 2.0.0-1.21.11-SNAPSHOT
 api-version: '1.21.11'
 authors: [AvRGaming, MineTexas, CivCraft Port Team]
-description: Modern CivCraft port targeting Paper and compatible Leaf 1.21.11 servers.
+description: CivCraft для серверов Paper и совместимых Leaf 1.21.11.
 load: STARTUP
 softdepend:
   - MythicMobs
@@ -25,7 +25,7 @@ commands:
     permission: civcraft.use
   plot:
     description: Покупка, продажа и права участка города.
-    usage: /<command> [info|fs <цена>|nfs|buy|setowner <ник>|perm set]
+    usage: /<command> [info|fs <цена>|nfs|buy|setowner <ник>|perm set|toggle <mobs|fire>]
     permission: civcraft.use
   resident:
     aliases: [res]
@@ -34,32 +34,32 @@ commands:
     permission: civcraft.use
   camp:
     aliases: [c]
-    description: Camp mechanics owned by CivCraft.
+    description: Развитие лагеря, участники, улучшения и роспуск.
     usage: /<command> [info|invite|kick|promote|lower|setleader|disband|leave|tp|upgrade]
     permission: civcraft.use
   civ:
-    description: Civilization mechanics owned by CivCraft.
-    usage: /<command> [help|create|info|members|invite <player>|join|leave|kick <player>|setleader <player>|deposit|withdraw]
+    description: Цивилизация, участники, руководство и казна.
+    usage: /<command> [help|create|info|members|invite <ник>|join|leave|kick <ник>|setleader <ник>|deposit|withdraw]
     permission: civcraft.use
   town:
     aliases: [t]
-    description: Town mechanics owned by CivCraft.
-    usage: /<command> [help|create|info|members|invite <player>|join|leave|kick <player>|setmayor <player>|claim|unclaim|claims|deposit|withdraw]
+    description: Город, жители, участки, мэр и казна.
+    usage: /<command> [help|create|info|members|invite <ник>|join|leave|kick <ник>|setmayor <ник>|claim|unclaim|claims|deposit|withdraw]
     permission: civcraft.use
   build:
     aliases: [b]
-    description: Shows private structure preview and starts construction after yes.
-    usage: /<command> <structureId> [y] [0|90|180|270]
+    description: Предпросмотр здания и начало строительства после подтверждения словом yes.
+    usage: /<command> <ID_постройки> [высота] [0|90|180|270]
     permission: civcraft.use
   research:
     aliases: [tech]
-    description: Starts and shows civilization technology research.
-    usage: /<command> [list|start <id>|status|rate]
+    description: Список технологий, начало и состояние исследований цивилизации.
+    usage: /<command> [list|start <ID>|status|rate]
     permission: civcraft.use
   civadmin:
     aliases: [ad]
-    description: CivCraft admin tools.
-    usage: /<command> [reload|integrations|recovery status|npc reload|foundation give <player> <camp|civilization|town> [amount]|funds give <player> <amount>|build <legacyFile> [y] [0|90|180|270]]
+    description: Администрирование CivCraft, выдача предметов и восстановление операций.
+    usage: /<command> [reload|integrations|recovery status|npc reload|foundation give <ник> <camp|civilization|town> [количество]|funds give <ник> <количество>|build <шаблон> [высота] [0|90|180|270]]
     permission: civcraft.admin
 permissions:
   civcraft.use:

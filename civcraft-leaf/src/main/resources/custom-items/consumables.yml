@@ -8,7 +8,7 @@ items:
     # mmoitems-id: CAMP_RATION
     name: '&eCamp Ration'
     lore:
-      - '&7Uses: &e{uses}/{max_uses}'
+      - '&7Использований: &e{uses}/{max_uses}'
     uses: 3
     flags:
       - HIDE_ATTRIBUTES
