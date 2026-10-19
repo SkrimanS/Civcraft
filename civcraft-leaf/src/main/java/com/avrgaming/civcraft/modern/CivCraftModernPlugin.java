@@ -44,6 +44,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private StorageBootstrap storage;
     public StorageBootstrap storage(){return storage;}
     private CivCraftEconomyService economy;
+    public CivCraftEconomyService economy(){return economy;}
     private CivCraftGameService game;
     private LegacyStructureService legacyStructures;
     private ResearchService research;

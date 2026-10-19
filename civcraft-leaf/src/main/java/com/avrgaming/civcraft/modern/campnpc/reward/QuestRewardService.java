@@ -6,23 +6,15 @@ import com.avrgaming.civcraft.modern.campnpc.quest.QuestDefinition;
 import com.avrgaming.civcraft.modern.campnpc.quest.QuestReward;
 import com.avrgaming.civcraft.modern.campnpc.storage.PluginStorage;
 import com.avrgaming.civcraft.modern.campnpc.util.ItemsAdderHook;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Chest;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -32,90 +24,71 @@ public final class QuestRewardService {
     private final JavaPlugin plugin;
     private final PluginStorage storage;
     private final CivCraftBridge civCraft;
-    private final CampBonusApplier bonusApplier;
     private final CivCraftItemService customItems;
     private final ItemsAdderHook itemsAdder = new ItemsAdderHook();
     private final MmoItemsHook mmoItems = new MmoItemsHook();
+    private long lastExternalWarning;
 
     public QuestRewardService(JavaPlugin plugin, PluginStorage storage, CivCraftBridge civCraft, CampBonusApplier bonusApplier, CivCraftItemService customItems) {
         this.plugin = plugin;
         this.storage = storage;
         this.civCraft = civCraft;
-        this.bonusApplier = bonusApplier;
         this.customItems = customItems;
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin)try(var connection=storage.connect();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT operation_id,ordinal,status,'command' AS kind FROM camp_quest_reward_commands WHERE status IN ('CLAIMED','FAILED') UNION ALL SELECT operation_id,ordinal,status,'payment' AS kind FROM camp_quest_reward_payments WHERE status IN ('CLAIMED','FAILED')")) {
+            while(rows.next())plugin.getLogger().warning("NPC external reward requires review: "+rows.getString("kind")+" "+rows.getString("operation_id")+"/"+rows.getInt("ordinal")+" "+rows.getString("status"));
+        }catch(SQLException failure){throw new IllegalStateException("Cannot inspect NPC external reward receipts",failure);}
     }
 
-    public void give(Player completer, long campId, QuestDefinition quest) {
+    public void give(Player completer, long campId, QuestDefinition quest)throws SQLException {
+        try(var connection=storage.connect()){if(QuestRewardStore.exists(connection,campId,quest.id()))return;}
         if(!civCraft.canApplyCampQuest(campId,completer.getUniqueId()))throw new IllegalStateException("Camp reward inventories are still being recovered");
-        for (QuestReward reward : quest.rewards()) {
-            applyReward(completer, campId, quest, reward);
-        }
+        if(!(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern) || modern.goodieTransfers()==null)throw new IllegalStateException("Camp reward journal is unavailable");
+        var items=new ArrayList<ItemStack>();var effects=new ArrayList<QuestRewardStore.Effect>();var commands=new ArrayList<String>();
+        for(var reward:quest.rewards())collect(completer,campId,quest,reward,items,effects,commands,modern);
+        modern.goodieTransfers().prepareCampQuestReward(completer,campId,quest.id(),items,effects,commands);
     }
 
-    private void applyReward(Player completer, long campId, QuestDefinition quest, QuestReward reward) {
+    private void collect(Player completer,long campId,QuestDefinition quest,QuestReward reward,List<ItemStack> items,List<QuestRewardStore.Effect> effects,List<String> commands,com.avrgaming.civcraft.modern.CivCraftModernPlugin modern) {
         String type = reward.type().trim().toUpperCase(Locale.ROOT);
         switch (type) {
-            case "MONEY", "COINS", "COIN" -> civCraft.addCampLeaderCoins(campId, Math.round(reward.amount()));
-            case "CAMP_EXPERIENCE", "CAMP_XP", "EXPERIENCE", "XP" -> civCraft.addCampExperience(campId, (int) Math.round(reward.amount()));
-            case "CONTROL_HP", "CONTROL_BLOCK_HP" -> civCraft.addCampControlHp(campId, (int) Math.round(reward.amount()));
-            case "UPGRADE", "CAMP_UPGRADE" -> civCraft.setCampUpgrade(campId, reward.value(), true);
-            case "HEALTH_BONUS", "CAMP_HEALTH" -> addBonus(campId, "health_bonus", reward.amount());
-            case "DAMAGE_BONUS", "CAMP_DAMAGE" -> addBonus(campId, "damage_bonus", reward.amount());
-            case "CIVCRAFT_ITEM", "CIVCRAFT_CUSTOM_ITEM", "CIV_ITEM", "CUSTOM_ITEM" -> giveCivCraftItem(campId, reward);
-            case "ITEM", "VANILLA_ITEM", "ITEMSADDER", "MMOITEMS" -> giveRewardItem(campId, reward.item(), reward.amount(), type);
-            case "COMMAND", "COMMANDS" -> runCommands(reward.commands(), completer, campId, quest);
-            default -> {
-                if (!reward.commands().isEmpty()) {
-                    runCommands(reward.commands(), completer, campId, quest);
-                }
-            }
+            case "MONEY", "COINS", "COIN" -> effects.add(new QuestRewardStore.Effect(modern.economy().usesExternalProvider()?"VAULT":"MONEY",reward.amount(),modern.economy().externalProviderName()));
+            case "CAMP_EXPERIENCE", "CAMP_XP", "EXPERIENCE", "XP" -> effects.add(new QuestRewardStore.Effect("XP",reward.amount(),""));
+            case "CONTROL_HP", "CONTROL_BLOCK_HP" -> effects.add(new QuestRewardStore.Effect("HP",reward.amount(),""));
+            case "UPGRADE", "CAMP_UPGRADE" -> effects.add(new QuestRewardStore.Effect("UPGRADE",reward.amount(),upgrade(reward.value())));
+            case "HEALTH_BONUS", "CAMP_HEALTH" -> effects.add(new QuestRewardStore.Effect("HEALTH",reward.amount(),""));
+            case "DAMAGE_BONUS", "CAMP_DAMAGE" -> effects.add(new QuestRewardStore.Effect("DAMAGE",reward.amount(),""));
+            case "CIVCRAFT_ITEM", "CIVCRAFT_CUSTOM_ITEM", "CIV_ITEM", "CUSTOM_ITEM" -> items.addAll(createCivCraftItems(reward));
+            case "ITEM", "VANILLA_ITEM", "ITEMSADDER", "MMOITEMS" -> items.addAll(createRewardItems(reward.item(),reward.amount(),type));
+            default -> {for(var command:reward.commands())commands.add(replacePlaceholders(command,completer,campId,quest));}
         }
     }
-
-    private void addBonus(long campId, String column, double amount) {
-        if (amount == 0D) {
-            return;
-        }
-        try (Connection connection = storage.connect(); PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO camp_npc_bonuses(camp_id, health_bonus, damage_bonus)
-                VALUES(?, ?, ?)
-                ON CONFLICT(camp_id) DO UPDATE SET
-                    health_bonus = health_bonus + excluded.health_bonus,
-                    damage_bonus = damage_bonus + excluded.damage_bonus
-                """)) {
-            statement.setLong(1, campId);
-            statement.setDouble(2, column.equals("health_bonus") ? amount : 0D);
-            statement.setDouble(3, column.equals("damage_bonus") ? amount : 0D);
-            statement.executeUpdate();
-            bonusApplier.applyAllOnline();
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Unable to add camp bonus: " + exception.getMessage());
-        }
+    private static String upgrade(String value) {
+        return switch(value.trim().toLowerCase(Locale.ROOT)){case "garden","farm"->"farm_upgrade";case "breaker","sifter"->"breaker_upgrade";case "longhouse"->"longhouse_upgrade";default->throw new IllegalArgumentException("Неизвестное улучшение лагеря: "+value);};
     }
 
-    private void giveCivCraftItem(long campId, QuestReward reward) {
+    private List<ItemStack> createCivCraftItems(QuestReward reward) {
         ConfigurationSection section = reward.item();
         String id = reward.value();
         if (id == null || id.isBlank()) {
             id = section.getString("id", section.getString("item-id", section.getString("civcraft-item", "")));
         }
         if (id == null || id.isBlank()) {
-            plugin.getLogger().warning("CivCraft item reward has no id.");
-            return;
+            throw new IllegalArgumentException("У награды CivCraft не задан ID предмета.");
         }
         int amount = Math.max(1, section.getInt("amount", reward.amount() > 0D ? (int) Math.round(reward.amount()) : 1));
-        Optional<ItemStack> item = customItems.create(id, amount);
-        item.ifPresent(stack -> deliverToCamp(campId, splitStacks(stack)));
+        var item = customItems.create(id, amount);
+        if(item.isEmpty())throw new IllegalArgumentException("Не найден предмет награды CivCraft: "+id);
+        return splitStacks(item.get());
     }
 
-    private void giveRewardItem(long campId, ConfigurationSection itemSection, double fallbackAmount, String rewardType) {
+    private List<ItemStack> createRewardItems(ConfigurationSection itemSection, double fallbackAmount, String rewardType) {
         ItemStack item = createRewardItem(itemSection, rewardType);
         if (item == null || item.getType().isAir()) {
-            return;
+            return List.of();
         }
         int amount = Math.max(1, itemSection.getInt("amount", fallbackAmount > 0D ? (int) Math.round(fallbackAmount) : 1));
         item.setAmount(amount);
-        deliverToCamp(campId, splitStacks(item));
+        return splitStacks(item);
     }
 
     private List<ItemStack> splitStacks(ItemStack item) {
@@ -167,45 +140,24 @@ public final class QuestRewardService {
         return item;
     }
 
-    private void deliverToCamp(long campId, List<ItemStack> items) {
-        List<ItemStack> leftovers = new ArrayList<>(items);
-        Optional<Location> chestLocation = civCraft.getCampFoodChestLocation(campId);
-        if (chestLocation.isPresent() && chestLocation.get().getBlock().getState() instanceof Chest chest) {
-            leftovers = addItems(chest.getInventory(), leftovers);
-            chest.getWorld().save(true);
+    public void flushExternalRewards()throws SQLException {
+        List<QuestRewardStore.Command> commands;List<QuestRewardStore.Payment> payments;
+        try(var connection=storage.connect()){commands=QuestRewardStore.waitingCommands(connection);payments=QuestRewardStore.waitingPayments(connection);}
+        for(var command:commands) {
+            try(var connection=storage.connect()){if(!QuestRewardStore.claimCommand(connection,command))continue;}
+            boolean success=false;
+            try{success=Bukkit.dispatchCommand(Bukkit.getConsoleSender(),command.command());}
+            catch(RuntimeException failure){plugin.getLogger().severe("NPC reward command failed; retained for review: "+command.operation()+"/"+command.ordinal()+": "+failure.getMessage());}
+            try(var connection=storage.connect()){QuestRewardStore.finishCommand(connection,command,success);}
+            if(!success)plugin.getLogger().warning("NPC reward command was not completed: "+command.operation()+"/"+command.ordinal());
         }
-        if (leftovers.isEmpty()) {
-            return;
-        }
-        UUID leaderUuid = civCraft.getCampLeaderUuid(campId).orElse(null);
-        Player leader = leaderUuid == null ? null : Bukkit.getPlayer(leaderUuid);
-        if (leader != null) {
-            leftovers = addItems(leader.getInventory(), leftovers);
-            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern && modern.goodieTransfers()!=null)modern.goodieTransfers().checkpointCursor(leader);
-            leader.saveData();
-        }
-        if (!leftovers.isEmpty()) {
-            Location drop = chestLocation.orElse(leader == null ? null : leader.getLocation());
-            if (drop != null && drop.getWorld() != null) {
-                for (ItemStack item : leftovers) {
-                    drop.getWorld().dropItemNaturally(drop, item);
-                }
-                drop.getWorld().save(true);
-            }
-        }
-    }
-
-    private List<ItemStack> addItems(Inventory inventory, List<ItemStack> items) {
-        Map<Integer, ItemStack> overflow = new HashMap<>();
-        for (ItemStack item : items) {
-            overflow.putAll(inventory.addItem(item.clone()));
-        }
-        return new ArrayList<>(overflow.values());
-    }
-
-    private void runCommands(List<String> commands, Player player, long campId, QuestDefinition quest) {
-        for (String command : commands) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), replacePlaceholders(command, player, campId, quest));
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern)for(var payment:payments) {
+            if(!modern.economy().usesExternalProvider() || !payment.provider().equals(modern.economy().externalProviderName())){long now=System.currentTimeMillis();if(now-lastExternalWarning>30000){lastExternalWarning=now;plugin.getLogger().warning("NPC payment is waiting for economy provider "+payment.provider()+": "+payment.operation()+"/"+payment.ordinal());}continue;}
+            try(var connection=storage.connect()){if(!QuestRewardStore.claimPayment(connection,payment))continue;}
+            boolean success=false;
+            try{modern.economy().deposit(Bukkit.getOfflinePlayer(payment.leader()),payment.amount(),"camp quest reward "+payment.operation());success=true;}
+            catch(SQLException|RuntimeException failure){plugin.getLogger().severe("NPC reward payment failed; retained for review: "+payment.operation()+"/"+payment.ordinal()+": "+failure.getMessage());}
+            try(var connection=storage.connect()){QuestRewardStore.finishPayment(connection,payment,success);}
         }
     }
 

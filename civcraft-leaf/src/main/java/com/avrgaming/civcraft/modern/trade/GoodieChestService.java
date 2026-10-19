@@ -23,6 +23,7 @@ public final class GoodieChestService implements Listener {
     private final BonusGoodieItems items;
     private final NamespacedKey applied,chestApplied;
     private final PlainCursorPersistence plainCursors;
+    private final PlainTransferGround plainGround;
     private final Set<UUID> frozen=new HashSet<>();
     private final Set<UUID> cursorOwners=new HashSet<>();
     private final Map<String,GoodieChestStore.Position> knownContainers=new HashMap<>();
@@ -35,6 +36,7 @@ public final class GoodieChestService implements Listener {
     public GoodieChestService(CivCraftModernPlugin plugin,StorageBootstrap storage,BonusGoodieItems items)throws SQLException {
         this.plugin=plugin;this.storage=storage;this.items=items;applied=new NamespacedKey(plugin,"last-applied-trade");chestApplied=new NamespacedKey(plugin,"last-goodie-chest-transfer");
         plainCursors=new PlainCursorPersistence(plugin,this::good,this::cursorFrozen);
+        plainGround=new PlainTransferGround(plugin,storage);
         refreshLocks();knownContainers.putAll(storage.query(GoodieChestStore::knownContainers));cursorOwners.addAll(storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.createStatement();var r=s.executeQuery("SELECT player_uuid FROM goodie_chest_cursor_checkpoints")){while(r.next())out.add(UUID.fromString(r.getString(1)));}return out;}));plugin.getServer().getPluginManager().registerEvents(this,plugin);plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,20L,20L);
         plugin.getServer().getScheduler().runTask(plugin,()->{for(var player:Bukkit.getOnlinePlayers())try{recoverPlainDelivery(player);plainCursors.restore(player);}catch(Exception failure){warn(failure);}});
     }
@@ -106,7 +108,7 @@ public final class GoodieChestService implements Listener {
         var found=new LinkedHashMap<String,Located>();
         for(int i=0;i<plan.top.length;i++)locate(found,plan.top[i],BonusGoodieStore.Kind.CONTAINER,halves.get(i/27).position().holder());
         for(var item:plan.player)locate(found,item,BonusGoodieStore.Kind.PLAYER,player.toString());locate(found,plan.cursor,BonusGoodieStore.Kind.PLAYER,player.toString());
-        if(includeDrops)for(var item:plan.drops){Long origin=items.origin(item);if(origin==null)throw new IllegalArgumentException("Недопустимое выпадение при переносе товара.");locate(found,item,BonusGoodieStore.Kind.ITEM,operation+":"+origin);}
+        if(includeDrops)for(var item:plan.drops){if(!good(item))continue;Long origin=items.origin(item);if(origin==null)throw new IllegalArgumentException("Недопустимое выпадение при переносе товара.");locate(found,item,BonusGoodieStore.Kind.ITEM,operation+":"+origin);}
         return found;
     }
     private void locate(Map<String,Located> found,ItemStack item,BonusGoodieStore.Kind kind,String holder) {
@@ -127,7 +129,38 @@ public final class GoodieChestService implements Listener {
         return submit(player,List.of(),before,after,(db,id)->com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.prepare(db,id,camp,quest,player.getUniqueId(),beforeAmount,removed,target));
     }
     private String submit(Player player,List<Half> halves,GoodieChestPlan before,GoodieChestPlan after,IntentSideEffect sideEffect)throws SQLException {
-        if(after.drops.isEmpty() && Arrays.equals(before.top,after.top) && Arrays.equals(before.player,after.player) && Objects.equals(before.cursor,after.cursor))return null;
+        return submit(player,halves,before,after,sideEffect,false);
+    }
+    public String prepareCampQuestReward(Player completer,long camp,String quest,List<ItemStack> rewards,List<com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.Effect> effects,List<String> commands)throws SQLException {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Quest rewards require the server thread");
+        if(!plugin.getCampApi().canApplyCampQuest(camp,completer.getUniqueId()))throw new IllegalArgumentException("Инвентари награды ещё сохраняются.");
+        UUID leaderId=plugin.getCampApi().getCampLeaderUuid(camp).orElseThrow(()->new IllegalArgumentException("Лагерь больше не существует."));
+        var leader=Bukkit.getPlayer(leaderId);var receiver=leader==null?completer:leader;ready(receiver);
+        var chestLocation=plugin.getCampApi().getCampFoodChestLocation(camp).orElse(null);
+        Inventory upper=chestLocation!=null && chestLocation.getBlock().getState() instanceof Chest chest?chest.getInventory():null;
+        var parts=upper==null?List.<Half>of():halves(upper);
+        var before=new GoodieChestPlan(upper==null?new ItemStack[0]:upper.getContents(),receiver.getInventory().getContents(),receiver.getItemOnCursor());
+        var after=new GoodieChestPlan(before.top,before.player,before.cursor);
+        for(var reward:rewards) {
+            var left=addReward(after.top,reward,after.top.length);
+            if(leader!=null && !GoodieChestPlan.empty(left))left=addReward(after.player,left,Math.min(36,after.player.length));
+            if(!GoodieChestPlan.empty(left))after.drops.add(left);
+        }
+        if(!after.drops.isEmpty() && chestLocation==null && leader==null)throw new IllegalArgumentException("Для выдачи награды нужен сундук лагеря или лидер в сети.");
+        var dropAt=chestLocation!=null?chestLocation.clone().add(.5,.5,.5):receiver.getLocation();
+        return submit(receiver,parts,before,after,(db,id)->{
+            com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.prepare(db,id,camp,quest,leaderId,completer.getUniqueId(),effects,commands);
+            PlainTransferGround.prepare(db,id,dropAt,after.drops.stream().filter(item->!good(item)).toList());
+        },true);
+    }
+    private static ItemStack addReward(ItemStack[] target,ItemStack input,int size) {
+        var left=input.clone();
+        for(int i=0;i<size && left.getAmount()>0;i++)if(!GoodieChestPlan.empty(target[i]) && target[i].isSimilar(left)){int count=Math.min(left.getAmount(),Math.max(0,target[i].getMaxStackSize()-target[i].getAmount()));target[i].setAmount(target[i].getAmount()+count);left.setAmount(left.getAmount()-count);}
+        for(int i=0;i<size && left.getAmount()>0;i++)if(GoodieChestPlan.empty(target[i])){int count=Math.min(left.getAmount(),left.getMaxStackSize());target[i]=left.clone();target[i].setAmount(count);left.setAmount(left.getAmount()-count);}
+        return GoodieChestPlan.clone(left);
+    }
+    private String submit(Player player,List<Half> halves,GoodieChestPlan before,GoodieChestPlan after,IntentSideEffect sideEffect,boolean force)throws SQLException {
+        if(!force && after.drops.isEmpty() && Arrays.equals(before.top,after.top) && Arrays.equals(before.player,after.player) && Objects.equals(before.cursor,after.cursor))return null;
         validateUnits(player,before.player,after.player);
         String id=UUID.randomUUID().toString();var initial=locate(player.getUniqueId(),halves,before,false,id);var result=locate(player.getUniqueId(),halves,after,true,id);
         if(!initial.keySet().equals(result.keySet()))throw new IllegalArgumentException("Товар нельзя разделить или удалить этим действием.");
@@ -161,6 +194,7 @@ public final class GoodieChestService implements Listener {
         for(var image:intent.images()) {
             var c=chest(image);var after=ItemStack.deserializeItemsFromBytes(image.after());filter(after,invalid);c.getSnapshotInventory().setContents(after);c.getPersistentDataContainer().set(chestApplied,PersistentDataType.STRING,intent.id());if(!c.update(false,false))throw new IllegalStateException("Unable to restore goodie chest");worlds.add(c.getWorld());
         }
+        worlds.addAll(plainGround.ensure(intent.id()));
         for(var world:worlds)world.save(true);interrupt("world-saved",intent);
         var inventory=ItemStack.deserializeItemsFromBytes(intent.inventory());var cursor=ItemStack.deserializeItemsFromBytes(intent.cursor());filter(inventory,invalid);filter(cursor,invalid);
         if(player!=null){player.getInventory().setContents(inventory);player.setItemOnCursor(cursor[0]);player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,intent.id());plainCursors.applied(player,intent.id());player.saveData();interrupt("player-saved",intent);}
@@ -193,7 +227,7 @@ public final class GoodieChestService implements Listener {
         storage.transaction(db->{GoodieChestStore.deliveredPlainCursor(db,player.getUniqueId(),saved.receipt());return null;});
     }
     public void checkpointCursor(Player player){plainCursors.beforeSave(player);}
-    public void shutdown(){plainCursors.shutdown();}
+    public void shutdown(){plainCursors.shutdown();plainGround.close();}
     private void tick() {
         if(paused)return;
         try{for(var intent:storage.query(GoodieChestStore::pending)){var player=Bukkit.getPlayer(intent.player());if(player==null || !player.isDead())try{finish(player,intent);}catch(Exception failure){warn(failure);}}refreshLocks();for(var player:Bukkit.getOnlinePlayers())if(!player.isDead()){recoverPlainDelivery(player);if(cursorOwners.contains(player.getUniqueId()) && !storage.query(db->GoodieDepartureStore.waiting(db,player.getUniqueId())))restoreCursor(player);}checkContainers();}catch(Exception failure){warn(failure);}
@@ -208,6 +242,14 @@ public final class GoodieChestService implements Listener {
         }
     }
     @EventHandler(priority=EventPriority.HIGHEST) public void join(PlayerJoinEvent event){if(paused)return;try{for(var p:storage.query(GoodieChestStore::pending))if(p.player().equals(event.getPlayer().getUniqueId()))finish(event.getPlayer(),p);recoverPlainDelivery(event.getPlayer());restoreCursor(event.getPlayer());plainCursors.restore(event.getPlayer());}catch(Exception failure){warn(failure);event.getPlayer().kick(Component.text("Не удалось восстановить перенос товара через сундук."));}}
+    @EventHandler(priority=EventPriority.HIGHEST)
+    public void closePending(InventoryCloseEvent event) {
+        if(!(event.getPlayer() instanceof Player player) || !frozen.contains(player.getUniqueId()))return;
+        // The durable after-image owns this cursor. Vanilla close must not drop a second copy
+        // when returning it to a full inventory before the pending intent finishes.
+        try{if(storage.query(db->GoodieChestStore.pendingPlayer(db,player.getUniqueId())))player.setItemOnCursor(null);}
+        catch(SQLException failure){warn(failure);}
+    }
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent event){
         if(frozen.contains(event.getPlayer().getUniqueId()) || locked(event.getInventory())){event.setCancelled(true);return;}
         var holder=event.getInventory().getHolder();if(!(holder instanceof Chest) && !(holder instanceof DoubleChest))return;

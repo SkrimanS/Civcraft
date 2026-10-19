@@ -46,6 +46,7 @@ public final class CivCraftEconomyService {
     public boolean usesExternalProvider() {
         return vaultEconomy != null;
     }
+    public String externalProviderName(){return vaultEconomy==null?null:vaultEconomy.getName();}
 
     public double balance(Player player) throws SQLException {
         if (vaultEconomy != null) {

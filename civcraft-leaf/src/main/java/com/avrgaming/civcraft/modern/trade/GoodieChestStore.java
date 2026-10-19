@@ -37,6 +37,7 @@ public final class GoodieChestStore {
     private static byte[] bounded(byte[] data){if(data==null || data.length<1 || data.length>16*1024*1024)throw new IllegalArgumentException("Invalid chest inventory image");return data.clone();}
     private static void transaction(Connection db)throws SQLException{if(db.getAutoCommit())throw new SQLException("Chest transfer requires a transaction");}
     public static void install(Connection db)throws SQLException {
+        PlainTransferGround.install(db);
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS goodie_chest_transfers(id TEXT PRIMARY KEY,player_uuid TEXT NOT NULL,inventory BLOB NOT NULL,cursor BLOB NOT NULL,cursor_token TEXT,cursor_revision INTEGER,status TEXT NOT NULL CHECK(status IN ('PREPARED','COMPLETE')),created_at INTEGER NOT NULL)");
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_pending_goodie_chest_player ON goodie_chest_transfers(player_uuid) WHERE status='PREPARED'");
@@ -157,6 +158,7 @@ public final class GoodieChestStore {
         transaction(db);boolean active;try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_transfers WHERE id=? AND status='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){active=r.next();}}if(!active)return false;
         var intent=read(db,id);var invalid=invalidated(db,intent);
         com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.complete(db,id);
+        com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.complete(db,id);
         for(var move:intent.moves())if(!invalid.contains(move.before().token())){var after=BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);if(move.drop()!=null)GoodieDepartureStore.queueGround(db,intent.player(),after,move.drop());}
         try(var s=db.prepareStatement("DELETE FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
         if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))try(var s=db.prepareStatement("INSERT INTO goodie_chest_cursor_checkpoints VALUES(?,?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setString(3,intent.cursorToken());s.setLong(4,intent.cursorRevision());s.setBytes(5,intent.cursor());s.executeUpdate();}

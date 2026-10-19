@@ -270,12 +270,12 @@ public final class QuestManager {
             return true;
         }
         if(!civCraft.canApplyCampQuest(campId,player.getUniqueId()))return false;
-        try (Connection connection = storage.connect()) {
-            setProgress(connection, campId, quest.id(), quest.target(), true, true,player.getUniqueId());
+        try {
+            if(!progress.completed())try(Connection connection=storage.connect()){setProgress(connection,campId,quest.id(),quest.target(),true,false,player.getUniqueId());}
             rewards.give(player, campId, quest);
-            return true;
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Unable to complete quest: " + exception.getMessage());
+            return progress(campId,quest.id()).rewarded();
+        } catch (SQLException|RuntimeException exception) {
+            long now=System.currentTimeMillis();if(now-lastRecoveryWarning>30000){lastRecoveryWarning=now;plugin.getLogger().warning("Unable to complete quest: " + exception.getMessage());}
             return false;
         }
     }
@@ -283,6 +283,7 @@ public final class QuestManager {
     private void recoverRewards() {
         record Due(long camp,String quest,java.util.UUID player){}
         try {
+            rewards.flushExternalRewards();
             var due=new ArrayList<Due>();
             try(Connection connection=storage.connect();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT camp_id,quest_id,completer_uuid FROM camp_quest_progress WHERE completed=1 AND rewarded=0 AND completer_uuid IS NOT NULL")) {
                 while(rows.next())due.add(new Due(rows.getLong(1),rows.getString(2),java.util.UUID.fromString(rows.getString(3))));

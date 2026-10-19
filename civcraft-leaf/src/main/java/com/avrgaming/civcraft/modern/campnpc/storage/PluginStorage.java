@@ -53,7 +53,10 @@ public final class PluginStorage {
             if(!completer)statement.executeUpdate("ALTER TABLE camp_quest_progress ADD COLUMN completer_uuid TEXT");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS camp_npc_migrations(id TEXT PRIMARY KEY)");
             migrateLegacy(connection);
-            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin)com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.install(connection);
+            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin) {
+                com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.install(connection);
+                com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.install(connection);
+            }
         } catch (SQLException exception) {
             throw new IllegalStateException("Unable to initialize camp NPC storage",exception);
         }
