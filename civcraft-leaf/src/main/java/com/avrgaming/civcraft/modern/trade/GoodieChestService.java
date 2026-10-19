@@ -114,7 +114,20 @@ public final class GoodieChestService implements Listener {
         if(found.putIfAbsent(token,new Located(item,kind,holder))!=null)throw new IllegalArgumentException("Обнаружена лишняя копия торгового товара.");
     }
     private void submit(Player player,List<Half> halves,GoodieChestPlan before,GoodieChestPlan after)throws SQLException {
-        if(after.drops.isEmpty() && Arrays.equals(before.top,after.top) && Arrays.equals(before.player,after.player) && Objects.equals(before.cursor,after.cursor))return;
+        submit(player,halves,before,after,(db,id)->{});
+    }
+    @FunctionalInterface private interface IntentSideEffect {void prepare(java.sql.Connection db,String id)throws SQLException;}
+    public String submitCampQuestItems(Player player,ItemStack[] inventory,long camp,String quest,int beforeAmount,int removed,int target)throws SQLException {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Quest inventory mutations require the server thread");
+        ready(player);
+        if(!plugin.getCampApi().canApplyCampQuest(camp,player.getUniqueId()))throw new IllegalArgumentException("Инвентари лагеря ещё сохраняются.");
+        if(inventory.length!=player.getInventory().getSize())throw new IllegalArgumentException("Invalid quest inventory snapshot");
+        var before=new GoodieChestPlan(new ItemStack[0],player.getInventory().getContents(),player.getItemOnCursor());
+        var after=new GoodieChestPlan(new ItemStack[0],inventory,player.getItemOnCursor());
+        return submit(player,List.of(),before,after,(db,id)->com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.prepare(db,id,camp,quest,player.getUniqueId(),beforeAmount,removed,target));
+    }
+    private String submit(Player player,List<Half> halves,GoodieChestPlan before,GoodieChestPlan after,IntentSideEffect sideEffect)throws SQLException {
+        if(after.drops.isEmpty() && Arrays.equals(before.top,after.top) && Arrays.equals(before.player,after.player) && Objects.equals(before.cursor,after.cursor))return null;
         validateUnits(player,before.player,after.player);
         String id=UUID.randomUUID().toString();var initial=locate(player.getUniqueId(),halves,before,false,id);var result=locate(player.getUniqueId(),halves,after,true,id);
         if(!initial.keySet().equals(result.keySet()))throw new IllegalArgumentException("Товар нельзя разделить или удалить этим действием.");
@@ -128,8 +141,9 @@ public final class GoodieChestService implements Listener {
         var images=new ArrayList<GoodieChestStore.Image>();
         for(int i=0;i<halves.size();i++)images.add(new GoodieChestStore.Image(halves.get(i).position(),halves.get(i).material(),ItemStack.serializeItemsAsBytes(Arrays.copyOfRange(before.top,i*27,i*27+27)),ItemStack.serializeItemsAsBytes(Arrays.copyOfRange(after.top,i*27,i*27+27))));
         String cursorToken=items.token(after.cursor);Long cursorRevision=cursorToken==null?null:moves.stream().filter(m->m.before().token().equals(cursorToken)).findFirst().orElseThrow().after().revision();
-        var intent=storage.transaction(db->GoodieChestStore.prepare(db,id,player.getUniqueId(),ItemStack.serializeItemsAsBytes(after.player),ItemStack.serializeItemsAsBytes(new ItemStack[]{after.cursor}),images,moves,cursorToken,cursorRevision,System.currentTimeMillis()));
+        var intent=storage.transaction(db->{var saved=GoodieChestStore.prepare(db,id,player.getUniqueId(),ItemStack.serializeItemsAsBytes(after.player),ItemStack.serializeItemsAsBytes(new ItemStack[]{after.cursor}),images,moves,cursorToken,cursorRevision,System.currentTimeMillis());sideEffect.prepare(db,id);return saved;});
         frozen.add(player.getUniqueId());var reserved=new HashSet<>(locks);for(var image:images){reserved.add(image.position());knownContainers.put(image.position().holder(),image.position());}locks=Set.copyOf(reserved);interrupt("prepared",intent);plugin.getServer().getScheduler().runTask(plugin,()->{try{if(player.isOnline() && !player.isDead() && !paused)finish(player,intent);}catch(Exception failure){warn(failure);}});
+        return id;
     }
     private void replace(ItemStack[] inventory,Map<String,ItemStack> replacements){for(int i=0;i<inventory.length;i++)if(good(inventory[i]))inventory[i]=replacements.get(items.token(inventory[i])).clone();}
     private void filter(ItemStack[] inventory,Set<String> invalid){for(int i=0;i<inventory.length;i++)if(invalid.contains(items.token(inventory[i])))inventory[i]=null;}

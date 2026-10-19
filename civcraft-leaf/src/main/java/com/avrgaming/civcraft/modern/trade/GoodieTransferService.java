@@ -49,6 +49,7 @@ public final class GoodieTransferService implements Listener {
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
     public void checkpointCursor(Player player){chests.checkpointCursor(player);}
+    public String submitCampQuestItems(Player player,ItemStack[] inventory,long camp,String quest,int before,int removed,int target)throws SQLException{return chests.submitCampQuestItems(player,inventory,camp,quest,before,removed,target);}
     public void shutdown(){chests.shutdown();}
     public GoodieTransferStore.Pending preparePiracy(Connection db,Player player,long build,byte[] inventory,String id)throws SQLException {
         var before=BonusGoodieStore.origin(db,build);if(before==null || before.kind()!=BonusGoodieStore.Kind.SOURCE)throw new IllegalArgumentException("В исходной рамке больше нет товара.");

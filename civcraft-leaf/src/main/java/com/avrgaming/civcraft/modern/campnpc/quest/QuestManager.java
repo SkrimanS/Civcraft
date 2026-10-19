@@ -179,11 +179,16 @@ public final class QuestManager {
         if (remaining <= 0) {
             return completionResult(player,campId,quest);
         }
-        int removed = removeMatching(player, quest, remaining);
-        if (removed <= 0) {
+        var plan = planMatching(player, quest, remaining);
+        if (plan.removed() <= 0) {
             return new SubmitResult(false, lang.msg("camp-npc.quest-no-items", "&cУ тебя нет нужных предметов для сдачи."));
         }
-        return addProgress(player, campId, quest, removed, "§aСдано " + removed + ".");
+        if(!(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern) || modern.goodieTransfers()==null)return new SubmitResult(false,"§cСохранение сдачи квестов недоступно.");
+        try {
+            modern.goodieTransfers().submitCampQuestItems(player,plan.inventory(),campId,quest.id(),progress.amount(),plan.removed(),quest.target());
+            return new SubmitResult(true,"§aСдача "+plan.removed()+" предметов сохраняется. Прогресс будет зачислен после завершения операции.");
+        }catch(IllegalArgumentException waiting){return new SubmitResult(false,"§e"+waiting.getMessage());}
+        catch(SQLException|RuntimeException failure){plugin.getLogger().warning("Unable to save camp quest submission: "+failure.getMessage());return new SubmitResult(false,"§cНе удалось завершить сдачу. Если операция уже записана, сервер восстановит её автоматически.");}
     }
 
     public void progressMobKill(Player player, String mythicMobId, EntityType entityType) {
@@ -308,10 +313,12 @@ public final class QuestManager {
         }
     }
 
-    private int removeMatching(Player player, QuestDefinition quest, int maxAmount) {
+    private record SubmissionPlan(int removed,ItemStack[] inventory){}
+    private SubmissionPlan planMatching(Player player, QuestDefinition quest, int maxAmount) {
         int removed = 0;
-        ItemStack[] contents = player.getInventory().getStorageContents();
-        for (int i = 0; i < contents.length && removed < maxAmount; i++) {
+        ItemStack[] contents = player.getInventory().getContents();
+        for(int i=0;i<contents.length;i++)if(contents[i]!=null)contents[i]=contents[i].clone();
+        for (int i = 0; i < Math.min(36,contents.length) && removed < maxAmount; i++) {
             ItemStack item = contents[i];
             if (item == null || item.getType().isAir()) {
                 continue;
@@ -327,8 +334,7 @@ public final class QuestManager {
                 contents[i] = null;
             }
         }
-        player.getInventory().setStorageContents(contents);
-        return removed;
+        return new SubmissionPlan(removed,contents);
     }
 
     public record SubmitResult(boolean changed, String message) {

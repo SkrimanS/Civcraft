@@ -113,7 +113,7 @@ public final class GoodieChestStore {
         var reserved=locked(db);var producers=producerPositions(db);if(positions.stream().anyMatch(p->reserved.contains(p) || producers.contains(p)))throw new IllegalArgumentException("Сундук участвует в незавершённой операции.");
     }
     public static Pending prepare(Connection db,String id,UUID player,byte[] inventory,byte[] cursor,List<Image> images,List<Move> moves,String cursorToken,Long cursorRevision,long now)throws SQLException {
-        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.size()>2 || moves.isEmpty() || moves.size()>128)throw new IllegalArgumentException("Invalid chest transfer");
+        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.size()>2 || moves.size()>128)throw new IllegalArgumentException("Invalid chest transfer");
         if((cursorToken==null)!=(cursorRevision==null))throw new IllegalArgumentException("Incomplete cursor checkpoint");
         var pending=new Pending(id,player,inventory,cursor,images,moves,cursorToken,cursorRevision);
         try(var s=db.prepareStatement("SELECT 1 FROM trade_receipts WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_transfers WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_chest_transfers WHERE player_uuid=? AND status='PREPARED'")){for(int i=1;i<=3;i++)s.setString(i,player.toString());try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Сначала завершите предыдущий обмен.");}}
@@ -156,6 +156,7 @@ public final class GoodieChestStore {
     public static boolean complete(Connection db,String id,byte[] plainCursor)throws SQLException {
         transaction(db);boolean active;try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_transfers WHERE id=? AND status='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){active=r.next();}}if(!active)return false;
         var intent=read(db,id);var invalid=invalidated(db,intent);
+        com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.complete(db,id);
         for(var move:intent.moves())if(!invalid.contains(move.before().token())){var after=BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);if(move.drop()!=null)GoodieDepartureStore.queueGround(db,intent.player(),after,move.drop());}
         try(var s=db.prepareStatement("DELETE FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
         if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))try(var s=db.prepareStatement("INSERT INTO goodie_chest_cursor_checkpoints VALUES(?,?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setString(3,intent.cursorToken());s.setLong(4,intent.cursorRevision());s.setBytes(5,intent.cursor());s.executeUpdate();}

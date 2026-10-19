@@ -42,7 +42,7 @@ public final class CampLonghouseStore {
     }
     static void requireUnlocked(Connection db,long camp,boolean allowDueMeal)throws SQLException {
         boolean fire=false;
-        for(String table:List.of("camp_longhouse_operations","camp_fire_operations","camp_ruins")) {
+        for(String table:List.of("camp_longhouse_operations","camp_fire_operations","camp_ruins","camp_quest_submissions")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             if(table.equals("camp_fire_operations"))fire=true;
             try(var s=db.prepareStatement("SELECT 1 FROM "+table+" WHERE camp_id=? AND status='PREPARED'")) {
