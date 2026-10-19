@@ -16,6 +16,9 @@ public final class ConsumptionCatalog {
         }
     }
     private final Map<String,Map<Integer,Level>> buildings;
+    public static Map<Integer,Level> longhouse(File camp) {
+        return read(YamlConfiguration.loadConfiguration(camp),"longhouse_levels","coins");
+    }
     public ConsumptionCatalog(File structures) {
         var yaml=YamlConfiguration.loadConfiguration(structures);
         var all=new LinkedHashMap<String,Map<Integer,Level>>();

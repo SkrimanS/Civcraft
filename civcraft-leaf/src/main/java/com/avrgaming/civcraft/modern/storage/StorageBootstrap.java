@@ -2138,6 +2138,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
 
     public synchronized void deleteCamp(long campId, UUID owner) throws SQLException {
+        com.avrgaming.civcraft.modern.camp.CampLonghouseStore.requireUnlocked(connection,campId);
         connection.setAutoCommit(false);
         try {
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = NULL, updated_at = ? WHERE uuid = ? AND camp_id = ?")) {

@@ -72,6 +72,7 @@ public final class CampService {
     private final Map<String, Long> cropStartTimes = new ConcurrentHashMap<>();
     private volatile YamlConfiguration messages;
     private final Random random = new Random();
+    private final CampLonghouseService longhouse;
 
     public CampService(JavaPlugin plugin, CivCraftGameService game, CivCraftEconomyService economy, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -80,6 +81,11 @@ public final class CampService {
         this.settings = settings;
         reloadMessages();
         initializeStorage();
+        try {
+            longhouse = new CampLonghouseService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin);
+        } catch (SQLException | IOException exception) {
+            throw new IllegalStateException("Unable to initialize native camp longhouse", exception);
+        }
     }
 
     public void updateSettings(ModernCivCraftSettings settings) {
@@ -140,7 +146,7 @@ public final class CampService {
             case "tp", "teleport" -> teleport(player);
             case "accept" -> acceptInvite(player);
             case "decline", "deny" -> declineInvite(player);
-            case "upgrade" -> upgrade(player, arg(args, 2, message("camp.error.specify-upgrade", "Укажите улучшение: farm или breaker.")));
+            case "upgrade" -> upgrade(player, arg(args, 2, message("camp.error.specify-upgrade", "Укажите улучшение: farm, breaker или longhouse.")));
             default -> help(player);
         }
         return true;
@@ -151,7 +157,7 @@ public final class CampService {
             return List.of("info", "invite", "kick", "promote", "lower", "setleader", "disband", "leave", "tp", "teleport", "upgrade", "accept", "decline");
         }
         if (argIndex == 2) {
-            return List.of("farm", "breaker");
+            return List.of("farm", "breaker", "longhouse", "garden", "sifter");
         }
         return List.of();
     }
@@ -167,7 +173,7 @@ public final class CampService {
         player.sendMessage(message("camp.help.disband", "§e/c disband §7- распустить лагерь"));
         player.sendMessage(message("camp.help.leave", "§e/c leave §7- выйти из лагеря"));
         player.sendMessage(message("camp.help.tp", "§e/c tp §7- телепортироваться в лагерь, кд 30 минут"));
-        player.sendMessage(message("camp.help.upgrade", "§e/c upgrade farm|breaker §7- купить улучшение за 2500 монет"));
+        player.sendMessage(message("camp.help.upgrade", "§e/c upgrade farm|breaker|longhouse §7- купить улучшение лагеря"));
     }
 
     private void info(Player player) throws SQLException {
@@ -181,10 +187,11 @@ public final class CampService {
         player.sendMessage(msg("camp.info.leader", "§7Главарь: §e{leader}", "{leader}", playerName(camp.leaderUuid())));
         player.sendMessage(msg("camp.info.elders", "§7Старосты: §e{elders}", "{elders}", elders.isEmpty() ? message("camp.common.none", "-") : String.join(", ", elders)));
         player.sendMessage(msg("camp.info.members", "§7Участники: §e{members}", "{members}", normal.isEmpty() ? message("camp.common.none", "-") : String.join(", ", normal)));
-        player.sendMessage(msg("camp.info.level", "§7Уровень: §e{level}§7, опыт: §e{experience}/{next}", "{level}", String.valueOf(camp.level()), "{experience}", String.valueOf(camp.experience()), "{next}", String.valueOf(nextLevelXp(camp.level()))));
+        player.sendMessage(msg("camp.info.level", "§7Уровень большого дома: §e{level}§7, питание: §e{experience}/{next}", "{level}", String.valueOf(camp.level()), "{experience}", String.valueOf(camp.experience()), "{next}", String.valueOf(nextLevelXp(camp.level()))));
         player.sendMessage(msg("camp.info.bread", "§7Хлеб в час: §e{bread}§7, жителей: §e{members}", "{bread}", String.valueOf(breadRequired(camp.level(), membersCount)), "{members}", String.valueOf(membersCount)));
         player.sendMessage(msg("camp.info.control", "§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(CONTROL_MAX_HP), "{raid}", raidStatus(camp)));
-        player.sendMessage(msg("camp.info.leadership", "§7Очки лидерства главаря: §e{points}/24", "{points}", String.valueOf(leadershipPoints(camp.leaderUuid()))));
+        player.sendMessage("§7За каждый успешный час питания жетон лидерства появляется в сундуке большого дома.");
+        player.sendMessage("§7Большой дом: " + (longhouseEnabled(camp.id()) ? "§aкуплен" : "§cне куплен"));
         player.sendMessage(msg("camp.info.upgrades", "§7Улучшения: farm={farm}, breaker={breaker}", "{farm}", yesNo(camp.farmUpgrade()), "{breaker}", yesNo(camp.breakerUpgrade())));
     }
 
@@ -316,8 +323,10 @@ public final class CampService {
     private void upgrade(Player player, String upgrade) throws SQLException {
         CampMember self = requireRole(player.getUniqueId(), ROLE_LEADER);
         String clean = upgrade.toLowerCase(Locale.ROOT);
-        if (!clean.equals("farm") && !clean.equals("breaker")) {
-            throw new IllegalArgumentException(message("camp.error.invalid-upgrade", "Улучшение должно быть farm или breaker."));
+        if (clean.equals("garden")) clean = "farm";
+        if (clean.equals("sifter")) clean = "breaker";
+        if (!clean.equals("farm") && !clean.equals("breaker") && !clean.equals("longhouse")) {
+            throw new IllegalArgumentException(message("camp.error.invalid-upgrade", "Улучшение должно быть farm, breaker или longhouse."));
         }
         buyUpgrade(player, self.campId(), clean);
         player.sendMessage(msg("camp.upgrade.success", "Улучшение {upgrade} куплено.", "{upgrade}", clean));
@@ -342,26 +351,7 @@ public final class CampService {
     }
 
     private void tickCampProduction() {
-        try {
-            for (CampInfo camp : camps()) {
-                CampLevel level = level(camp.level());
-                int bread = breadRequired(camp.level(), memberCount(camp.id()));
-                if (bread <= 0) {
-                    continue;
-                }
-                Location chest = camp.foodChestLocation();
-                if (chest == null || !(chest.getBlock().getState() instanceof Chest foodChest)) {
-                    continue;
-                }
-                if (!removeItems(foodChest.getInventory(), Material.BREAD, bread)) {
-                    continue;
-                }
-                addCampExperienceAndMoney(camp.id(), camp.leaderUuid(), level.experience(), level.money());
-                notifyCampProduction(camp.id(), camp.name(), level.experience(), level.money(), bread);
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Camp production tick failed: " + exception.getMessage());
-        }
+        longhouse.runHour();
     }
 
     private void tickBreaker() {
@@ -626,20 +616,6 @@ public final class CampService {
         }
     }
 
-    private void notifyCampProduction(long campId, String campName, int experience, long money, int bread) {
-        try {
-            String message = msg("camp.production.notify", "§6Лагерь §e{camp} §6получил §e{experience} §6опыта. Потрачено хлеба: §e{bread}§6. Главарь получил §e{money} §6монет.", "{camp}", campName, "{experience}", String.valueOf(experience), "{bread}", String.valueOf(bread), "{money}", String.valueOf(money));
-            for (CampMember member : members(campId)) {
-                Player player = Bukkit.getPlayer(member.uuid());
-                if (player != null) {
-                    player.sendMessage(message);
-                }
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Unable to notify camp production: " + exception.getMessage());
-        }
-    }
-
     private void initializeStorage() {
         try (Connection connection = connect(); Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS camp_members(camp_id INTEGER NOT NULL, uuid TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL, joined_at INTEGER NOT NULL)");
@@ -649,6 +625,7 @@ public final class CampService {
             addColumnIfMissing(connection, "camps", "leadership_points", "INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(connection, "camps", "farm_upgrade", "INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(connection, "camps", "breaker_upgrade", "INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(connection, "camps", "longhouse_upgrade", "INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(connection, "camps", "food_chest_world", "TEXT");
             addColumnIfMissing(connection, "camps", "food_chest_x", "INTEGER");
             addColumnIfMissing(connection, "camps", "food_chest_y", "INTEGER");
@@ -832,6 +809,7 @@ public final class CampService {
 
     private void connectionalUpdateLeader(long campId, UUID oldLeader, UUID newLeader) throws SQLException {
         try (Connection connection = connect()) {
+            CampLonghouseStore.requireUnlocked(connection,campId);
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement statement = connection.prepareStatement("UPDATE camps SET owner_uuid = ? WHERE id = ?")) {
@@ -964,34 +942,49 @@ public final class CampService {
         return args[index];
     }
 
+    private boolean longhouseEnabled(long campId) throws SQLException {
+        try (Connection connection=connect();var statement=connection.prepareStatement("SELECT longhouse_upgrade FROM camps WHERE id=?")) {
+            statement.setLong(1,campId);try(var rs=statement.executeQuery()){return rs.next() && rs.getInt(1)!=0;}
+        }
+    }
+
+    private int breadRequired(int level,int ignoredMembers) { return longhouse.bread(level); }
+    private int nextLevelXp(int level) { return longhouse.maximum(level); }
+
+    private double upgradeCost(String upgrade) {
+        String action=switch(upgrade){case "farm"->"enable_garden";case "breaker"->"enable_sifter";case "longhouse"->"enable_longhouse";default->throw new IllegalArgumentException("Unknown camp upgrade");};
+        var yaml=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml"));
+        for(var row:yaml.getMapList("upgrades"))if(action.equals(row.get("action")) && row.get("cost") instanceof Number value) {
+            double cost=value.doubleValue();if(Double.isFinite(cost) && cost>=0)return cost;
+        }
+        throw new IllegalStateException("Missing camp upgrade price: "+upgrade);
+    }
+
     private void buyUpgrade(Player player, long campId, String upgrade) throws SQLException {
+        double cost=upgradeCost(upgrade);
+        boolean external= economy.usesExternalProvider(),paid=false;
+        String column=switch(upgrade){case "farm"->"farm_upgrade";case "breaker"->"breaker_upgrade";case "longhouse"->"longhouse_upgrade";default->throw new IllegalArgumentException("Unknown camp upgrade");};
         try (Connection connection = connect()) {
             connection.setAutoCommit(false);
             try {
-                economy.withdraw(player, 2500, "camp upgrade " + upgrade);
-                String column = upgrade.equals("farm") ? "farm_upgrade" : "breaker_upgrade";
-                try (PreparedStatement check = connection.prepareStatement("SELECT " + column + " FROM camps WHERE id = ?")) {
-                    check.setLong(1, campId);
-                    try (ResultSet rs = check.executeQuery()) {
-                        if (!rs.next()) {
-                            throw new SQLException("Camp not found");
-                        }
-                        if (rs.getInt(column) != 0) {
-                            throw new IllegalArgumentException(message("camp.error.upgrade-owned", "Улучшение уже куплено."));
-                        }
+                CampLonghouseStore.requireUnlocked(connection,campId);
+                try(var check=connection.prepareStatement("SELECT "+column+" FROM camps WHERE id=? AND owner_uuid=?")) {
+                    check.setLong(1,campId);check.setString(2,player.getUniqueId().toString());
+                    try(var rs=check.executeQuery()) {
+                        if(!rs.next())throw new SQLException("Camp or leader changed");
+                        if(rs.getInt(1)!=0)throw new IllegalArgumentException(message("camp.error.upgrade-owned","Улучшение уже куплено."));
                     }
                 }
-                try (PreparedStatement statement = connection.prepareStatement("UPDATE camps SET " + column + " = 1 WHERE id = ?")) {
-                    statement.setLong(1, campId);
-                    statement.executeUpdate();
+                if(external){economy.withdraw(player,cost,"camp upgrade "+upgrade);paid=true;}
+                else try(var charge=connection.prepareStatement("UPDATE residents SET coins=coins-?,updated_at=? WHERE uuid=? AND coins>=?")) {
+                    charge.setDouble(1,cost);charge.setLong(2,System.currentTimeMillis());charge.setString(3,player.getUniqueId().toString());charge.setDouble(4,cost);
+                    if(charge.executeUpdate()!=1)throw new IllegalArgumentException(message("camp.error.upgrade-money","Недостаточно монет для улучшения лагеря."));
                 }
+                try(var update=connection.prepareStatement("UPDATE camps SET "+column+"=1 WHERE id=?")){update.setLong(1,campId);if(update.executeUpdate()!=1)throw new SQLException("Camp disappeared");}
                 connection.commit();
             } catch (SQLException | RuntimeException exception) {
                 connection.rollback();
-                try {
-                    economy.deposit(player, 2500, "camp upgrade refund");
-                } catch (SQLException ignored) {
-                }
+                if(external && paid)try{economy.deposit(player,cost,"camp upgrade refund");}catch(SQLException refundFailure){exception.addSuppressed(refundFailure);}
                 throw exception;
             }
         }
@@ -999,6 +992,7 @@ public final class CampService {
 
     private void removeCamp(long campId) throws SQLException {
         try (Connection connection = connect()) {
+            CampLonghouseStore.requireUnlocked(connection,campId);
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = NULL, updated_at = ? WHERE camp_id = ?")) {
@@ -1016,34 +1010,6 @@ public final class CampService {
                 }
                 connection.commit();
             } catch (SQLException exception) {
-                connection.rollback();
-                throw exception;
-            }
-        }
-    }
-
-    private void addCampExperienceAndMoney(long campId, UUID leader, int xp, long money) throws SQLException {
-        try (Connection connection = connect()) {
-            connection.setAutoCommit(false);
-            try {
-                CampInfo camp = campInfo(campId).orElseThrow();
-                int newXp = camp.experience() + Math.max(0, xp);
-                int newLevel = levelForExperience(newXp);
-                try (PreparedStatement statement = connection.prepareStatement("UPDATE camps SET experience = ?, level = ? WHERE id = ?")) {
-                    statement.setInt(1, newXp);
-                    statement.setInt(2, newLevel);
-                    statement.setLong(3, campId);
-                    statement.executeUpdate();
-                }
-                addLeadershipPoint(connection, leader);
-                try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET coins = coins + ?, updated_at = ? WHERE uuid = ?")) {
-                    statement.setLong(1, money);
-                    statement.setLong(2, System.currentTimeMillis());
-                    statement.setString(3, leader.toString());
-                    statement.executeUpdate();
-                }
-                connection.commit();
-            } catch (SQLException | RuntimeException exception) {
                 connection.rollback();
                 throw exception;
             }
@@ -1113,46 +1079,6 @@ public final class CampService {
         if (value < 0.99) return Material.DIAMOND;
         return Material.EMERALD;
     }
-
-    private CampLevel level(int level) {
-        return switch (Math.max(1, Math.min(5, level))) {
-            case 1 -> new CampLevel(50, 250);
-            case 2 -> new CampLevel(100, 500);
-            case 3 -> new CampLevel(200, 1250);
-            case 4 -> new CampLevel(300, 2000);
-            default -> new CampLevel(0, 4000);
-        };
-    }
-
-    private int breadRequired(int level, int membersCount) {
-        int base = switch (Math.max(1, Math.min(5, level))) {
-            case 1 -> 2;
-            case 2 -> 4;
-            case 3 -> 8;
-            case 4 -> 12;
-            default -> 20;
-        };
-        return base + Math.max(0, membersCount / 2);
-    }
-
-    private int nextLevelXp(int level) {
-        return switch (level) {
-            case 1 -> 100;
-            case 2 -> 300;
-            case 3 -> 600;
-            case 4 -> 1200;
-            default -> 1200;
-        };
-    }
-
-    private int levelForExperience(int experience) {
-        if (experience >= 1200) return 5;
-        if (experience >= 600) return 4;
-        if (experience >= 300) return 3;
-        if (experience >= 100) return 2;
-        return 1;
-    }
-
 
     private int memberCount(long campId) throws SQLException {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM camp_members WHERE camp_id = ?")) {
@@ -1301,26 +1227,6 @@ public final class CampService {
         }
     }
 
-    private void addLeadershipPoint(Connection connection, UUID leader) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement("""
-                INSERT INTO camp_leadership_points(uuid, points)
-                VALUES(?, 1)
-                ON CONFLICT(uuid) DO UPDATE SET points = MIN(24, points + 1)
-                """)) {
-            statement.setString(1, leader.toString());
-            statement.executeUpdate();
-        }
-    }
-
-    private int leadershipPoints(UUID leader) throws SQLException {
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT points FROM camp_leadership_points WHERE uuid = ?")) {
-            statement.setString(1, leader.toString());
-            try (ResultSet rs = statement.executeQuery()) {
-                return rs.next() ? rs.getInt("points") : 0;
-            }
-        }
-    }
-
     private long controlAttackTimeLeft(CampInfo camp) {
         return Math.max(0L, CONTROL_ATTACK_DELAY_MILLIS - (System.currentTimeMillis() - camp.createdAt()));
     }
@@ -1462,6 +1368,7 @@ public final class CampService {
     }
 
     private void destroyCamp(long campId, boolean showTitle) throws SQLException {
+        try (Connection connection = connect()) { CampLonghouseStore.requireUnlocked(connection,campId); }
         List<CampMember> campMembers = members(campId);
         airOutHalfCampBlocks(campId);
         releaseCampStructureProtection(campId);
@@ -1700,6 +1607,14 @@ public final class CampService {
         try (InputStream stream = plugin.getResource("messages.yml")) {
             if (stream != null) {
                 YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                // Replace only shipped obsolete wording; preserve administrator translations.
+                Map<String,String> obsolete = Map.of(
+                    "camp.help.upgrade", "§e/c upgrade farm / breaker §7- купить улучшение. Стоимость 2500 монет",
+                    "camp.info.level", "§7Уровень: §e{level}§7, опыт: §e{experience}/{next}",
+                    "camp.error.specify-upgrade", "&cУкажите улучшение: farm / breaker.",
+                    "camp.error.invalid-upgrade", "&cИспользуйте /camp upgrade farm / breaker."
+                );
+                obsolete.forEach((key,old)->{if(old.equals(loaded.getString(key)))loaded.set(key,defaults.getString(key));});
                 loaded.setDefaults(defaults);
                 loaded.options().copyDefaults(true);
                 loaded.save(file);
@@ -1715,7 +1630,7 @@ public final class CampService {
     private record StructureChunk(String world, int chunkX, int chunkZ) {}
     private record BlockLocation(String world, int x, int y, int z) {}
     public record CampPlaceholderInfo(String name, String leaderName, int level, int experience, int nextLevelExperience) {}
-    private record CampLevel(int experience, long money) {}
+
     private record Workstations(Location food, Location breakerInput, Location breakerOutput, Location controlBlock) {}
 
     private record CampInfo(long id, String name, UUID leaderUuid, String world, int x, int y, int z, int level, int experience, int leadershipPoints, boolean farmUpgrade, boolean breakerUpgrade, long createdAt, Location foodChestLocation, Location breakerInputLocation, Location breakerOutputLocation, Location controlBlockLocation, int controlHp) {

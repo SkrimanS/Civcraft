@@ -315,10 +315,12 @@ public final class CivCraftCampApi {
     public void setCampUpgrade(long campId, String upgrade, boolean enabled) {
         String clean = upgrade == null ? "" : upgrade.trim().toLowerCase();
         String column;
-        if (clean.equals("farm")) {
+        if (clean.equals("farm") || clean.equals("garden")) {
             column = "farm_upgrade";
-        } else if (clean.equals("breaker")) {
+        } else if (clean.equals("breaker") || clean.equals("sifter")) {
             column = "breaker_upgrade";
+        } else if (clean.equals("longhouse")) {
+            column = "longhouse_upgrade";
         } else {
             plugin.getLogger().warning("Unknown camp upgrade reward: " + upgrade);
             return;

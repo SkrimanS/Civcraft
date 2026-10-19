@@ -63,7 +63,10 @@ public final class GoodieChestStore {
         try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_images i JOIN goodie_chest_transfers operation ON operation.id=i.operation_id JOIN structure_chests c ON c.world=i.world AND c.x=i.x AND c.y=i.y AND c.z=i.z JOIN structure_builds b ON b.id=c.build_id WHERE operation.status='PREPARED' AND "+(town?"b.town_id":"b.id")+"=? LIMIT 1")){s.setLong(1,build);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Сундуки здания участвуют в незавершённом переносе товара.");}}
     }
     public static void requireImagesUnlocked(Connection db,byte[] containers)throws SQLException {
-        if(!installed(db))return;var reserved=locked(db);if(reserved.isEmpty())return;
+        var reserved=installed(db)?new HashSet<>(locked(db)):new HashSet<Position>();
+        boolean camps;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name='camp_longhouse_operations'");var r=s.executeQuery()){camps=r.next();}
+        if(camps)try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM camp_longhouse_operations WHERE status='PREPARED'")){while(r.next())reserved.addAll(positions(r.getBytes(1)));}
+        if(reserved.isEmpty())return;
         var positions=positions(containers);if(positions.stream().anyMatch(reserved::contains))throw new IllegalArgumentException("Сундук участвует в незавершённом переносе товара.");
     }
     private static Set<Position> positions(byte[] data)throws SQLException {
@@ -77,7 +80,7 @@ public final class GoodieChestStore {
     /** Read only coordinates from the existing producer journals, without decoding Bukkit items. */
     private static Set<Position> producerPositions(Connection db)throws SQLException {
         var out=new HashSet<Position>();
-        for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations")) {
+        for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations","camp_longhouse_operations")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")) {
                 while(r.next())out.addAll(positions(r.getBytes(1)));

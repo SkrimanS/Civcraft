@@ -21,14 +21,14 @@ camp:
     disband: '§e/c disband §7- распустить лагерь'
     leave: '§e/c leave §7- выйти из лагеря'
     tp: '§e/c tp §7- телепортироваться в лагерь. Имеет перезарядку 30 минут'
-    upgrade: '§e/c upgrade farm / breaker §7- купить улучшение. Стоимость 2500 монет'
+    upgrade: '§e/c upgrade farm / breaker / longhouse §7- купить улучшение. По умолчанию 500 монет'
 
   info:
     header: '§6Лагерь: §e{name}'
     leader: '§7Лидер: §e{leader}'
     elders: '§7Старосты: §e{elders}'
     members: '§7Участники: §e{members}'
-    level: '§7Уровень: §e{level}§7, опыт: §e{experience}/{next}'
+    level: '§7Уровень большого дома: §e{level}§7, питание: §e{experience}/{next}'
     bread: '§7Хлеб в час: §e{bread}§7, жителей: §e{members}'
     control: '§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}'
     leadership: '§7Очки лидерства: §e{points}/24'
@@ -90,7 +90,7 @@ camp:
 
   error:
     specify-player: '&cУкажите ник игрока.'
-    specify-upgrade: '&cУкажите улучшение: farm / breaker.'
+    specify-upgrade: '&cУкажите улучшение: farm / breaker / longhouse.'
     camp-not-found: '&cЛагерь не найден.'
     promote-member-only: '&cПовысить можно только участника.'
     lower-elder-only: '&cПонизить можно только старосту.'
@@ -102,7 +102,7 @@ camp:
     leader-cannot-leave: '&cЛидер не может выйти из лагеря. Передайте лидерство или распустите лагерь.'
     teleport-cooldown: '&cТелепорт будет доступен через {minutes}м {seconds}с.'
     world-not-found: '&cМир лагеря не найден.'
-    invalid-upgrade: '&cИспользуйте /camp upgrade farm / breaker.'
+    invalid-upgrade: '&cИспользуйте /camp upgrade farm / breaker / longhouse.'
     not-in-camp: '&cВы не состоите в лагере.'
     no-permission: '&cНедостаточно прав в лагере.'
     elder-only: '&cКоманда доступна только лидеру или старостам.'
