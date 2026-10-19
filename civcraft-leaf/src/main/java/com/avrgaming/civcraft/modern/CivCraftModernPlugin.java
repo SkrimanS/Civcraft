@@ -308,6 +308,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             }
         }, 20L * 60L, 20L * 60L);
         getServer().getPluginManager().registerEvents(new ResidentJoinListener(this, game, tabPrefixes), this);
+        new com.avrgaming.civcraft.modern.war.LegacyExplosionService(this,storage);
         getServer().getPluginManager().registerEvents(new TownClaimProtectionListener(this, townClaims), this);
         getServer().getPluginManager().registerEvents(new ConstructionAreaProtectionListener(this, storage), this);
         getServer().getPluginManager().registerEvents(new ProtectedBlockListener(this, storage, lang), this);
