@@ -969,8 +969,9 @@ public final class BuildQueue {
         }
 
         if (!legacyBlock.signLines().isEmpty() && block.getState() instanceof Sign sign) {
-            for (int i = 0; i < Math.min(4, legacyBlock.signLines().size()); i++) {
-                sign.line(i, net.kyori.adventure.text.Component.text(legacyBlock.signLines().get(i)));
+            var display=LegacySignText.display(legacyBlock.signLines());
+            for (int i = 0; i < Math.min(4, display.size()); i++) {
+                sign.line(i, net.kyori.adventure.text.Component.text(display.get(i)));
             }
             sign.update(true, false);
         }

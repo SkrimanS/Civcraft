@@ -302,6 +302,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TownClaimProtectionListener(this, townClaims), this);
         getServer().getPluginManager().registerEvents(new ConstructionAreaProtectionListener(this, storage), this);
         getServer().getPluginManager().registerEvents(new ProtectedBlockListener(this, storage, lang), this);
+        new com.avrgaming.civcraft.modern.build.LegacySignMigration(this,storage);
         this.foundationItems = new FoundationItemListener(this, game, legacyStructures, tabPrefixes, settings, lang);
         getServer().getPluginManager().registerEvents(foundationItems, this);
         getServer().getPluginManager().registerEvents(new StructurePreviewChatListener(this, legacyStructures, lang), this);
