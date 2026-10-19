@@ -29,8 +29,8 @@ commands:
     permission: civcraft.use
   resident:
     aliases: [res]
-    description: Рецепты, потенциал местности, налоги и уведомления дозора.
-    usage: /<command> [book|biome|taxes|paydebt|toggle showscout]
+    description: Рецепты, местность, налоги, дозор и PvP-защита.
+    usage: /<command> [book|biome|taxes|paydebt|pvptimer|toggle showscout]
     permission: civcraft.use
   camp:
     aliases: [c]

@@ -59,6 +59,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
     private TabPrefixService tabPrefixes;
     private CampService campService;
+    private com.avrgaming.civcraft.modern.war.NewbieProtectionService newbieProtection;
+    public com.avrgaming.civcraft.modern.war.NewbieProtectionService newbieProtection(){return newbieProtection;}
     public CampService camps() { return campService; }
     private CivCraftCampApi campApi;
     private CampNpcMenusService campNpcMenus;
@@ -160,6 +162,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             throw new IllegalStateException("Failed to initialize original CivCraft items and recipes", exception);
         }
         this.game = new CivCraftGameService(storage, settings, economy);
+        try{this.newbieProtection=new com.avrgaming.civcraft.modern.war.NewbieProtectionService(this);}
+        catch(java.sql.SQLException failure){throw new IllegalStateException("Failed to initialize newcomer PvP protection",failure);}
         new com.avrgaming.civcraft.modern.items.LegacyRecipeBook(this, nativeItems);
         new com.avrgaming.civcraft.modern.items.LegacyCombatListener(this, nativeItems);
         new com.avrgaming.civcraft.modern.items.LegacyStarterKit(this, nativeItems);

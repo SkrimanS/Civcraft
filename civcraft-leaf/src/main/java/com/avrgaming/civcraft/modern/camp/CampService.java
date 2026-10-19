@@ -1019,6 +1019,10 @@ public final class CampService {
                 return false;
             }
             CampInfo camp = campOptional.get();
+            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.newbieProtection()!=null && civ.newbieProtection().protectedPlayer(player.getUniqueId())) {
+                player.sendMessage("§cПод PvP-защитой нельзя атаковать лагерь. Отключить защиту: /res pvptimer.");
+                return true;
+            }
             if (!isControlAttackReady(camp)) {
                 player.sendMessage(msg("camp.control.locked", "Контрольный блок лагеря будет доступен для атаки через {time}.", "{time}", formatDuration(controlAttackTimeLeft(camp))));
                 return true;
