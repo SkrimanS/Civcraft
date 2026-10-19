@@ -195,6 +195,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             this.trades=new com.avrgaming.civcraft.modern.trade.NativeTradeService(this,storage,nativeItems,economy);
             this.diplomacy=new com.avrgaming.civcraft.modern.diplomacy.DiplomacyService(this,storage);
             this.warClock=new com.avrgaming.civcraft.modern.war.WarClockService(this,storage);
+            new com.avrgaming.civcraft.modern.town.CreatureSpawnService(this,storage);
             this.buildingDamage=new com.avrgaming.civcraft.modern.war.BuildingDamageService(this,storage);
             this.arrowTowers=new com.avrgaming.civcraft.modern.war.ArrowTowerService(this,storage);
             this.scouts=new com.avrgaming.civcraft.modern.war.ScoutTowerService(this,storage);

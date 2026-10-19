@@ -10,6 +10,7 @@ public final class PlotStore {
     public static final Set<String> ACTIONS=Set.of("build","destroy","interact","itemuse");
     public static final Set<String> GROUPS=Set.of("default","mayors","assistants");
     public static void installClaims(Connection db)throws SQLException {
+        column(db,"permit_mobs","INTEGER NOT NULL DEFAULT 0");
         column(db,"for_sale","INTEGER NOT NULL DEFAULT 0");
         column(db,"sale_price","INTEGER NOT NULL DEFAULT 0");
         column(db,"plot_groups","TEXT NOT NULL DEFAULT 'default'");
@@ -42,6 +43,16 @@ public final class PlotStore {
             OR EXISTS(SELECT 1 FROM town_assistants a WHERE a.town_id=t.id AND a.player_uuid=r.uuid))
             """)) {
             s.setString(1,actor.toString());s.setLong(2,plot.town());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Участком города управляет мэр, помощник или лидер.");}
+        }
+    }
+    public static boolean toggleMobs(Connection db,Key key,UUID actor)throws SQLException {
+        var plot=find(db,key);requireManager(db,plot,actor);
+        try(var s=db.prepareStatement("UPDATE town_claims SET permit_mobs=CASE WHEN permit_mobs=0 THEN 1 ELSE 0 END WHERE world=? AND chunk_x=? AND chunk_z=?")){key(s,1,key);s.executeUpdate();}
+        return mobs(db,key);
+    }
+    public static boolean mobs(Connection db,Key key)throws SQLException {
+        try(var s=db.prepareStatement("SELECT permit_mobs FROM town_claims WHERE world=? AND chunk_x=? AND chunk_z=?")){
+            key(s,1,key);try(var r=s.executeQuery()){return !r.next() || r.getBoolean(1);}
         }
     }
     public static void offer(Connection db,Key key,UUID actor,Long price)throws SQLException {
