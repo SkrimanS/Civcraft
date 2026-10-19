@@ -12,6 +12,7 @@ public record GuiContext(Player player, long campId, String campName, CampRole r
         map.put("camp_id", String.valueOf(campId));
         map.put("camp_name", campName == null ? "" : campName);
         map.put("role", role.name());
+        map.put("role_name",role.displayName());
         return map;
     }
 }

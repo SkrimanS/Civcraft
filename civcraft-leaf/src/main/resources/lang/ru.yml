@@ -3,8 +3,8 @@ commands:
     now: 'сразу'
   error:
     player-only: 'Эта команда доступна только игроку.'
-    database: 'Ошибка базы данных: {error}'
-    template: 'Ошибка legacy-шаблона: {error}'
+    database: 'Не удалось сохранить данные. Подробности находятся в журнале сервера.'
+    template: 'Не удалось прочитать шаблон. Подробности находятся в журнале сервера.'
     positive-int: 'Сумма должна быть положительным целым числом.'
     y: 'Y должен быть целым числом в пределах высоты мира.'
     rotation: 'Поворот должен быть только 0, 90, 180 или 270.'
@@ -12,12 +12,12 @@ commands:
     op-only: 'Эта команда доступна только OP-игроку.'
     reload: 'Конфигурация перезагружена.'
     integrations-header: '&eИнтеграции CivCraft:'
-    npc-reload: 'Camp NPC menus перезагружены.'
-    build-started: 'Legacy .def постройка #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}'
+    npc-reload: 'Меню NPC лагерей перезагружены.'
+    build-started: 'Постройка по шаблону .def #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}'
   civ:
     created: 'Цивилизация {name} создана. Правительство: {government}'
     balance: 'Баланс цивилизации: {coins}.'
-    info: '&6Цивилизация: &e{name} &7government={government}, coins={coins}'
+    info: '&6Цивилизация: &e{name} &7правительство={government}, казна={coins}'
     none: 'Вы не состоите в цивилизации. Используйте /civ create <название>.'
   town:
     created: 'Город {name} основан. Мэр: {mayor}, молотки: {hammers}/час, колбы: {beakers}/час, счастье: {happiness} ({state}).'
@@ -33,7 +33,7 @@ commands:
     no-structure: 'В этом чанке нет постройки.'
     no-active: 'В вашем городе нет активной стройки.'
     list: '&6Постройки: &e{list}'
-    legacy-moved: 'Legacy .def сборка перенесена в /civadmin build <file>.'
+    legacy-moved: 'Загрузка старого шаблона .def доступна через /civadmin build <шаблон>.'
     preview: 'Фантомное превью постройки показано только вам. Напишите yes, чтобы начать строительство, или no, чтобы отменить.'
     usage: 'Использование: /build <постройка> [y] [0|90|180|270]'
     info:
@@ -45,7 +45,7 @@ commands:
       line2: '&7Готово: {percent}% | осталось: {remaining}'
   research:
     list: '&6Технологии: &e{list}'
-    started: 'Исследование {name} начато. Нужно beakers: {beakers}'
+    started: 'Исследование {name} начато. Нужно колб: {beakers}'
     progress: '&6Исследование: &e{tech} &7{progress}/{required} ({percent}%)'
     none: 'Активного исследования нет. Используйте /research list и /research start <id>.'
   help:
@@ -143,7 +143,7 @@ camp-npc:
   quest-save-error: '&cОшибка сохранения прогресса.'
   quest-selection-disabled: '&eВыбор квестов отключён. Все квесты текущего уровня лагеря доступны сразу.'
   quest-reroll-disabled: '&eОбновление квестов отключено. Квесты зависят только от уровня лагеря.'
-  reload: '&aCamp NPC menus перезагружены.'
+  reload: '&aМеню NPC лагерей перезагружены.'
   reload-no-permission: '&cНедостаточно прав.'
 
 custom-items:

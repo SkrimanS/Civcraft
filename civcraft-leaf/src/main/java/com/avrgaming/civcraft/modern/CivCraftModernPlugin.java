@@ -135,6 +135,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         for (String legacyConfig : List.of("arena.yml", "buffs.yml", "camp.yml", "civ.yml", "culture.yml", "enchantments.yml", "espionage.yml", "fishing.yml", "goods.yml", "governments.yml", "happiness.yml", "market.yml", "materials.yml", "nocheat.yml", "perks.yml", "randomevents.yml", "score.yml", "spawners.yml", "structures.yml", "techs.yml", "teleportsOff.txt", "teleportsOn.txt", "tips.txt", "town.yml", "units.yml", "war.txt", "war.yml", "wonders.yml")) {
             saveResourceIfMissing("civcraft/data/" + legacyConfig);
         }
+        try{com.avrgaming.civcraft.modern.config.DisplayTextMigration.apply(this);}
+        catch(IOException|org.bukkit.configuration.InvalidConfigurationException failure){throw new IllegalStateException("Не удалось обновить русский текст конфигураций; исходные файлы сохранены.",failure);}
 
         reloadModernConfig();
         saveBundledStructureTemplates();

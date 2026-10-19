@@ -1,0 +1,2262 @@
+# Conditional Russian display updates. Gameplay parameters are excluded.
+version: ru-1
+updates:
+- file: building-configs/example.yml
+  path:
+  - example_building
+  - display-name
+  before: Example Building
+  after: Пример постройки
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_construction
+  - name
+  before: Construction
+  after: Строительство
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_construction
+  - description
+  before: Increases hammer production by <lightgreen>100<r> hammers. <gold>Stackable<r>
+  after: Увеличивает производство молотков на <lightgreen>100<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_year_of_plenty
+  - name
+  before: Year Of Plenty
+  after: Год изобилия
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_year_of_plenty
+  - description
+  before: Increases growth rate of farms by <lightgreen>20%<r>. <gold>Stackable<r>
+  after: Увеличивает скорость роста ферм на <lightgreen>20%<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_innovation
+  - name
+  before: Innovation
+  after: Новаторство
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_innovation
+  - description
+  before: Increases Science rate for civilization by <lightgreen>10%<r> <gold>Stackable<r>
+  after: Увеличивает производство науки цивилизации на <lightgreen>10%<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_monopoly
+  - name
+  before: Monopoly
+  after: Монополия
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_monopoly
+  - description
+  before: Increases coin output from all trade goods in use by <lightgreen>15%<r> <gold>Stackable<r>
+  after: Увеличивает доход от всех используемых торговых товаров на <lightgreen>15%<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_preservative
+  - name
+  before: Preservative
+  after: Консервация
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_preservative
+  - description
+  before: Reduces consumption of cottages by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Уменьшает потребление коттеджей на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_advanced_tooling
+  - name
+  before: Advanced Tooling
+  after: Усовершенствованные инструменты
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_advanced_tooling
+  - description
+  before: Increases the mine improvement production by a <lightgreen>50%<r> <gold>Stackable<r>
+  after: Увеличивает производство шахт на <lightgreen>50%<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_barricade
+  - name
+  before: Barricade
+  after: Баррикада
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_barricade
+  - description
+  before: Increases HP of defensive structures by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Увеличивает здоровье оборонительных построек на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_barter
+  - name
+  before: Barter
+  after: Бартер
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_barter
+  - description
+  before: Increases the exchange rate of minerals exchanged at the bank by <lightgreen>5%<r> <gold>Stackable<r>
+  after: Повышает курс обмена минералов в банке на <lightgreen>5%<r>. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fine_art
+  - name
+  before: Fine Art
+  after: Изящное искусство
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fine_art
+  - description
+  before: Increases culture output of a town by <lightgreen>25%<r> <red>Not Stackable<r>
+  after: Увеличивает производство культуры города на <lightgreen>25%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_art_appreciation
+  - name
+  before: Art Appreciation
+  after: Понимание искусства
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_art_appreciation
+  - description
+  before: Increases culture output of a town by <lightgreen>20%<r> <red>Not Stackable<r>
+  after: Увеличивает производство культуры города на <lightgreen>20%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_extraction
+  - name
+  before: Extraction
+  after: Добыча
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_extraction
+  - description
+  before: Increases the Trommel chance of producing precious minerals by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Увеличивает шанс получения ценных минералов в промывочном барабане на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fire_bomb
+  - name
+  before: Fire Bomb
+  after: Зажигательная бомба
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fire_bomb
+  - description
+  before: Increases damage of arrow/cannon towers by <lightgreen>50%<r> Also makes arrow towers shoot flaming arrows <red>Not
+    Stackable<r>
+  after: Увеличивает урон стрелковых и пушечных башен на <lightgreen>50%<r>. Стрелковые башни стреляют горящими стрелами.
+    <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fishing
+  - name
+  before: Fishing
+  after: Рыболовство
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_fishing
+  - description
+  before: Allows uncooked fish to replace the need for bread. <lightgreen>1 fish = 2 bread<r> <red>Not Stackable<r>
+  after: 'Позволяет заменять хлеб сырой рыбой: <lightgreen>1 рыба = 2 хлеба<r>. <red>Не суммируется<r>'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greed
+  - name
+  before: Greed
+  after: Жадность
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greed
+  - description
+  before: Increases interest rates by <lightgreen>3%<r> <red>Not Stackable<r>
+  after: Увеличивает процентную ставку банка на <lightgreen>3%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_medicine
+  - name
+  before: Medicine
+  after: Медицина
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_medicine
+  - description
+  before: Decreases friendly respawn time during war by <lightgreen>50<r> seconds.<r> <red>Not Stackable<r>
+  after: Сокращает время возрождения союзников во время войны на <lightgreen>50<r> секунд. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_dirty_money
+  - name
+  before: Dirty Money
+  after: Грязные деньги
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_dirty_money
+  - description
+  before: Increases the chances of Steal Treasury by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Увеличивает шанс успеха кражи казны на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_espionage
+  - name
+  before: Espionage
+  after: Шпионаж
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_espionage
+  - description
+  before: Increases the chances of poison granary and incite revolt by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Увеличивает шанс успеха отравления амбара и подстрекательства к мятежу на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_rush
+  - name
+  before: Rush
+  after: Ускорение строительства
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_rush
+  - description
+  before: Reduces the hammer cost of all structures, wonders and improvements by <lightgreen>15%<r> <red>Not Stackable<r>
+  after: Снижает стоимость всех зданий, чудес и улучшений территории в молотках на <lightgreen>15%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_profit_sharing
+  - name
+  before: Profit Sharing
+  after: Распределение прибыли
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_profit_sharing
+  - description
+  before: Reduces the coin cost of all technology researches by <lightgreen>5%<r> <red>Not Stackable<r>
+  after: Снижает стоимость всех исследований в монетах на <lightgreen>5%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_sabotage
+  - name
+  before: Sabotage
+  after: Саботаж
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_sabotage
+  - description
+  before: Greatly increases the effectivenes of sabotage missions by <lightgreen>50%<r> <red>Not Stackable<r>
+  after: Увеличивает эффективность диверсий на <lightgreen>50%<r>. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hedonism
+  - name
+  before: Hedonism
+  after: Гедонизм
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hedonism
+  - description
+  before: Grants an extra <lightgreen>3<r> happiness<r> <gold>Stackable<r>
+  after: Даёт дополнительные <lightgreen>3<r> единицы счастья. <gold>Суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_noanarchy
+  - name
+  before: No Anarchy
+  after: Сокращение анархии
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_noanarchy
+  - description
+  before: Civilization spends 50% less time in anarchy, with a max of 2 hours.<r> <red>Not Stackable<r>
+  after: Цивилизация проводит в анархии на 50% меньше времени; максимальное время — 2 часа. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_reduced_anarchy
+  - name
+  before: Reduced Anarchy
+  after: Уменьшение анархии
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_reduced_anarchy
+  - description
+  before: Civilization spends 50% less time in anarchy per resident for this town.<r> <red>Not Stackable<r>
+  after: Вклад каждого жителя этого города во время анархии цивилизации уменьшается на 50%. <red>Не суммируется<r>
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_cottage_consume
+  - name
+  before: Pyramid Reduced Bread Consumption
+  after: 'Пирамида: экономия хлеба'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_cottage_consume
+  - description
+  before: Reduces cottage bread consumption by 1/4
+  after: Уменьшает потребление хлеба коттеджами на четверть.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_cottage_bonus
+  - name
+  before: Pyramid Increased Cottage Output
+  after: 'Пирамида: доход коттеджей'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_cottage_bonus
+  - description
+  before: Increases cottage income by 10%
+  after: Увеличивает доход коттеджей на 10%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_culture
+  - name
+  before: Pyramid Culture Bonus
+  after: 'Пирамида: культура'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_culture
+  - description
+  before: Increases culture output from civilization by 50%
+  after: Увеличивает производство культуры цивилизации на 50%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_leech
+  - name
+  before: Pyramid Leech Culture
+  after: 'Пирамида: поглощение культуры'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_pyramid_leech
+  - description
+  before: Leeches 1% of the culture output from the nearest civilization.
+  after: Забирает 1% производимой культуры ближайшей цивилизации.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: debuff_pyramid_leech
+  - name
+  before: Pyramid Leech Culture
+  after: 'Пирамида: потеря культуры'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: debuff_pyramid_leech
+  - description
+  before: Leeches 1% of your culture. Gives it to the town with the pyramid.
+  after: Забирает 1% вашей культуры и передаёт её городу с пирамидой.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greatlibrary_extra_beakers
+  - name
+  before: Great Library Extra Beakers
+  after: 'Великая библиотека: наука'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greatlibrary_extra_beakers
+  - description
+  before: Grants 10% extra beakers for the civ.
+  after: Даёт цивилизации на 10% больше науки.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greatlibrary_double_tax_beakers
+  - name
+  before: Great Library Double Tax Beakers
+  after: 'Великая библиотека: финансирование науки'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_greatlibrary_double_tax_beakers
+  - description
+  before: Doubles the effectiveness of tax coins spent on beakers
+  after: Удваивает эффективность налоговых монет, потраченных на науку.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_growth
+  - name
+  before: Hanging Gardens Growth Bonus
+  after: 'Висячие сады: рост'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_growth
+  - description
+  before: Grants a 25% bonus to growth rates across the civilization.
+  after: Увеличивает скорость роста во всей цивилизации на 25%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_regen
+  - name
+  before: Hanging Gardens Regen Bonus
+  after: 'Висячие сады: восстановление здоровья'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_regen
+  - description
+  before: Grants a health regen rate of 1/2 heart per second in town.
+  after: Восстанавливает половину сердца в секунду в пределах города.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_additional_growth
+  - name
+  before: Hanging Gardens Additional Growth
+  after: 'Висячие сады: дополнительный рост'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_hanging_gardens_additional_growth
+  - description
+  before: Grants an additional 10% growth rate for each Grapes good being used by the Civilization
+  after: Увеличивает скорость роста ещё на 10% за каждый используемый цивилизацией торговый товар «Виноград».
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: debuff_colossus_leech_upkeep
+  - name
+  before: Colossus Leach Upkeep
+  after: 'Колосс: отчисления с содержания'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: debuff_colossus_leech_upkeep
+  - description
+  before: Leeches 2% of your upkeep payments and sends it to the town with the Colossus.
+  after: Забирает 2% ваших платежей за содержание и передаёт их городу с Колоссом.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colossus_reduce_upkeep
+  - name
+  before: Colossus Reduce Upkeep
+  after: 'Колосс: снижение содержания'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colossus_reduce_upkeep
+  - description
+  before: Reduces upkeep of your town by 25%
+  after: Уменьшает расходы на содержание города на 25%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colossus_coins_from_culture
+  - name
+  before: Colossus Coins From Culture
+  after: 'Колосс: доход от культуры'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colossus_coins_from_culture
+  - description
+  before: Grants 5 coins per day to the civilization for every culture chunk owned by it.
+  after: Ежедневно даёт цивилизации 5 монет за каждый принадлежащий ей чанк культуры.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_no_anarchy
+  - name
+  before: Notre Dame Reduced Anarchy
+  after: 'Нотр-Дам: сокращение анархии'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_no_anarchy
+  - description
+  before: Civilization suffers 1/2 anarchy time during government changes.
+  after: Сокращает время анархии при смене правительства цивилизации вдвое.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_coins_from_peace
+  - name
+  before: Notre Dame Peace Coins
+  after: 'Нотр-Дам: мирный доход'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_coins_from_peace
+  - description
+  before: Civilization collects coins from each town in each civilization not currently at war.
+  after: Цивилизация получает монеты за каждый город каждой цивилизации, которая сейчас не воюет.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_extra_war_penalty
+  - name
+  before: Notre Dame Extra War Penalty
+  after: 'Нотр-Дам: штраф агрессору'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_notre_dame_extra_war_penalty
+  - description
+  before: Aggressors pay 2x war penalties when declaring war on this civilization or its allies.
+  after: Удваивает штраф за объявление войны этой цивилизации или её союзникам.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_tower_hp
+  - name
+  before: Chichen Itza Tower HP
+  after: 'Чичен-Ица: прочность башен'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_tower_hp
+  - description
+  before: Increases HP of towers by 15%
+  after: Увеличивает здоровье башен на 15%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_regen_rate
+  - name
+  before: Chichen Itza Regen Rate
+  after: 'Чичен-Ица: восстановление построек'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_regen_rate
+  - description
+  before: Increases regen rate of all structures by 2 HP per second.
+  after: Увеличивает скорость восстановления всех построек на 2 единицы здоровья в секунду.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_cp_bonus_hp
+  - name
+  before: Chichen Itza Control Point Bonus HP
+  after: 'Чичен-Ица: прочность контрольных блоков'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_chichen_itza_cp_bonus_hp
+  - description
+  before: Increase the hitpoints of all Control Points of a town by 10 HP.
+  after: Увеличивает здоровье всех контрольных блоков города на 10.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colosseum_coins_from_towns
+  - name
+  before: Colosseum Coins From Towns
+  after: 'Колизей: доход от городов'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_colosseum_coins_from_towns
+  - description
+  before: Grants 100 coins per day to the civilization for every town in the world.
+  after: Ежедневно даёт цивилизации 100 монет за каждый город мира.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_globe_theatre_culture_from_towns
+  - name
+  before: Globe Theatre Culture From Towns
+  after: 'Театр «Глобус»: культура от городов'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_globe_theatre_culture_from_towns
+  - description
+  before: Increase culture by 10 for every town in the world.
+  after: Увеличивает культуру на 10 за каждый город мира.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_great_lighthouse_tower_range
+  - name
+  before: Great Lighthouse Increse Tower Range
+  after: 'Великий маяк: дальность башен'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_great_lighthouse_tower_range
+  - description
+  before: Increase Tower Firing range in this town by 50%
+  after: Увеличивает дальность стрельбы башен этого города на 50%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_great_lighthouse_trade_ship_income
+  - name
+  before: Lighthouse Trade Ship Income
+  after: 'Великий маяк: торговый флот'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_great_lighthouse_trade_ship_income
+  - description
+  before: Trade Ships earn 20% more for selling items
+  after: Торговые суда получают на 20% больше за продажу предметов.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_growth
+  - name
+  before: Mother Tree Growth Bonus
+  after: 'Древо Жизни: рост ферм'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_growth
+  - description
+  before: Grants a 50% bonus to farm growth rates across the civilization.
+  after: Увеличивает скорость роста ферм во всей цивилизации на 50%.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_tile_improvement_cost
+  - name
+  before: Mother Tree Tile Improvment Cost
+  after: 'Древо Жизни: стоимость улучшений'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_tile_improvement_cost
+  - description
+  before: Tile Improvements cost 20% less across the civilization.
+  after: Улучшения территории во всей цивилизации стоят на 20% меньше.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_tile_improvement_bonus
+  - name
+  before: Mother Tree Tile Improvment Bonus
+  after: 'Древо Жизни: число улучшений'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_mother_tree_tile_improvement_bonus
+  - description
+  before: Can build twice as many tile improvments in this town.
+  after: Позволяет строить в этом городе вдвое больше улучшений территории.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_fishing_boat_immunity
+  - name
+  before: Ingermanland Fishing Boat Immunity
+  after: 'Ингерманланд: защита рыбацких лодок'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_fishing_boat_immunity
+  - description
+  before: Fishing Boats are immune to Espionage missions.
+  after: Рыбацкие лодки защищены от шпионских миссий.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_trade_ship_income
+  - name
+  before: Ingermanland Trade Ship Income
+  after: 'Ингерманланд: торговый флот'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_trade_ship_income
+  - description
+  before: Trade Ships earn 30% more for selling items
+  after: Торговые суда получают на 30% больше за продажу предметов.
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_water_range
+  - name
+  before: Ingermanland Navy Range
+  after: 'Ингерманланд: дальность флота'
+- file: civcraft/data/buffs.yml
+  path:
+  - buffs
+  - match:
+      id: buff_ingermanland_water_range
+  - description
+  before: Navy Vessels have 50% greater attack range
+  after: Увеличивает дальность атаки военных судов на 50%.
+- file: civcraft/data/camp.yml
+  path:
+  - upgrades
+  - match:
+      id: camp_upgrade_sifter
+  - name
+  before: Enable Sifter
+  after: Включить просеиватель
+- file: civcraft/data/camp.yml
+  path:
+  - upgrades
+  - match:
+      id: camp_upgrade_longhouse
+  - name
+  before: Enable Longhouse
+  after: Включить большой дом
+- file: civcraft/data/camp.yml
+  path:
+  - upgrades
+  - match:
+      id: camp_upgrade_garden
+  - name
+  before: Enable Garden
+  after: Включить огород
+- file: civcraft/data/civ.yml
+  path:
+  - end_conditions
+  - match:
+      id: end_culture
+  - name
+  before: Cultural
+  after: Культурная
+- file: civcraft/data/civ.yml
+  path:
+  - end_conditions
+  - match:
+      id: end_conquest
+  - name
+  before: Conquest
+  after: Завоевательная
+- file: civcraft/data/civ.yml
+  path:
+  - end_conditions
+  - match:
+      id: end_science
+  - name
+  before: Scientific
+  after: Научная
+- file: civcraft/data/civ.yml
+  path:
+  - end_conditions
+  - match:
+      id: end_diplomacy
+  - name
+  before: Diplomatic
+  after: Дипломатическая
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_fire_aspect
+  - name
+  before: Fire Aspect
+  after: Заговор огня
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_fire_aspect
+  - description
+  before: Adds fire aspect to your weapon.
+  after: Накладывает на оружие «Заговор огня».
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_fire_protection
+  - name
+  before: Fire Protection
+  after: Огнеупорность
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_fire_protection
+  - description
+  before: Adds fire protection to your armor.
+  after: Накладывает на броню «Огнеупорность».
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_flame
+  - name
+  before: Flame (Bow)
+  after: Горящая стрела
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_flame
+  - description
+  before: Adds flame enchantment to your bow.
+  after: Накладывает на лук «Горящую стрелу».
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_punchout
+  - name
+  before: Punchout
+  after: Дробление
+- file: civcraft/data/enchantments.yml
+  path:
+  - enchants
+  - match:
+      id: ench_punchout
+  - description
+  before: '% chance to do extra damage to a structure.'
+  after: Даёт шанс нанести постройке дополнительный урон.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_investigate_town
+  - name
+  before: Investigate Town
+  after: Разведка города
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_investigate_town
+  - description
+  - 0
+  before: Provides a report on the target town.
+  after: Позволяет получить отчёт о выбранном городе.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_investigate_town
+  - description
+  - 1
+  before: Includes information of strategic value.
+  after: Содержит сведения стратегического значения.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_steal_treasury
+  - name
+  before: Steal Treasury
+  after: Кража казны
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_steal_treasury
+  - description
+  - 0
+  before: Steals 20% of the target towns treasury.
+  after: Крадёт 20% казны выбранного города.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_steal_treasury
+  - description
+  - 1
+  before: Must be within 50 blocks of town hall.
+  after: Нужно находиться не дальше 50 блоков от ратуши.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_incite_riots
+  - name
+  before: Incite Riots
+  after: Провокация бунта
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_incite_riots
+  - description
+  - 0
+  before: Incites riots in the target town.
+  after: Провоцирует беспорядки в выбранном городе.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_incite_riots
+  - description
+  - 1
+  before: Causes between 5 to 10 unhappiness for 3 days.
+  after: Добавляет от 5 до 10 единиц несчастья на 3 дня.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_incite_riots
+  - description
+  - 2
+  before: Must be within 50 blocks of town hall.
+  after: Нужно находиться не дальше 50 блоков от ратуши.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_subvert_government
+  - name
+  before: Subvert Government
+  after: Подрыв правительства
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_subvert_government
+  - description
+  - 0
+  before: Plunges the target civiliztion into Anarchy.
+  after: Погружает выбранную цивилизацию в анархию.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_subvert_government
+  - description
+  - 1
+  before: Must be within 100 blocks of the capitol town hall.
+  after: Нужно находиться не дальше 100 блоков от ратуши столицы.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_poison_granary
+  - name
+  before: Poison Granary
+  after: Отравление амбара
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_poison_granary
+  - description
+  - 0
+  before: Causes all cottages to starve for 3 to 50 hours. 5% chances to bring famine and down level all cottages.
+  after: Вызывает голод во всех коттеджах на 3–50 часов. С шансом 5% вызывает массовый голод и понижает уровень всех коттеджей.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_poison_granary
+  - description
+  - 1
+  before: Must be within 50 blocks of a granary.
+  after: Нужно находиться не дальше 50 блоков от амбара.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_pirate
+  - name
+  before: Pirate
+  after: Пиратство
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_pirate
+  - description
+  - 0
+  before: Allows you to take a goodie from an enemy trade outpost.
+  after: Позволяет похитить торговый товар с вражеского торгового поста.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_pirate
+  - description
+  - 1
+  before: Must be within 10 blocks of the trade outpost.
+  after: Нужно находиться не дальше 10 блоков от торгового поста.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage
+  - name
+  before: Sabotage
+  after: Саботаж здания
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage
+  - description
+  - 0
+  before: Destroyes the nearest structure.
+  after: Разрушает ближайшую постройку.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage
+  - description
+  - 1
+  before: Must be within 50 blocks.
+  after: Нужно находиться не дальше 50 блоков.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage_wonder
+  - name
+  before: Sabotage
+  after: Саботаж чуда
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage_wonder
+  - description
+  - 0
+  before: Destroyes the nearest wonder.
+  after: Разрушает ближайшее чудо.
+- file: civcraft/data/espionage.yml
+  path:
+  - missions
+  - match:
+      id: spy_sabotage_wonder
+  - description
+  - 1
+  before: Must be within 50 blocks.
+  after: Нужно находиться не дальше 50 блоков.
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 0
+  - name
+  before: Revolt
+  after: Бунт
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 1
+  - name
+  before: Unrest
+  after: Недовольство
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 2
+  - name
+  before: Unhappy
+  after: Несчастье
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 3
+  - name
+  before: Content
+  after: Довольство
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 4
+  - name
+  before: Happy
+  after: Счастье
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 5
+  - name
+  before: Elated
+  after: Ликование
+- file: civcraft/data/happiness.yml
+  path:
+  - happiness
+  - states
+  - match:
+      level: 6
+  - name
+  before: Ecstatic
+  after: Восторг
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_slime_plague
+  - name
+  before: Slime Plague
+  after: Нашествие слизней
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_slime_plague
+  - message
+  - 0
+  before: Holy moth balls! A Slime plague is threatening to destroy the town.
+  after: Нашествие слизней угрожает городу!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_slime_plague
+  - message
+  - 1
+  before: Slaughter 20 of them or suffer a happiness penalty!
+  after: Уничтожьте 20 слизней, иначе город получит штраф к счастью!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_slime_plague
+  - success
+  - match:
+      name: MessageTown
+  - message
+  before: We've cleared enough slime. We've averted the happiness penalty.
+  after: Горожане уничтожили достаточно слизней. Штрафа к счастью удалось избежать.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_slime_plague
+  - failure
+  - match:
+      name: MessageTown
+  - message
+  before: Arg! Our people are terrified and scared! We suffer a happiness penalty
+  after: Жители напуганы нашествием слизней! Город получает штраф к счастью.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_truffles
+  - name
+  before: Truffles!
+  after: Трюфели!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_truffles
+  - message
+  - 0
+  before: Our local bakery have made some of the best truffles in all of CivCraft!
+  after: Наша пекарня приготовила лучшие трюфели во всём CivCraft!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_truffles
+  - message
+  - 1
+  before: Since they're so good, our people are going to be happier for the next 3 days!
+  after: Они так хороши, что жители будут счастливее в течение следующих 3 дней!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_truffles
+  - failure
+  - match:
+      name: MessageTown
+  - message
+  before: The happiness we've been getting from our truffles has expired. It's yesterday's jam.
+  after: Трюфели закончились. Их бонус к счастью больше не действует.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_productivity
+  - name
+  before: Productivity Soars!
+  after: Рост производительности!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_productivity
+  - message
+  - 0
+  before: The streets are bustling with activity! Everyone in the town is doing their best and working their hardest.
+  after: На улицах кипит жизнь! Все жители города трудятся изо всех сил.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_productivity
+  - message
+  - 1
+  before: Due to carefully planning and skilled management. We've managed to increase the productivity in our town.
+  after: Тщательное планирование и умелое управление повысили производительность города.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_productivity
+  - message
+  - 2
+  before: Our town is going to expreience increased hammer rates for the next 3 days!
+  after: В следующие 3 дня город будет производить больше молотков!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_productivity
+  - failure
+  - match:
+      name: MessageTown
+  - message
+  before: The locals are burnt out and we're no longer getting our hammer bonus.
+  after: Жители устали. Бонус к производству молотков больше не действует.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - name
+  before: Herbs
+  after: Лечебные травы
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - message
+  - 0
+  before: Our medical scientists think they might be able to cure one of the many annoying illnesses that have
+  after: Наши учёные считают, что нашли способ вылечить одну из болезней, давно мучающих цивилизацию.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - message
+  - 1
+  before: plauged our civlization for so long. If we're able to retrieve the right herbs our scientists will have
+  after: Если мы принесём нужные травы, у них появится шанс создать лекарство и повысить счастье города.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - message
+  - 2
+  before: a chance to cure it, giving our town a happiness boost. We have 8 hours to find the herbs.
+  after: На поиски трав у нас есть 8 часов.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - success
+  - match:
+      name: MessageTown
+  - message
+  before: We've found the herbs! The people rejoice!
+  after: Травы найдены! Жители ликуют!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_herbs
+  - failure
+  - match:
+      name: MessageTown
+  - message
+  before: We couldn't find the herbs in time!
+  after: Мы не успели найти травы вовремя!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - name
+  before: Gold Rush!
+  after: Золотая лихорадка!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - message
+  - 0
+  before: There is a rumor going around the town that there is a large cache of coins, hidden somewhere out in
+  after: По городу ходят слухи о большом тайнике монет, спрятанном где-то в мире.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - message
+  - 1
+  before: the world. If we can find the block it's hidden in and break it, we'll be able to collect a massive
+  after: Найдите блок с тайником и сломайте его, чтобы получить огромную награду!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - message
+  - 2
+  before: reward! The first person to break the block recieves a reward. We have 12 hours to find the coins.
+  after: Награду получит первый, кто сломает этот блок. На поиски монет есть 12 часов.
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - success
+  - match:
+      name: MessageTown
+  - message
+  before: One of the town residents have found the cache of coins!
+  after: Один из жителей нашёл тайник с монетами!
+- file: civcraft/data/randomevents.yml
+  path:
+  - random_events
+  - match:
+      id: event_gold_rush
+  - failure
+  - match:
+      name: MessageTown
+  - message
+  before: We couldn't find the coins in time!
+  after: Мы не успели найти монеты вовремя!
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: yobo_lesser
+  - name
+  before: Lesser Yobo
+  after: Малый Йобо
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: yobo_greater
+  - name
+  before: Greater Yobo
+  after: Великий Йобо
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: yobo_elite
+  - name
+  before: Elite Yobo
+  after: Элитный Йобо
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: yobo_brutal
+  - name
+  before: Brutal Yobo
+  after: Свирепый Йобо
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: ruffian_lesser
+  - name
+  before: Lesser Ruffian
+  after: Малый Разбойник
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: ruffian_greater
+  - name
+  before: Greater Ruffian
+  after: Великий Разбойник
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: ruffian_elite
+  - name
+  before: Elite Ruffian
+  after: Элитный Разбойник
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: ruffian_brutal
+  - name
+  before: Brutal Ruffian
+  after: Свирепый Разбойник
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: savage_lesser
+  - name
+  before: Lesser Savage
+  after: Малый Дикарь
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: savage_greater
+  - name
+  before: Greater Savage
+  after: Великий Дикарь
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: savage_elite
+  - name
+  before: Elite Savage
+  after: Элитный Дикарь
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: savage_brutal
+  - name
+  before: Brutal Savage
+  after: Свирепый Дикарь
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: behemoth_lesser
+  - name
+  before: Lesser Behemoth
+  after: Малый Бегемот
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: behemoth_greater
+  - name
+  before: Greater Behemoth
+  after: Великий Бегемот
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: behemoth_elite
+  - name
+  before: Elite Behemoth
+  after: Элитный Бегемот
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: behemoth_brutal
+  - name
+  before: Brutal Behemoth
+  after: Свирепый Бегемот
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: undead_lesser
+  - name
+  before: Lesser Undead
+  after: Малый Нежить
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: undead_greater
+  - name
+  before: Greater Undead
+  after: Великий Нежить
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: undead_elite
+  - name
+  before: Elite Undead
+  after: Элитный Нежить
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: undead_brutal
+  - name
+  before: Brutal Undead
+  after: Свирепый Нежить
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: kodiac_lesser
+  - name
+  before: Lesser Kodiac
+  after: Малый Кадьяк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: kodiac_greater
+  - name
+  before: Greater Kodiac
+  after: Великий Кадьяк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: kodiac_elite
+  - name
+  before: Elite Kodiac
+  after: Элитный Кадьяк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: kodiac_brutal
+  - name
+  before: Brutal Kodiac
+  after: Свирепый Кадьяк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: cube_lesser
+  - name
+  before: Lesser Gelatinous Cube
+  after: Малый Желатиновый куб
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: cube_greater
+  - name
+  before: Greater Gelatinous Cube
+  after: Великий Желатиновый куб
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: cube_elite
+  - name
+  before: Elite Gelatinous Cube
+  after: Элитный Желатиновый куб
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: cube_brutal
+  - name
+  before: Brutal Gelatinous Cube
+  after: Свирепый Желатиновый куб
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: arachne_lesser
+  - name
+  before: Lesser Arachne
+  after: Малый Арахна
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: arachne_greater
+  - name
+  before: Greater Arachne
+  after: Великий Арахна
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: arachne_elite
+  - name
+  before: Elite Arachne
+  after: Элитный Арахна
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: arachne_brutal
+  - name
+  before: Brutal Arachne
+  after: Свирепый Арахна
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: direwolf_lesser
+  - name
+  before: Lesser Direwolf
+  after: Малый Лютоволк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: direwolf_greater
+  - name
+  before: Greater Direwolf
+  after: Великий Лютоволк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: direwolf_elite
+  - name
+  before: Elite Direwolf
+  after: Элитный Лютоволк
+- file: civcraft/data/spawners.yml
+  path:
+  - land_spawners
+  - match:
+      id: direwolf_brutal
+  - name
+  before: Brutal Direwolf
+  after: Свирепый Лютоволк
+- file: civcraft/data/spawners.yml
+  path:
+  - water_spawners
+  - match:
+      id: kraken_lesser
+  - name
+  before: Lesser Leviathan
+  after: Малый Левиафан
+- file: civcraft/data/spawners.yml
+  path:
+  - water_spawners
+  - match:
+      id: kraken_greater
+  - name
+  before: Greater Leviathan
+  after: Великий Левиафан
+- file: civcraft/data/spawners.yml
+  path:
+  - water_spawners
+  - match:
+      id: kraken_elite
+  - name
+  before: Elite Leviathan
+  after: Элитный Левиафан
+- file: civcraft/data/spawners.yml
+  path:
+  - water_spawners
+  - match:
+      id: kraken_brutal
+  - name
+  before: Brutal Leviathan
+  after: Свирепый Левиафан
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 0
+      horse_id: 1
+      item_id: 0
+  - name
+  before: Horse
+  after: Лошадь
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 0
+      horse_id: 2
+      item_id: 0
+  - name
+  before: Trusty Steed
+  after: Верный конь
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 0
+      horse_id: 3
+      item_id: 0
+  - name
+  before: Thoroughbred
+  after: Чистокровный скакун
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 1
+      horse_id: 4
+      item_id: 0
+  - name
+  before: Mule
+  after: Мул
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 0
+      horse_id: 5
+      item_id: 0
+  - name
+  before: War Horse
+  after: Боевой конь
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 2
+      horse_id: 0
+      item_id: 329
+  - name
+  before: Saddle
+  after: Седло
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 2
+      horse_id: 0
+      item_id: 421
+  - name
+  before: Name Tag
+  after: Бирка
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 2
+      horse_id: 0
+      item_id: 417
+  - name
+  before: Iron Horse Armor
+  after: Железная конская броня
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 2
+      horse_id: 0
+      item_id: 418
+  - name
+  before: Gold Horse Armor
+  after: Золотая конская броня
+- file: civcraft/data/structures.yml
+  path:
+  - stable_items
+  - match:
+      store_id: 2
+      horse_id: 0
+      item_id: 419
+  - name
+  before: Diamond Horse Armor
+  after: Алмазная конская броня
+- file: civcraft/data/techs.yml
+  path:
+  - potions
+  - match:
+      effect: FIRE_RESISTANCE
+      amp: 1
+  - name
+  before: Fire Resist
+  after: Огнестойкость
+- file: civcraft/data/techs.yml
+  path:
+  - potions
+  - match:
+      effect: SPEED
+      amp: 1
+  - name
+  before: Swiftness
+  after: Стремительность
+- file: civcraft/data/techs.yml
+  path:
+  - potions
+  - match:
+      effect: HEAL
+      amp: 1
+  - name
+  before: Healing I
+  after: Исцеление I
+- file: civcraft/data/techs.yml
+  path:
+  - potions
+  - match:
+      effect: HEAL
+      amp: 2
+  - name
+  before: Healing II
+  after: Исцеление II
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_pyramid
+  - displayName
+  before: The Great Pyramid
+  after: Пирамида Хеопса
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_greatlibrary
+  - displayName
+  before: The Great Library
+  after: Александрийская библиотека
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_hanginggardens
+  - displayName
+  before: The Hanging Gardens
+  after: Висячие сады Семирамиды
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_colossus
+  - displayName
+  before: The Colossus
+  after: Колосс Родосский
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_notre_dame
+  - displayName
+  before: Notre Dame
+  after: Собор Парижской Богоматери
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_chichen_itza
+  - displayName
+  before: Chichen Itza
+  after: Чичен-Ица
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_colosseum
+  - displayName
+  before: Colosseum
+  after: Колизей
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_globe_theatre
+  - displayName
+  before: Globe Theatre
+  after: Глобус-театр
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_great_lighthouse
+  - displayName
+  before: Great Lighthouse
+  after: Мировой маяк
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_mother_tree
+  - displayName
+  before: Mother Tree
+  after: Древо Жизни
+- file: civcraft/data/wonders.yml
+  path:
+  - wonders
+  - match:
+      id: w_grand_ship_ingermanland
+  - displayName
+  before: Grand Ship Ingermanland
+  after: Флагман "Ингерманланд"
+- file: custom-items/armor.yml
+  path:
+  - items
+  - bronze_helmet
+  - name
+  before: '&6Bronze Helmet'
+  after: '&6Бронзовый шлем'
+- file: custom-items/armor.yml
+  path:
+  - items
+  - bronze_helmet
+  - lore
+  - 0
+  before: '&7CivCraft armor'
+  after: '&7Броня CivCraft'
+- file: custom-items/armor.yml
+  path:
+  - items
+  - bronze_helmet
+  - lore
+  - 1
+  before: '&7Durability: &e{durability}%'
+  after: '&7Прочность: &e{durability}%'
+- file: custom-items/bows.yml
+  path:
+  - items
+  - hunter_bow
+  - name
+  before: '&aHunter Bow'
+  after: '&aОхотничий лук'
+- file: custom-items/bows.yml
+  path:
+  - items
+  - hunter_bow
+  - lore
+  - 0
+  before: '&7CivCraft bow'
+  after: '&7Лук CivCraft'
+- file: custom-items/bows.yml
+  path:
+  - items
+  - hunter_bow
+  - lore
+  - 1
+  before: '&7Durability: &e{durability}%'
+  after: '&7Прочность: &e{durability}%'
+- file: custom-items/consumables.yml
+  path:
+  - items
+  - camp_ration
+  - name
+  before: '&eCamp Ration'
+  after: '&eЛагерный паёк'
+- file: custom-items/consumables.yml
+  path:
+  - items
+  - camp_ration
+  - lore
+  - 0
+  before: '&7Uses: &e{uses}/{max_uses}'
+  after: '&7Использований: &e{uses}/{max_uses}'
+- file: custom-items/tools.yml
+  path:
+  - items
+  - copper_pickaxe
+  - name
+  before: '&6Copper Pickaxe'
+  after: '&6Медная кирка'
+- file: custom-items/tools.yml
+  path:
+  - items
+  - copper_pickaxe
+  - lore
+  - 0
+  before: '&7CivCraft tool'
+  after: '&7Инструмент CivCraft'
+- file: custom-items/tools.yml
+  path:
+  - items
+  - copper_pickaxe
+  - lore
+  - 1
+  before: '&7Durability: &e{durability}%'
+  after: '&7Прочность: &e{durability}%'
+- file: custom-items/weapons.yml
+  path:
+  - items
+  - bronze_sword
+  - name
+  before: '&6Bronze Sword'
+  after: '&6Бронзовый меч'
+- file: custom-items/weapons.yml
+  path:
+  - items
+  - bronze_sword
+  - lore
+  - 0
+  before: '&7CivCraft weapon'
+  after: '&7Оружие CivCraft'
+- file: custom-items/weapons.yml
+  path:
+  - items
+  - bronze_sword
+  - lore
+  - 1
+  before: '&7Durability: &e{durability}%'
+  after: '&7Прочность: &e{durability}%'
+- file: lang/ru.yml
+  path:
+  - commands
+  - error
+  - database
+  before: 'Ошибка базы данных: {error}'
+  after: Не удалось сохранить данные. Подробности находятся в журнале сервера.
+- file: lang/ru.yml
+  path:
+  - commands
+  - error
+  - template
+  before: 'Ошибка legacy-шаблона: {error}'
+  after: Не удалось прочитать шаблон. Подробности находятся в журнале сервера.
+- file: lang/ru.yml
+  path:
+  - commands
+  - admin
+  - npc-reload
+  before: Camp NPC menus перезагружены.
+  after: Меню NPC лагерей перезагружены.
+- file: lang/ru.yml
+  path:
+  - commands
+  - admin
+  - build-started
+  before: 'Legacy .def постройка #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}'
+  after: 'Постройка по шаблону .def #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}'
+- file: lang/ru.yml
+  path:
+  - commands
+  - civ
+  - info
+  before: '&6Цивилизация: &e{name} &7government={government}, coins={coins}'
+  after: '&6Цивилизация: &e{name} &7правительство={government}, казна={coins}'
+- file: lang/ru.yml
+  path:
+  - commands
+  - build
+  - legacy-moved
+  before: Legacy .def сборка перенесена в /civadmin build <file>.
+  after: Загрузка старого шаблона .def доступна через /civadmin build <шаблон>.
+- file: lang/ru.yml
+  path:
+  - commands
+  - research
+  - started
+  before: 'Исследование {name} начато. Нужно beakers: {beakers}'
+  after: 'Исследование {name} начато. Нужно колб: {beakers}'
+- file: lang/ru.yml
+  path:
+  - camp-npc
+  - reload
+  before: '&aCamp NPC menus перезагружены.'
+  after: '&aМеню NPC лагерей перезагружены.'
+- file: menus/info.yml
+  path:
+  - items
+  - text1
+  - lore
+  - 0
+  before: '&7Тут можно писать любой текст.'
+  after: '&7Следи за развитием и запасами лагеря.'
+- file: menus/info.yml
+  path:
+  - items
+  - text1
+  - lore
+  - 3
+  before: '&7Твоя роль: &e{role}'
+  after: '&7Твоя роль: &e{role_name}'
+- file: menus/info.yml
+  path:
+  - items
+  - text2
+  - name
+  before: '&aНастраиваемый предмет'
+  after: '&aРазвитие лагеря'
+- file: menus/info.yml
+  path:
+  - items
+  - text2
+  - lore
+  - 0
+  before: '&7Можно менять материал, название,'
+  after: '&7За задания можно получить монеты и предметы.'
+- file: menus/info.yml
+  path:
+  - items
+  - text2
+  - lore
+  - 1
+  before: '&7lore, custom-model-data и ItemsAdder.'
+  after: '&7Новые задания открываются с развитием лагеря.'
+- file: menus/quests.yml
+  path:
+  - title
+  before: '&f&f:offset_-48::quests:'
+  after: '&6Задания лагеря'
+- file: menus/quests.yml
+  path:
+  - items
+  - info
+  - lore
+  - 2
+  before: '&7Чтобы cдать предметы, нужно нажать &f᎘ &7по квесту.'
+  after: '&7Нажми ЛКМ по квесту, чтобы сдать предметы.'
+- file: quests.yml
+  path:
+  - levels
+  - '1'
+  - mythic_example
+  - icon
+  - lore
+  - 1
+  before: '&8MythicMobs id: forest_bandit'
+  after: '&8ID существа MythicMobs: forest_bandit'
+- file: technology-configs/example.yml
+  path:
+  - example_technology
+  - display-name
+  before: Example Technology
+  after: Пример технологии

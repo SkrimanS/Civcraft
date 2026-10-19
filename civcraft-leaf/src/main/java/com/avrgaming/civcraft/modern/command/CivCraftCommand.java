@@ -121,14 +121,16 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
             }
+        } catch (NumberFormatException exception) {
+            error(sender,"Указано некорректное число. Проверьте аргументы команды.");
         } catch (IllegalArgumentException exception) {
             error(sender, exception.getMessage());
         } catch (SQLException exception) {
             plugin.getLogger().warning("CivCraft command failed: " + exception.getMessage());
-            error(sender, msg("commands.error.database", "Ошибка базы данных: {error}", "error", exception.getMessage()));
+            error(sender, msg("commands.error.database", "Не удалось сохранить данные. Подробности находятся в журнале сервера.", "error", "подробности находятся в журнале сервера"));
         } catch (IOException exception) {
             plugin.getLogger().warning("CivCraft legacy build failed: " + exception.getMessage());
-            error(sender, msg("commands.error.template", "Ошибка legacy-шаблона: {error}", "error", exception.getMessage()));
+            error(sender, msg("commands.error.template", "Не удалось прочитать шаблон. Подробности находятся в журнале сервера.", "error", "подробности находятся в журнале сервера"));
         }
         return true;
     }
@@ -216,7 +218,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         ResidentProfile resident = game.resident(player);
         game.civ(resident).ifPresentOrElse(
-                civ -> send(player, msg("commands.civ.info", "&6Цивилизация: &e{name} &7government={government}, coins={coins}", "name", civ.name(), "government", plugin.governments().name(civ.government()), "coins", civ.coins())),
+                civ -> send(player, msg("commands.civ.info", "&6Цивилизация: &e{name} &7правительство={government}, казна={coins}", "name", civ.name(), "government", plugin.governments().name(civ.government()), "coins", civ.coins())),
                 () -> error(player, msg("commands.civ.none", "Вы не состоите в цивилизации. Используйте /civ create <название>."))
         );
     }
@@ -378,7 +380,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("legacy")) {
-            throw new IllegalArgumentException(msg("commands.build.legacy-moved", "Legacy .def сборка перенесена в /civadmin build <file>."));
+            throw new IllegalArgumentException(msg("commands.build.legacy-moved", "Загрузка старого шаблона .def доступна через /civadmin build <шаблон>."));
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("structure")) {
             String structureId = args[2];
@@ -446,10 +448,10 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     + interrupted.size());
             for (int i = 0; i < Math.min(15, interrupted.size()); i++) {
                 StorageBootstrap.InterruptedBuild build = interrupted.get(i);
-                send(sender, "&e#" + build.id() + " &7" + build.status() + "  "
+                send(sender, "&e#" + build.id() + " &7" + com.avrgaming.civcraft.modern.build.BuildStatusText.name(build.status()) + "  "
                         + build.world() + " " + build.x() + "," + build.y() + "," + build.z()
-                        + "  snapshot=" + (build.snapshotReady() ? "yes" : "no")
-                        + "  journal=" + (build.journalStarted() ? "yes" : "legacy"));
+                        + "  исходный снимок: " + (build.snapshotReady() ? "готов" : "не готов")
+                        + "  журнал: " + (build.journalStarted() ? "начат" : "старая запись"));
             }
             if (interrupted.size() > 15) {
                 send(sender, "&7Показаны первые 15 записей. Остальные доступны в журнале сервера и SQLite.");
@@ -533,7 +535,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             if (campNpcMenus != null) {
                 campNpcMenus.reloadEverything();
             }
-            success(sender, msg("commands.admin.npc-reload", "Camp NPC menus перезагружены."));
+            success(sender, msg("commands.admin.npc-reload", "Меню NPC лагерей перезагружены."));
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("build")) {
@@ -541,7 +543,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             int y = args.length >= 4 ? parseBuildY(player, args[3]) : player.getLocation().getBlockY();
             String rotation = args.length >= 5 ? parseRotation(args[4]) : "0";
             QueuedLegacyBuild build = legacyStructures.buildAdminLegacy(player, args[2], y, rotation);
-            success(player, msg("commands.admin.build-started", "Legacy .def постройка #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}", "id", build.id(), "blocks", build.queuedBlocks(), "size_x", build.sizeX(), "size_y", build.sizeY(), "size_z", build.sizeZ()));
+            success(player, msg("commands.admin.build-started", "Постройка по шаблону .def #{id} запущена: {blocks} блоков, размер {size_x}x{size_y}x{size_z}", "id", build.id(), "blocks", build.queuedBlocks(), "size_x", build.sizeX(), "size_y", build.sizeY(), "size_z", build.sizeZ()));
             return;
         }
         helpAdmin(sender);
@@ -560,19 +562,19 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length >= 2 && args[1].equalsIgnoreCase("list")) {
             List<String> techs = research.listTechs(25).stream()
-                    .map(tech -> tech.id() + "(" + tech.name() + ", beakers=" + tech.beakerCost() + ", coins=" + tech.coinCost() + ")")
+                    .map(tech -> tech.id() + " (" + tech.name() + ", колбы=" + tech.beakerCost() + ", монеты=" + tech.coinCost() + ")")
                     .toList();
             send(player, msg("commands.research.list", "&6Технологии: &e{list}", "list", String.join(", ", techs)));
             return;
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("start")) {
             TechDefinition definition = research.startResearch(player, args[2]);
-            success(player, msg("commands.research.started", "Исследование {name} начато. Нужно beakers: {beakers}", "name", definition.name(), "beakers", definition.beakerCost()));
+            success(player, msg("commands.research.started", "Исследование {name} начато. Нужно колб: {beakers}", "name", definition.name(), "beakers", definition.beakerCost()));
             return;
         }
         ResidentProfile resident = game.resident(player);
         research.progress(resident).ifPresentOrElse(
-                progress -> send(player, msg("commands.research.progress", "&6Исследование: &e{tech} &7{progress}/{required} ({percent}%)", "tech", progress.techId(), "progress", Math.round(progress.progress()), "required", Math.round(progress.requiredBeakers()), "percent", Math.round(progress.percent()))),
+                progress -> send(player, msg("commands.research.progress", "&6Исследование: &e{tech} &7{progress}/{required} ({percent}%)", "tech", research.findTech(progress.techId()).map(TechDefinition::name).orElse(progress.techId()), "progress", Math.round(progress.progress()), "required", Math.round(progress.requiredBeakers()), "percent", Math.round(progress.percent()))),
                 () -> error(player, msg("commands.research.none", "Активного исследования нет. Используйте /research list и /research start <id>."))
         );
     }
@@ -590,10 +592,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         try{if(plugin.buildingDamage()!=null)plugin.buildingDamage().description(info.id()).ifPresent(text->send(player,text));}
         catch(SQLException failure){plugin.getLogger().warning("Building health information failed: "+failure.getMessage());}
         send(player, msg("commands.build.info.line1", "&6Постройка: &e{name} &7#{id}", "name", info.displayName(), "id", info.id()));
-        String status=switch(info.status()) {
-            case "COMPLETE"->"готово";case "QUEUED"->"в очереди";case "BUILDING"->"строится";
-            case "CANCELLED"->"отменено";case "DEMOLISHING"->"разбирается";case "DEMOLISHED"->"снесено";case "WAR_DESTROY_PENDING"->"военное разрушение";case "WAR_DESTROYED"->"разрушено войной";case "WAR_REPAIR_PENDING"->"ремонтируется";default->info.status();
-        };
+        String status=com.avrgaming.civcraft.modern.build.BuildStatusText.name(info.status());
         send(player, msg("commands.build.info.line2", "&7Город: {town}, состояние: {status}, стоимость: {cost}, чанк: {chunk_x},{chunk_z}", "town", info.townName() == null ? "-" : info.townName(), "status", status, "cost", info.cost(), "chunk_x", info.chunkX(), "chunk_z", info.chunkZ()));
         send(player, msg("commands.build.info.line3", "&7Положение: {world} {x} {y} {z}, нужно молотков: {hammers}, производство: {production}/час", "world", info.world(), "x", info.x(), "y", info.y(), "z", info.z(), "hammers", formatNumber(info.totalHammers()), "production", formatNumber(info.hammersPerHour())));
     }

@@ -23,7 +23,7 @@ public final class CampNpcMenusCommand implements CommandExecutor, TabCompleter 
         }
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             service.reloadEverything();
-            sender.sendMessage(service.lang().msg("camp-npc.reload", "&aCamp NPC menus перезагружены."));
+            sender.sendMessage(service.lang().msg("camp-npc.reload", "&aМеню NPC лагерей перезагружены."));
             return true;
         }
         sender.sendMessage("§e/" + label + " reload");

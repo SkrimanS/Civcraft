@@ -9,6 +9,7 @@ public enum CampRole {
     public boolean isMember() {
         return this == LEADER || this == ELDER || this == MEMBER;
     }
+    public String displayName(){return switch(this){case LEADER->"Вождь";case ELDER->"Старейшина";case MEMBER->"Участник";case NONE->"Не состоит в лагере";};}
 
     public static CampRole fromObject(Object value) {
         if (value == null) {
