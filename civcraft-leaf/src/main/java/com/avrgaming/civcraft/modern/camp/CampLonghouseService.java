@@ -125,7 +125,7 @@ public final class CampLonghouseService implements Listener {
         }catch(Exception failure){warn(failure);}
     }
     private void processDueMeals()throws SQLException {
-        var due=storage.query(db->{var out=new ArrayList<Due>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,camp_id FROM camp_fire_operations WHERE status='COMPLETED' AND meal_due=1 ORDER BY created_at,id")){while(r.next())out.add(new Due(r.getString(1),r.getLong(2)));}return out;});
+        var due=storage.query(db->{var out=new ArrayList<Due>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,camp_id FROM camp_fire_operations WHERE status='COMPLETED' AND meal_due=1 AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","camp_fire_operations.camp_id")+" ORDER BY created_at,id")){while(r.next())out.add(new Due(r.getString(1),r.getLong(2)));}return out;});
         for(var parent:due){if(paused)break;try{produce(parent.camp(),parent.id());}catch(Exception failure){warn(failure);}}
     }
     private void skipMeal(String fireOperation)throws SQLException {
@@ -137,6 +137,7 @@ public final class CampLonghouseService implements Listener {
         locked.clear();locked.addAll(positions);
     }
     private void finish(CampLonghouseStore.Pending meal)throws SQLException,IOException {
+        if(storage.query(db->com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.campHeld(db,meal.camp())))return;
         var images=ConsumptionContainers.decode(meal.containers());
         for(var image:images) {
             var p=image.position();var world=Bukkit.getWorld(p.world());

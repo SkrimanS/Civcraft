@@ -77,21 +77,21 @@ public final class QuestRewardStore {
     }
     public record Command(String operation,int ordinal,String command){}
     public static List<Command> waitingCommands(Connection db)throws SQLException {
-        var out=new ArrayList<Command>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.operation_id,c.ordinal,c.command FROM camp_quest_reward_commands c JOIN camp_quest_rewards job ON job.operation_id=c.operation_id WHERE c.status='WAITING' AND job.status='COMPLETE' ORDER BY c.operation_id,c.ordinal")){while(r.next())out.add(new Command(r.getString(1),r.getInt(2),r.getString(3)));}return out;
+        var out=new ArrayList<Command>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.operation_id,c.ordinal,c.command FROM camp_quest_reward_commands c JOIN camp_quest_rewards job ON job.operation_id=c.operation_id WHERE c.status='WAITING' AND job.status='COMPLETE' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","job.camp_id")+" ORDER BY c.operation_id,c.ordinal")){while(r.next())out.add(new Command(r.getString(1),r.getInt(2),r.getString(3)));}return out;
     }
     /** External commands cannot participate in SQLite: claim before dispatch and retain ambiguity. */
     public static boolean claimCommand(Connection db,Command command)throws SQLException {
-        try(var s=db.prepareStatement("UPDATE camp_quest_reward_commands SET status='CLAIMED' WHERE operation_id=? AND ordinal=? AND status='WAITING'")){s.setString(1,command.operation());s.setInt(2,command.ordinal());return s.executeUpdate()==1;}
+        try(var s=db.prepareStatement("UPDATE camp_quest_reward_commands SET status='CLAIMED' WHERE operation_id=? AND ordinal=? AND status='WAITING' AND EXISTS(SELECT 1 FROM camp_quest_rewards job WHERE job.operation_id=camp_quest_reward_commands.operation_id AND job.status='COMPLETE' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","job.camp_id")+")")){s.setString(1,command.operation());s.setInt(2,command.ordinal());return s.executeUpdate()==1;}
     }
     public static void finishCommand(Connection db,Command command,boolean success)throws SQLException {
         try(var s=db.prepareStatement("UPDATE camp_quest_reward_commands SET status=? WHERE operation_id=? AND ordinal=? AND status='CLAIMED'")){s.setString(1,success?"DONE":"FAILED");s.setString(2,command.operation());s.setInt(3,command.ordinal());s.executeUpdate();}
     }
     public record Payment(String operation,int ordinal,UUID leader,long amount,String provider){}
     public static List<Payment> waitingPayments(Connection db)throws SQLException {
-        var out=new ArrayList<Payment>();try(var s=db.createStatement();var r=s.executeQuery("SELECT p.operation_id,p.ordinal,p.leader_uuid,p.amount,p.provider FROM camp_quest_reward_payments p JOIN camp_quest_rewards job ON job.operation_id=p.operation_id WHERE p.status='WAITING' AND job.status='COMPLETE' ORDER BY p.operation_id,p.ordinal")){while(r.next())out.add(new Payment(r.getString(1),r.getInt(2),UUID.fromString(r.getString(3)),r.getLong(4),r.getString(5)));}return out;
+        var out=new ArrayList<Payment>();try(var s=db.createStatement();var r=s.executeQuery("SELECT p.operation_id,p.ordinal,p.leader_uuid,p.amount,p.provider FROM camp_quest_reward_payments p JOIN camp_quest_rewards job ON job.operation_id=p.operation_id WHERE p.status='WAITING' AND job.status='COMPLETE' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","job.camp_id")+" ORDER BY p.operation_id,p.ordinal")){while(r.next())out.add(new Payment(r.getString(1),r.getInt(2),UUID.fromString(r.getString(3)),r.getLong(4),r.getString(5)));}return out;
     }
     public static boolean claimPayment(Connection db,Payment payment)throws SQLException {
-        try(var s=db.prepareStatement("UPDATE camp_quest_reward_payments SET status='CLAIMED' WHERE operation_id=? AND ordinal=? AND status='WAITING'")){s.setString(1,payment.operation());s.setInt(2,payment.ordinal());return s.executeUpdate()==1;}
+        try(var s=db.prepareStatement("UPDATE camp_quest_reward_payments SET status='CLAIMED' WHERE operation_id=? AND ordinal=? AND status='WAITING' AND EXISTS(SELECT 1 FROM camp_quest_rewards job WHERE job.operation_id=camp_quest_reward_payments.operation_id AND job.status='COMPLETE' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","job.camp_id")+")")){s.setString(1,payment.operation());s.setInt(2,payment.ordinal());return s.executeUpdate()==1;}
     }
     public static void finishPayment(Connection db,Payment payment,boolean success)throws SQLException {
         try(var s=db.prepareStatement("UPDATE camp_quest_reward_payments SET status=? WHERE operation_id=? AND ordinal=? AND status='CLAIMED'")){s.setString(1,success?"DONE":"FAILED");s.setString(2,payment.operation());s.setInt(3,payment.ordinal());s.executeUpdate();}

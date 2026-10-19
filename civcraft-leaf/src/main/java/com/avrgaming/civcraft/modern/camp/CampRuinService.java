@@ -95,13 +95,14 @@ public final class CampRuinService implements Listener {
             refreshLocks();
             for(var p:storage.query(CampRuinStore::pending)){if(paused)break;try{finish(p);}catch(Exception failure){warn(failure);}}
             if(paused)return;
-            var expired=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE firepoints_hours<0 OR control_hp<=0 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
+            var expired=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE (firepoints_hours<0 OR control_hp<=0) AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","camps.id")+" ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
             for(long camp:expired){if(paused)break;try{request(camp,true);}catch(Exception failure){warn(failure);}}
         }catch(Exception failure){warn(failure);}
     }
     private void refreshLocks()throws SQLException {locked.clear();ruining.clear();for(var p:storage.query(CampRuinStore::pending))lock(p);}
     private void lock(CampRuinStore.Pending p){ruining.add(p.camp());for(var cell:p.cells())locked.add(cell.position());}
     private void finish(CampRuinStore.Pending p)throws SQLException {
+        if(storage.query(db->com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.campHeld(db,p.camp())))return;
         boolean pending=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM camp_ruins WHERE camp_id=? AND status='PREPARED'")){s.setLong(1,p.camp());try(var r=s.executeQuery()){return r.next();}}});
         if(!pending)return;
         if(p.restore() && (plugin.legacyStructures()==null || !plugin.legacyStructures().stopBuildForCampRestore(p.build())))return;

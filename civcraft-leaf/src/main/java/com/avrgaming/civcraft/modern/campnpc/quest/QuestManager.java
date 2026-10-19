@@ -285,7 +285,7 @@ public final class QuestManager {
         try {
             rewards.flushExternalRewards();
             var due=new ArrayList<Due>();
-            try(Connection connection=storage.connect();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT camp_id,quest_id,completer_uuid FROM camp_quest_progress WHERE completed=1 AND rewarded=0 AND completer_uuid IS NOT NULL")) {
+            try(Connection connection=storage.connect();var statement=connection.createStatement();var rows=statement.executeQuery("SELECT camp_id,quest_id,completer_uuid FROM camp_quest_progress WHERE completed=1 AND rewarded=0 AND completer_uuid IS NOT NULL AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"camps","camp_quest_progress.camp_id"))) {
                 while(rows.next())due.add(new Due(rows.getLong(1),rows.getString(2),java.util.UUID.fromString(rows.getString(3))));
             }
             for(var entry:due){var player=org.bukkit.Bukkit.getPlayer(entry.player());if(player==null || player.isDead())continue;var definition=quest(entry.quest());if(definition.isPresent())completeQuest(player,entry.camp(),definition.get());}

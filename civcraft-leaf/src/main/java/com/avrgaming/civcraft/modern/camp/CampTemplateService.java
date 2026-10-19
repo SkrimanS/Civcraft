@@ -41,7 +41,7 @@ public final class CampTemplateService implements Listener {
     public void refresh() {
         try {
             indexMissing();
-            var cells=storage.query(db->{var out=new ArrayList<Cell>();try(var s=db.createStatement();var r=s.executeQuery("SELECT m.*,c.farm_upgrade,c.longhouse_upgrade,c.breaker_upgrade FROM camp_template_markers m JOIN camps c ON c.id=m.camp_id JOIN camp_template_index i ON i.camp_id=c.id JOIN structure_builds b ON b.id=i.build_id WHERE b.status='COMPLETE'")) {
+            var cells=storage.query(db->{var out=new ArrayList<Cell>();try(var s=db.createStatement();var r=s.executeQuery("SELECT m.*,c.farm_upgrade,c.longhouse_upgrade,c.breaker_upgrade FROM camp_template_markers m JOIN camps c ON c.id=m.camp_id JOIN camp_template_index i ON i.camp_id=c.id JOIN structure_builds b ON b.id=i.build_id WHERE b.status='COMPLETE' AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","c.id"))) {
                 while(r.next())out.add(new Cell(r.getLong("camp_id"),new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")),r.getString("command"),r.getInt("legacy_data"),r.getInt("farm_upgrade")!=0,r.getInt("longhouse_upgrade")!=0,r.getInt("breaker_upgrade")!=0,r.getString("parameter")));
             }return out;});
             gardens.clear();enabledGardens.clear();
@@ -70,7 +70,7 @@ public final class CampTemplateService implements Listener {
                 SELECT c.id AS camp_id,b.id,b.world,b.x,b.y,b.z,b.template_path
                 FROM camps c JOIN structure_builds b ON c.world=b.world AND c.x=b.x AND c.y=b.y AND c.z=b.z
                 WHERE b.structure_id=? AND b.status='COMPLETE' AND NOT EXISTS(SELECT 1 FROM camp_template_index i WHERE i.camp_id=c.id)
-                """)) {
+                """+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","c.id"))) {
             s.setString(1,structureId);try(var r=s.executeQuery()){while(r.next())out.add(new Build(r.getLong("camp_id"),r.getLong("id"),r.getString("template_path"),new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"))));}
         }return out;});
         var loader=new LegacyDefTemplateLoader();

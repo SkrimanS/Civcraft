@@ -71,6 +71,7 @@ public final class CampFireService implements Listener {
         refreshLocks();for(var p:storage.query(CampFireStore::pending)){if(paused)break;try{finish(p);}catch(Exception failure){warn(failure);}}
     }
     private boolean finish(CampFireStore.Pending p)throws SQLException,IOException {
+        if(storage.query(db->com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.campHeld(db,p.camp())))return false;
         var images=CampFireContainers.decode(p.containers());for(var image:images)if(!load(image.position()))return false;
         if(p.fed()){for(var world:CampFireContainers.apply(images,p.id(),applied))world.save(true);interrupt("world-saved",p.camp());}
         boolean completed=storage.transaction(db->CampFireStore.complete(db,p));for(var image:images)locked.remove(image.position());
@@ -80,7 +81,7 @@ public final class CampFireService implements Listener {
         }return completed;
     }
     private void reconcileFire()throws SQLException {
-        var cells=storage.query(db->{var out=new ArrayList<Flame>();try(var s=db.createStatement();var r=s.executeQuery("SELECT m.*,c.firepoints_hours FROM camp_template_markers m JOIN camps c ON c.id=m.camp_id JOIN camp_template_index i ON i.camp_id=c.id JOIN structure_builds b ON b.id=i.build_id WHERE m.command IN ('/firepit','/fire') AND b.status='COMPLETE' AND NOT EXISTS(SELECT 1 FROM camp_ruins ruin WHERE ruin.camp_id=c.id AND ruin.status='PREPARED') ORDER BY m.camp_id,m.world,m.x,m.y,m.z")) {
+        var cells=storage.query(db->{var out=new ArrayList<Flame>();try(var s=db.createStatement();var r=s.executeQuery("SELECT m.*,c.firepoints_hours FROM camp_template_markers m JOIN camps c ON c.id=m.camp_id JOIN camp_template_index i ON i.camp_id=c.id JOIN structure_builds b ON b.id=i.build_id WHERE m.command IN ('/firepit','/fire') AND b.status='COMPLETE' AND NOT EXISTS(SELECT 1 FROM camp_ruins ruin WHERE ruin.camp_id=c.id AND ruin.status='PREPARED') AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","c.id")+" ORDER BY m.camp_id,m.world,m.x,m.y,m.z")) {
             while(r.next())out.add(new Flame(r.getLong("camp_id"),new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")),r.getString("command"),r.getString("parameter"),r.getInt("firepoints_hours")));
         }return out;});
         firepits.clear();var byCamp=new HashMap<Long,List<Flame>>();var present=new HashSet<Position>();

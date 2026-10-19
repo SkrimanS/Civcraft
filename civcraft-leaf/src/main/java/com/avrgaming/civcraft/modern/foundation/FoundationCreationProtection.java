@@ -84,6 +84,10 @@ public final class FoundationCreationProtection {
         if(!FoundationCreationStore.installed(db))return false;
         try(var s=db.prepareStatement("SELECT 1 FROM foundation_creation_plans p JOIN foundation_escrows e ON e.id=p.escrow_id WHERE p.created_town=? AND e.state='CREATING'")){s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}}
     }
+    public static boolean campHeld(Connection db,long camp)throws SQLException {
+        if(!FoundationCreationStore.installed(db))return false;
+        try(var s=db.prepareStatement("SELECT 1 FROM foundation_creation_plans p JOIN foundation_escrows e ON e.id=p.escrow_id WHERE p.created_camp=? AND e.state='CREATING'")){s.setLong(1,camp);try(var r=s.executeQuery()){return r.next();}}
+    }
     public static boolean civilizationHeld(Connection db,long civ)throws SQLException {
         if(!FoundationCreationStore.installed(db))return false;
         try(var s=db.prepareStatement("SELECT 1 FROM foundation_creation_plans p JOIN foundation_escrows e ON e.id=p.escrow_id WHERE p.created_civ=? AND e.state='CREATING'")){s.setLong(1,civ);try(var r=s.executeQuery()){return r.next();}}

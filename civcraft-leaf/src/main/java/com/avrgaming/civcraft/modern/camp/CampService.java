@@ -788,7 +788,8 @@ public final class CampService {
 
     private List<CampInfo> camps() throws SQLException {
         List<CampInfo> camps = new ArrayList<>();
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"camps","camps.id"))) {
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps WHERE "+CampReadinessStore.ready(connection,"camps"))) {
+            statement.setString(1,settings.campStructureId());
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     camps.add(mapCampInfo(rs));

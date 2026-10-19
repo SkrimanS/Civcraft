@@ -76,7 +76,8 @@ public final class CivCraftCampApi {
                   AND npc_marker_x IS NOT NULL
                   AND npc_marker_y IS NOT NULL
                   AND npc_marker_z IS NOT NULL
-                """)) {
+                """+" AND "+campReady(connection,"camps"))) {
+            statement.setString(1,settings.campStructureId());
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     markers.add(new CampNpcMarker(
@@ -96,8 +97,9 @@ public final class CivCraftCampApi {
     }
 
     public boolean isCampActive(long campId) {
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM camps WHERE id = ? LIMIT 1")) {
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM camps WHERE id = ? AND "+campReady(connection,"camps")+" LIMIT 1")) {
             statement.setLong(1, campId);
+            statement.setString(2,settings.campStructureId());
             try (ResultSet rs = statement.executeQuery()) {
                 return rs.next();
             }
@@ -131,9 +133,9 @@ public final class CivCraftCampApi {
                 FROM camp_members cm
                 JOIN camps c ON c.id = cm.camp_id
                 WHERE cm.uuid = ?
-                LIMIT 1
-                """)) {
+                """+" AND "+campReady(connection,"c")+" LIMIT 1")) {
             statement.setString(1, playerUuid.toString());
+            statement.setString(2,settings.campStructureId());
             try (ResultSet rs = statement.executeQuery()) {
                 if (!rs.next()) {
                     return Optional.empty();
@@ -199,8 +201,9 @@ public final class CivCraftCampApi {
             UUID leader;
             String worldName;
             int x, y, z;
-            try (var statement = connection.prepareStatement("SELECT owner_uuid,food_chest_world,food_chest_x,food_chest_y,food_chest_z FROM camps WHERE id=?")) {
+            try (var statement = connection.prepareStatement("SELECT owner_uuid,food_chest_world,food_chest_x,food_chest_y,food_chest_z FROM camps WHERE id=? AND "+campReady(connection,"camps"))) {
                 statement.setLong(1, campId);
+                statement.setString(2,settings.campStructureId());
                 try (var rs = statement.executeQuery()) {
                     if (!rs.next()) return false;
                     leader = UUID.fromString(rs.getString(1)); worldName = rs.getString(2);
@@ -550,8 +553,9 @@ public final class CivCraftCampApi {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
                 SELECT id, name, world, x, y, z
                 FROM camps
-                WHERE npc_marker_world IS NULL OR npc_marker_world = ''
-                """)) {
+                WHERE (npc_marker_world IS NULL OR npc_marker_world = '')
+                """+" AND "+campReady(connection,"camps"))) {
+            statement.setString(1,settings.campStructureId());
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     camps.add(new CampScanTarget(
@@ -645,6 +649,10 @@ public final class CivCraftCampApi {
         }
     }
 
+    /** The final parameter is always the configured foundation structure id. */
+    private String campReady(Connection db,String alias)throws SQLException {
+        return com.avrgaming.civcraft.modern.camp.CampReadinessStore.ready(db,alias);
+    }
     private Connection connect() throws SQLException {
         Path databaseFile = settings.sqlitePath(plugin.getDataFolder().toPath());
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile);

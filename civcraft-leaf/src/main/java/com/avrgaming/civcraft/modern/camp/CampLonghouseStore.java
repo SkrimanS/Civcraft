@@ -41,6 +41,7 @@ public final class CampLonghouseStore {
         requireUnlocked(db,camp,false);
     }
     static void requireUnlocked(Connection db,long camp,boolean allowDueMeal)throws SQLException {
+        if(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.campHeld(db,camp))throw new IllegalArgumentException("Основание лагеря ещё восстанавливается. Дождитесь завершения операции.");
         boolean fire=false;
         for(String table:List.of("camp_longhouse_operations","camp_fire_operations","camp_ruins","camp_quest_submissions","camp_quest_rewards")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
