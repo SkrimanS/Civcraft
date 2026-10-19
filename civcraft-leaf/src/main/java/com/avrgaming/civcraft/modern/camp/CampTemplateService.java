@@ -86,7 +86,7 @@ public final class CampTemplateService implements Listener {
             });
         }
     }
-    private boolean initializeGarden(List<Cell> cells,boolean enabled) {
+    private boolean initializeGarden(List<Cell> cells,boolean enabled)throws SQLException {
         for(var cell:cells){var p=cell.position();var world=Bukkit.getWorld(p.world());if(world==null || !world.isChunkLoaded(p.x()>>4,p.z()>>4))return false;}
         var worlds=new HashSet<World>();
         for(var cell:cells) {
@@ -100,6 +100,7 @@ public final class CampTemplateService implements Listener {
                 }
             }else if(enabled) {
                 if(block.getState() instanceof Sign){block.setType(Material.AIR,false);worlds.add(world);}
+                storage.transaction(db->{try(var s=db.prepareStatement("DELETE FROM protected_blocks WHERE world=? AND x=? AND y=? AND z=? AND build_id=(SELECT build_id FROM camp_template_index WHERE camp_id=?)")){s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());s.setLong(5,cell.camp());s.executeUpdate();}return null;});
             }else {
                 if(block.getState() instanceof Container)throw new IllegalStateException("Container occupies garden sign: "+p);
                 block.setType(Material.OAK_SIGN,false);var data=(Rotatable)block.getBlockData();data.setRotation(rotation(cell.data()));block.setBlockData(data,false);

@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
+
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,10 +68,11 @@ public final class CampService {
     private final Map<UUID, Long> disbandConfirmations = new ConcurrentHashMap<>();
 
     private volatile YamlConfiguration messages;
-    private final Random random = new Random();
+
     private final CampLonghouseService longhouse;
     private final CampTemplateService templates;
     private final CampFireService fire;
+    private final CampRuinService ruins;
 
     public CampService(JavaPlugin plugin, CivCraftGameService game, CivCraftEconomyService economy, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -84,6 +85,7 @@ public final class CampService {
             templates = new CampTemplateService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,settings.campStructureId());
             longhouse = new CampLonghouseService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin);
             fire = new CampFireService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,templates);
+            ruins = new CampRuinService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,settings.campStructureId(),templates,this::removeCampHolograms);
         } catch (SQLException | IOException exception) {
             throw new IllegalStateException("Unable to initialize native camp longhouse", exception);
         }
@@ -367,6 +369,7 @@ public final class CampService {
     private void setupMissingWorkstations() {
         try {
             for (CampInfo camp : camps()) {
+                if(ruins.ruining(camp.id()))continue;
                 boolean needsWorkstations = !camp.hasAllWorkstations();
                 boolean needsNpcMarker = !hasCampNpcMarker(camp.id()) && !templates.indexed(camp.id());
                 if (!templates.indexed(camp.id()) && (needsWorkstations || needsNpcMarker)) {
@@ -925,32 +928,6 @@ public final class CampService {
         }
     }
 
-    private void removeCamp(long campId) throws SQLException {
-        try (Connection connection = connect()) {
-            CampLonghouseStore.requireUnlocked(connection,campId);
-            connection.setAutoCommit(false);
-            try {
-                try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = NULL, updated_at = ? WHERE camp_id = ?")) {
-                    statement.setLong(1, System.currentTimeMillis());
-                    statement.setLong(2, campId);
-                    statement.executeUpdate();
-                }
-                try (PreparedStatement statement = connection.prepareStatement("DELETE FROM camp_members WHERE camp_id = ?")) {
-                    statement.setLong(1, campId);
-                    statement.executeUpdate();
-                }
-                try (PreparedStatement statement = connection.prepareStatement("DELETE FROM camps WHERE id = ?")) {
-                    statement.setLong(1, campId);
-                    statement.executeUpdate();
-                }
-                connection.commit();
-            } catch (SQLException exception) {
-                connection.rollback();
-                throw exception;
-            }
-        }
-    }
-
     private void updateWorkstations(long campId, Location food, Location breakerInput, Location breakerOutput, Location controlBlock) throws SQLException {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
                 UPDATE camps SET
@@ -1055,6 +1032,9 @@ public final class CampService {
             } else {
                 player.sendMessage(msg("camp.control.hit", "Контрольный блок лагеря: {hp}/{max_hp} HP.", "{hp}", String.valueOf(newHp), "{max_hp}", String.valueOf(CONTROL_MAX_HP)));
             }
+            return true;
+        } catch (IllegalArgumentException pending) {
+            player.sendMessage(pending.getMessage());
             return true;
         } catch (SQLException exception) {
             plugin.getLogger().warning("Unable to process camp control block attack: " + exception.getMessage());
@@ -1271,107 +1251,7 @@ public final class CampService {
     }
 
     private void destroyCamp(long campId, boolean showTitle) throws SQLException {
-        try (Connection connection = connect()) { CampLonghouseStore.requireUnlocked(connection,campId); }
-        List<CampMember> campMembers = members(campId);
-        airOutHalfCampBlocks(campId);
-        releaseCampStructureProtection(campId);
-        removeCampHolograms(campId);
-        removeCamp(campId);
-        if (showTitle) {
-            Title title = Title.title(
-                    component(message("camp.destroyed.title", "§cЛагерь разрушен")),
-                    component(message("camp.destroyed.subtitle", "")),
-                    Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(2), Duration.ofMillis(200))
-            );
-            for (CampMember member : campMembers) {
-                Player player = Bukkit.getPlayer(member.uuid());
-                if (player != null) {
-                    player.showTitle(title);
-                }
-            }
-        }
-    }
-
-    private void airOutHalfCampBlocks(long campId) throws SQLException {
-        List<BlockLocation> blocks = new ArrayList<>();
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
-                SELECT pb.world, pb.x, pb.y, pb.z
-                FROM protected_blocks pb
-                JOIN structure_builds sb ON sb.id = pb.build_id
-                JOIN camps c ON c.owner_uuid = sb.builder_uuid OR (c.world = sb.world AND c.x = sb.x AND c.y = sb.y AND c.z = sb.z)
-                WHERE c.id = ? AND sb.structure_id = ? AND sb.status <> 'DEMOLISHED'
-                """)) {
-            statement.setLong(1, campId);
-            statement.setString(2, settings.campStructureId());
-            try (ResultSet rs = statement.executeQuery()) {
-                while (rs.next()) {
-                    blocks.add(new BlockLocation(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z")));
-                }
-            }
-        }
-        for (BlockLocation loc : blocks) {
-            if (!random.nextBoolean()) {
-                continue;
-            }
-            World world = Bukkit.getWorld(loc.world());
-            if (world != null) {
-                world.getBlockAt(loc.x(), loc.y(), loc.z()).setType(Material.AIR, false);
-            }
-        }
-    }
-
-    private void releaseCampStructureProtection(long campId) throws SQLException {
-        List<Long> buildIds = campBuildIds(campId);
-        if (buildIds.isEmpty()) {
-            return;
-        }
-        try (Connection connection = connect()) {
-            connection.setAutoCommit(false);
-            try {
-                for (Long buildId : buildIds) {
-                    try (PreparedStatement statement = connection.prepareStatement("DELETE FROM protected_blocks WHERE build_id = ?")) {
-                        statement.setLong(1, buildId);
-                        statement.executeUpdate();
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement("DELETE FROM structure_chunks WHERE build_id = ?")) {
-                        statement.setLong(1, buildId);
-                        statement.executeUpdate();
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement("DELETE FROM structure_block_backups WHERE build_id = ?")) {
-                        statement.setLong(1, buildId);
-                        statement.executeUpdate();
-                    }
-                    try (PreparedStatement statement = connection.prepareStatement("UPDATE structure_builds SET status = 'DEMOLISHED', completed_at = ? WHERE id = ?")) {
-                        statement.setLong(1, System.currentTimeMillis());
-                        statement.setLong(2, buildId);
-                        statement.executeUpdate();
-                    }
-                }
-                connection.commit();
-            } catch (SQLException exception) {
-                connection.rollback();
-                throw exception;
-            }
-        }
-    }
-
-    private List<Long> campBuildIds(long campId) throws SQLException {
-        List<Long> buildIds = new ArrayList<>();
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
-                SELECT DISTINCT sb.id
-                FROM structure_builds sb
-                JOIN camps c ON c.owner_uuid = sb.builder_uuid OR (c.world = sb.world AND c.x = sb.x AND c.y = sb.y AND c.z = sb.z)
-                WHERE c.id = ? AND sb.structure_id = ? AND sb.status <> 'DEMOLISHED'
-                """)) {
-            statement.setLong(1, campId);
-            statement.setString(2, settings.campStructureId());
-            try (ResultSet rs = statement.executeQuery()) {
-                while (rs.next()) {
-                    buildIds.add(rs.getLong("id"));
-                }
-            }
-        }
-        return buildIds;
+        ruins.request(campId,showTitle);
     }
 
     private void removeCampHolograms(long campId) throws SQLException {

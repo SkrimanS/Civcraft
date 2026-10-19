@@ -68,6 +68,7 @@ public final class GoodieChestStore {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")){while(r.next())reserved.addAll(positions(r.getBytes(1)));}
         }
+        reserved.addAll(ruinPositions(db));
         if(reserved.isEmpty())return;
         var positions=positions(containers);if(positions.stream().anyMatch(reserved::contains))throw new IllegalArgumentException("Сундук участвует в незавершённом переносе товара.");
     }
@@ -81,13 +82,17 @@ public final class GoodieChestStore {
     }
     /** Read only coordinates from the existing producer journals, without decoding Bukkit items. */
     private static Set<Position> producerPositions(Connection db)throws SQLException {
-        var out=new HashSet<Position>();
+        var out=new HashSet<Position>(ruinPositions(db));
         for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations","camp_longhouse_operations","camp_fire_operations")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")) {
                 while(r.next())out.addAll(positions(r.getBytes(1)));
             }
         }return out;
+    }
+    private static Set<Position> ruinPositions(Connection db)throws SQLException {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='camp_ruins'")){if(!r.next())return Set.of();}
+        var out=new HashSet<Position>();try(var s=db.createStatement();var r=s.executeQuery("SELECT c.world,c.x,c.y,c.z FROM camp_ruin_cells c JOIN camp_ruins job ON job.camp_id=c.camp_id WHERE job.status='PREPARED'")){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}return out;
     }
     public static void requirePositionsAvailable(Connection db,Collection<Position> positions)throws SQLException {
         var reserved=locked(db);var producers=producerPositions(db);if(positions.stream().anyMatch(p->reserved.contains(p) || producers.contains(p)))throw new IllegalArgumentException("Сундук участвует в незавершённой операции.");
