@@ -162,7 +162,7 @@ public final class CampTemplateService implements Listener {
         for(var world:worlds)world.save(true);
         return true;
     }
-    private void protect(long camp,Block block)throws SQLException {
+    void protect(long camp,Block block)throws SQLException {
         storage.transaction(db->{try(var s=db.prepareStatement("""
                 INSERT INTO protected_blocks(world,x,y,z,build_id,material)
                 SELECT ?,?,?,?,build_id,? FROM camp_template_index WHERE camp_id=?

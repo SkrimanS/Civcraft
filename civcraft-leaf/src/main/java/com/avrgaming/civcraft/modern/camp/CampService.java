@@ -71,6 +71,7 @@ public final class CampService {
     private final Random random = new Random();
     private final CampLonghouseService longhouse;
     private final CampTemplateService templates;
+    private final CampFireService fire;
 
     public CampService(JavaPlugin plugin, CivCraftGameService game, CivCraftEconomyService economy, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -82,6 +83,7 @@ public final class CampService {
         try {
             templates = new CampTemplateService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,settings.campStructureId());
             longhouse = new CampLonghouseService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin);
+            fire = new CampFireService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,templates);
         } catch (SQLException | IOException exception) {
             throw new IllegalStateException("Unable to initialize native camp longhouse", exception);
         }
@@ -191,6 +193,7 @@ public final class CampService {
         player.sendMessage(msg("camp.info.control", "§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(CONTROL_MAX_HP), "{raid}", raidStatus(camp)));
         player.sendMessage("§7За каждый успешный час питания жетон лидерства появляется в сундуке большого дома.");
         player.sendMessage("§7Большой дом: " + (longhouseEnabled(camp.id()) ? "§aкуплен" : "§cне куплен"));
+        player.sendMessage("§7Костёр: §e"+Math.max(0,fire.points(camp.id()))+"/"+fire.maximum()+" ч.§7, угля за час: §e"+fire.coalPerPoint());
         player.sendMessage(msg("camp.info.upgrades", "§7Улучшения: farm={farm}, breaker={breaker}", "{farm}", yesNo(camp.farmUpgrade()), "{breaker}", yesNo(camp.breakerUpgrade())));
     }
 
@@ -351,6 +354,7 @@ public final class CampService {
     }
 
     private void tickCampProduction() {
+        fire.runHour();
         longhouse.runHour();
     }
 

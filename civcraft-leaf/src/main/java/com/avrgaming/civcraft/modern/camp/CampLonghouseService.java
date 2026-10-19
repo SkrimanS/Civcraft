@@ -46,12 +46,12 @@ public final class CampLonghouseService implements Listener {
     public void runSifters() {
         if(paused)return;
         try {
-            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE breaker_upgrade=1 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
+            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE breaker_upgrade=1 AND firepoints_hours>=0 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
             for(long id:ids){if(paused)break;try{sift(id);}catch(Exception failure){warn(failure);}}
         }catch(Exception failure){warn(failure);}
     }
     private void sift(long id)throws SQLException,IOException {
-        var camp=storage.query(db->{CampLonghouseStore.requireUnlocked(db,id);try(var s=db.prepareStatement("SELECT * FROM camps WHERE id=? AND breaker_upgrade=1")) {
+        var camp=storage.query(db->{CampLonghouseStore.requireUnlocked(db,id);try(var s=db.prepareStatement("SELECT * FROM camps WHERE id=? AND breaker_upgrade=1 AND firepoints_hours>=0")) {
             s.setLong(1,id);try(var r=s.executeQuery()){return r.next()?new Sifter(UUID.fromString(r.getString("owner_uuid")),r.getInt("level"),r.getInt("experience"),point(r,"breaker_input"),point(r,"breaker_output")):null;}
         }});
         if(camp==null || camp.input()==null || camp.output()==null)return;
@@ -76,26 +76,19 @@ public final class CampLonghouseService implements Listener {
         for(var p:out)if(!world.isChunkLoaded(p.x()>>4,p.z()>>4))return Set.of();
         return Collections.unmodifiableSet(out);
     }
-    public void runHour() {
-        if(paused)return;
-        try {
-            recover();
-            if(paused)return;
-            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE longhouse_upgrade=1 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
-            for(long id:ids){if(paused)break;try{produce(id);}catch(Exception failure){warn(failure);}}
-        }catch(Exception failure){warn(failure);}
-    }
-    private void produce(long id)throws SQLException,IOException {
-        var camp=storage.query(db->{CampLonghouseStore.requireUnlocked(db,id);try(var s=db.prepareStatement("SELECT owner_uuid,level,experience,food_chest_world,food_chest_x,food_chest_y,food_chest_z FROM camps WHERE id=? AND longhouse_upgrade=1")) {
+    public void runHour() { recover(); }
+    private void produce(long id,String fireOperation)throws SQLException,IOException {
+        var camp=storage.query(db->{CampLonghouseStore.requireUnlocked(db,id,true);try(var s=db.prepareStatement("SELECT owner_uuid,level,experience,food_chest_world,food_chest_x,food_chest_y,food_chest_z FROM camps WHERE id=? AND longhouse_upgrade=1")) {
             s.setLong(1,id);try(var r=s.executeQuery()){return r.next()?new Camp(UUID.fromString(r.getString(1)),r.getInt(2),r.getInt(3),r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7)):null;}
         }});
-        if(camp==null || camp.world()==null)return;
-        var world=Bukkit.getWorld(camp.world());if(world==null || !world.isChunkLoaded(camp.x()>>4,camp.z()>>4))return;
-        if(!(world.getBlockAt(camp.x(),camp.y(),camp.z()).getState() instanceof Chest chest))return;
+        if(camp==null || camp.world()==null){skipMeal(fireOperation);return;}
+        var world=Bukkit.getWorld(camp.world());if(world==null)return;
+        world.getChunkAt(camp.x()>>4,camp.z()>>4).load();
+        if(!(world.getBlockAt(camp.x(),camp.y(),camp.z()).getState() instanceof Chest chest)){skipMeal(fireOperation);return;}
         var positions=new LinkedHashSet<ConsumptionContainers.Position>();
         addPositions(chest.getInventory().getHolder(),positions);
         if(positions.isEmpty())return;
-        for(var p:positions)if(!Bukkit.getWorld(p.world()).isChunkLoaded(p.x()>>4,p.z()>>4))return;
+        for(var p:positions)Bukkit.getWorld(p.world()).getChunkAt(p.x()>>4,p.z()>>4).load();
         storage.query(db->{GoodieChestStore.requirePositionsAvailable(db,positions.stream().map(p->new GoodieChestStore.Position(p.world(),p.x(),p.y(),p.z())).toList());return null;});
         var before=ConsumptionContainers.capture(positions);
         var counts=new HashMap<>(ConsumptionContainers.counts(before,materials));
@@ -110,7 +103,7 @@ public final class CampLonghouseService implements Listener {
             var token=plugin.nativeItems().tagged(plugin.nativeItems().create("mat_token_of_leadership",1),camp.leader().toString());
             after=ConsumptionContainers.addBestEffort(after,token);
         }
-        var meal=new CampLonghouseStore.Pending(UUID.randomUUID().toString(),id,camp.leader(),state.level(),state.count(),enough?current.output():0,state.result().name(),ConsumptionContainers.encode(after));
+        var meal=new CampLonghouseStore.Pending(UUID.randomUUID().toString(),id,camp.leader(),state.level(),state.count(),enough?current.output():0,state.result().name(),ConsumptionContainers.encode(after),fireOperation);
         storage.transaction(db->{CampLonghouseStore.prepare(db,meal,camp.level(),camp.count());return null;});
         for(var image:after)locked.add(image.position());
         interrupt("prepared",id);
@@ -127,8 +120,16 @@ public final class CampLonghouseService implements Listener {
         if(paused)return;
         try {
             refreshLocks();
-            for(var meal:storage.query(CampLonghouseStore::pending))try{finish(meal);}catch(Exception failure){warn(failure);}
+            for(var meal:storage.query(CampLonghouseStore::pending)){if(paused)break;try{finish(meal);}catch(Exception failure){warn(failure);}}
+            if(!paused)processDueMeals();
         }catch(Exception failure){warn(failure);}
+    }
+    private void processDueMeals()throws SQLException {
+        var due=storage.query(db->{var out=new ArrayList<Due>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,camp_id FROM camp_fire_operations WHERE status='COMPLETED' AND meal_due=1 ORDER BY created_at,id")){while(r.next())out.add(new Due(r.getString(1),r.getLong(2)));}return out;});
+        for(var parent:due){if(paused)break;try{produce(parent.camp(),parent.id());}catch(Exception failure){warn(failure);}}
+    }
+    private void skipMeal(String fireOperation)throws SQLException {
+        storage.transaction(db->{try(var s=db.prepareStatement("UPDATE camp_fire_operations SET meal_due=0 WHERE id=? AND status='COMPLETED' AND NOT EXISTS(SELECT 1 FROM camp_longhouse_operations child WHERE child.fire_operation=camp_fire_operations.id AND child.status='PREPARED')")){s.setString(1,fireOperation);s.executeUpdate();}return null;});
     }
     private void refreshLocks()throws SQLException,IOException {
         var positions=new HashSet<ConsumptionContainers.Position>();
@@ -139,7 +140,8 @@ public final class CampLonghouseService implements Listener {
         var images=ConsumptionContainers.decode(meal.containers());
         for(var image:images) {
             var p=image.position();var world=Bukkit.getWorld(p.world());
-            if(world==null || !world.isChunkLoaded(p.x()>>4,p.z()>>4))return;
+            if(world==null)return;
+            world.getChunkAt(p.x()>>4,p.z()>>4).load();
         }
         if(Set.of("GROW","LEVELUP","MAXED","SIFT").contains(meal.result())) {
             for(var world:ConsumptionContainers.apply(images,meal.id(),applied))world.save(true);
@@ -164,6 +166,7 @@ public final class CampLonghouseService implements Listener {
     }
     private void warn(Exception failure){long now=System.currentTimeMillis();if(now-lastWarning>30000){lastWarning=now;plugin.getLogger().warning("Camp production: "+failure.getMessage());}}
     private record Camp(UUID leader,int level,int count,String world,int x,int y,int z) {}
+    private record Due(String id,long camp) {}
     private record Sifter(UUID leader,int level,int count,ConsumptionContainers.Position input,ConsumptionContainers.Position output) {}
     private boolean locked(Block b){return locked.contains(new ConsumptionContainers.Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()));}
     private boolean locked(Inventory i){return locked(i.getHolder());}

@@ -64,8 +64,10 @@ public final class GoodieChestStore {
     }
     public static void requireImagesUnlocked(Connection db,byte[] containers)throws SQLException {
         var reserved=installed(db)?new HashSet<>(locked(db)):new HashSet<Position>();
-        boolean camps;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name='camp_longhouse_operations'");var r=s.executeQuery()){camps=r.next();}
-        if(camps)try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM camp_longhouse_operations WHERE status='PREPARED'")){while(r.next())reserved.addAll(positions(r.getBytes(1)));}
+        for(String table:List.of("camp_longhouse_operations","camp_fire_operations")) {
+            boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
+            try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")){while(r.next())reserved.addAll(positions(r.getBytes(1)));}
+        }
         if(reserved.isEmpty())return;
         var positions=positions(containers);if(positions.stream().anyMatch(reserved::contains))throw new IllegalArgumentException("Сундук участвует в незавершённом переносе товара.");
     }
@@ -80,7 +82,7 @@ public final class GoodieChestStore {
     /** Read only coordinates from the existing producer journals, without decoding Bukkit items. */
     private static Set<Position> producerPositions(Connection db)throws SQLException {
         var out=new HashSet<Position>();
-        for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations","camp_longhouse_operations")) {
+        for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations","camp_longhouse_operations","camp_fire_operations")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")) {
                 while(r.next())out.addAll(positions(r.getBytes(1)));
