@@ -55,7 +55,9 @@ public final class EspionageService implements Listener,CommandExecutor {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();if(resident.townId()==null || resident.civId()==null)throw new IllegalArgumentException("Шпиону нужен город цивилизации.");
         for(var item:player.getInventory().getContents())if("u_spy".equals(id(item))) {
             Long town=item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin,"unit-town"),PersistentDataType.LONG);
-            if(town!=null){var owner=storage.findTown(town).orElse(null);if(owner!=null && owner.civId()==resident.civId())return;}
+            // UnitMaterial.validateUnitUse permits units without a surviving owning town.
+            if(town==null)return;
+            var owner=storage.findTown(town).orElse(null);if(owner==null || owner.civId()==resident.civId())return;
         }throw new IllegalArgumentException("Нужен юнит шпиона, принадлежащий вашей цивилизации.");
     }
     private void war(Connection db)throws SQLException {
