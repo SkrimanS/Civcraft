@@ -1108,7 +1108,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 SELECT 1 FROM structure_chunks sc
                 JOIN structure_builds sb ON sb.id=sc.build_id
                 WHERE sc.world=? AND sc.chunk_x=? AND sc.chunk_z=?
-                AND sb.status IN ('QUEUED','BUILDING','ROLLBACK_PENDING','DEMOLISH_PENDING')
+                AND sb.status IN ('QUEUED','BUILDING','ROLLBACK_PENDING','DEMOLISH_PENDING','CAMP_RESTORE_PENDING')
                 LIMIT 1
                 """)) {
             statement.setString(1, world);

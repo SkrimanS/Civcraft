@@ -82,6 +82,7 @@ public final class BuildQueue {
         build.requestCancel();
         return true;
     }
+    public boolean hasActiveBuild(long buildId) { return activeBuilds.containsKey(buildId); }
 
     private final Map<Long,Long> updatedDurations=new LinkedHashMap<>();
     private record Timeline(long start,long finish) {}

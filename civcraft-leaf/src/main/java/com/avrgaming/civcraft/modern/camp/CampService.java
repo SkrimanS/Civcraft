@@ -302,8 +302,8 @@ public final class CampService {
 
     private void disband(Player player) throws SQLException {
         CampMember self = requireRole(player.getUniqueId(), ROLE_LEADER);
-        destroyCamp(self.campId(), true);
-        player.sendMessage(message("camp.disband.success", "Лагерь распущен."));
+        ruins.requestRestore(self.campId());
+        player.sendMessage(message("camp.disband.started", "Роспуск лагеря запущен. Местность восстанавливается."));
     }
 
     private void teleport(Player player) throws SQLException {

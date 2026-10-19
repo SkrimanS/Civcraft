@@ -185,6 +185,11 @@ public final class CivCraftCampApi {
             return 1;
         }
     }
+    public boolean isCampBeingRemoved(long campId) {
+        try(Connection connection=connect();var statement=connection.prepareStatement("SELECT 1 FROM camps c WHERE c.id=? AND NOT EXISTS(SELECT 1 FROM camp_ruins job WHERE job.camp_id=c.id AND job.status='PREPARED')")) {
+            statement.setLong(1,campId);try(var rs=statement.executeQuery()){return !rs.next();}
+        }catch(SQLException exception){plugin.getLogger().warning("Unable to check camp removal: "+exception.getMessage());return true;}
+    }
 
 
     public Optional<Location> getCampFoodChestLocation(long campId) {

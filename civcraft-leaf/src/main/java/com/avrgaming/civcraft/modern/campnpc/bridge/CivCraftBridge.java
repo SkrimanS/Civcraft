@@ -121,6 +121,12 @@ public final class CivCraftBridge {
             return 1;
         }
     }
+    public boolean isCampBeingRemoved(long campId) {
+        if(api==null)return true;
+        try{return Boolean.TRUE.equals(api.getClass().getMethod("isCampBeingRemoved",long.class).invoke(api,campId));}
+        catch(NoSuchMethodException legacyApi){return false;}
+        catch(ReflectiveOperationException failure){return true;}
+    }
 
 
     public Optional<Location> getCampFoodChestLocation(long campId) {

@@ -39,6 +39,34 @@ public final class CampRuinService implements Listener {
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,1L,20L);
     }
     public boolean ruining(long camp){return ruining.contains(camp);}
+    public void requestRestore(long camp)throws SQLException {
+        if(paused)return;
+        for(var existing:storage.query(CampRuinStore::pending))if(existing.camp()==camp) {
+            if(!existing.restore())throw new IllegalArgumentException("Лагерь уже превращается в руины.");
+            finish(existing);return;
+        }
+        var build=storage.query(db->{CampLonghouseStore.requireUnlocked(db,camp);try(var s=db.prepareStatement("""
+                SELECT c.owner_uuid,b.id,b.status,b.journal_started,b.snapshot_ready
+                FROM camps c JOIN structure_builds b ON b.world=c.world AND b.x=c.x AND b.y=c.y AND b.z=c.z
+                WHERE c.id=? AND b.structure_id=? AND b.status IN ('COMPLETE','QUEUED','BUILDING') ORDER BY b.id DESC LIMIT 1
+                """)) {s.setLong(1,camp);s.setString(2,structureId);try(var r=s.executeQuery()){return r.next()?new RestoreBuild(r.getLong(2),UUID.fromString(r.getString(1)),r.getString(3),r.getInt(4)!=0,r.getInt(5)!=0):null;}}});
+        if(build==null || !build.journal() || (build.status().equals("COMPLETE") && !build.ready()))throw new IllegalArgumentException("Нет полного строительного журнала для восстановления местности лагеря.");
+        var originals=storage.loadStructureBlockBackups(build.id());
+        if(build.ready() && originals.isEmpty())throw new IllegalArgumentException("В строительном журнале отсутствует исходная местность лагеря.");
+        var cells=new ArrayList<CampRuinStore.Cell>();
+        // An incomplete initial snapshot precedes every world mutation: there is nothing to restore.
+        if(build.ready())for(var original:originals) {
+            var p=new Position(original.world(),original.x(),original.y(),original.z());var block=block(p);
+            var target=Bukkit.createBlockData(original.blockData());
+            requireEmptyForRestore(block,target);
+            cells.add(new CampRuinStore.Cell(p,block.getBlockData().getAsString(),target.getAsString(),false));
+        }
+        var members=storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.prepareStatement("SELECT uuid FROM camp_members WHERE camp_id=?")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(UUID.fromString(r.getString(1)));}}return out;});
+        var pending=new CampRuinStore.Pending(camp,build.id(),build.leader(),false,cells,members,true);
+        storage.transaction(db->{CampRuinStore.prepare(db,pending);return null;});lock(pending);
+        if(plugin.legacyStructures()!=null)plugin.legacyStructures().stopBuildForCampRestore(build.id());
+        interrupt("restore-prepared",camp);finish(pending);
+    }
     public void request(long camp,boolean title)throws SQLException {
         if(paused)return;
         for(var existing:storage.query(CampRuinStore::pending))if(existing.camp()==camp){finish(existing);return;}
@@ -74,28 +102,35 @@ public final class CampRuinService implements Listener {
     private void finish(CampRuinStore.Pending p)throws SQLException {
         boolean pending=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM camp_ruins WHERE camp_id=? AND status='PREPARED'")){s.setLong(1,p.camp());try(var r=s.executeQuery()){return r.next();}}});
         if(!pending)return;
+        if(p.restore() && (plugin.legacyStructures()==null || !plugin.legacyStructures().stopBuildForCampRestore(p.build())))return;
         var worlds=new HashSet<World>();
         // Resolve all chunks before mutation; a missing world must not leave a newly half-applied plan.
         for(var cell:p.cells())worlds.add(block(cell.position()).getWorld());
         for(var cell:p.cells())if(cell.after()!=null) {
             var block=block(cell.position());var after=Bukkit.createBlockData(cell.after());
             if(block.getBlockData().matches(after))continue;
+            if(p.restore())requireEmptyForRestore(block,after);
             var before=Bukkit.createBlockData(cell.before());
-            if(block.getState() instanceof Container && block.getType()!=before.getMaterial())throw new IllegalStateException("Unexpected container in pending camp ruin: "+cell.position());
+            if(!p.restore() && block.getState() instanceof Container && block.getType()!=before.getMaterial())throw new IllegalStateException("Unexpected container in pending camp ruin: "+cell.position());
             block.setBlockData(after,false);
         }
         for(var world:worlds)world.save(true);
-        interrupt("world-saved",p.camp());beforeDelete.accept(p.camp());
+        interrupt(p.restore()?"restore-world-saved":"world-saved",p.camp());beforeDelete.accept(p.camp());
         for(var world:worlds)world.save(true);
         boolean completed=storage.transaction(db->CampRuinStore.complete(db,p));
         for(var cell:p.cells())locked.remove(cell.position());ruining.remove(p.camp());
         if(completed) {
             templates.refresh();
+            if(p.restore())for(var uuid:p.members()){var player=Bukkit.getPlayer(uuid);if(player!=null)player.sendMessage("§eЛагерь распущен. Исходная местность восстановлена.");}
             if(p.title())for(var uuid:p.members()){var player=Bukkit.getPlayer(uuid);if(player!=null)player.showTitle(Title.title(Component.text("Лагерь разрушен"),Component.empty()));}
             for(var cell:p.cells())if(cell.effect())effect(cell.position());
         }
     }
     private static Block block(Position p){var world=Bukkit.getWorld(p.world());if(world==null)throw new IllegalStateException("Camp ruin world is unavailable: "+p.world());world.getChunkAt(p.x()>>4,p.z()>>4).load();return world.getBlockAt(p.x(),p.y(),p.z());}
+    private static void requireEmptyForRestore(Block block,org.bukkit.block.data.BlockData target) {
+        if(!block.getBlockData().matches(target) && block.getState() instanceof Container container && !container.getSnapshotInventory().isEmpty())
+            throw new IllegalArgumentException("Заберите вещи из контейнера перед роспуском лагеря: "+block.getWorld().getName()+" "+block.getX()+", "+block.getY()+", "+block.getZ()+".");
+    }
     private void effect(Position p) {
         var world=Bukkit.getWorld(p.world());if(world==null)return;
         for(int i=0;i<3;i++)try{var firework=world.spawn(new Location(world,p.x()+0.5,p.y()+0.5,p.z()+0.5),Firework.class);firework.getPersistentDataContainer().set(effectKey,PersistentDataType.BYTE,(byte)1);var meta=firework.getFireworkMeta();meta.addEffect(FireworkEffect.builder().with(FireworkEffect.Type.BURST).withColor(Color.ORANGE,Color.RED).withTrail().withFlicker().build());meta.setPower(0);firework.setFireworkMeta(meta);firework.detonate();}catch(RuntimeException failure){warn(failure);}
@@ -133,4 +168,5 @@ public final class CampRuinService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonRetractEvent e){if(e.getBlocks().stream().anyMatch(b->locked(b) || locked(b.getRelative(e.getDirection()))))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void effectDamage(EntityDamageByEntityEvent e){if(e.getDamager() instanceof Firework f && f.getPersistentDataContainer().has(effectKey,PersistentDataType.BYTE))e.setCancelled(true);}
     private record Build(long id,UUID leader) {}
+    private record RestoreBuild(long id,UUID leader,String status,boolean journal,boolean ready) {}
 }

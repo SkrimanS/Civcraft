@@ -99,6 +99,7 @@ public final class QuestManager {
     }
 
     public List<QuestDefinition> availableQuests(long campId) {
+        if(civCraft.isCampBeingRemoved(campId))return List.of();
         int level = Math.max(1, civCraft.getCampLevel(campId));
         List<QuestDefinition> pool = questsByLevel.getOrDefault(level, List.of());
         if (pool.size() <= visibleQuestLimit) {
@@ -221,7 +222,7 @@ public final class QuestManager {
     }
 
     private boolean isQuestAvailableForCamp(long campId, QuestDefinition quest) {
-        return quest.level() == Math.max(1, civCraft.getCampLevel(campId));
+        return !civCraft.isCampBeingRemoved(campId) && quest.level() == Math.max(1, civCraft.getCampLevel(campId));
     }
 
     private SubmitResult addProgress(Player player, long campId, QuestDefinition quest, int amount, String prefixMessage) {

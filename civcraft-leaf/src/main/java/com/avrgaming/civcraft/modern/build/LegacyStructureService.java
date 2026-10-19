@@ -62,6 +62,11 @@ public final class LegacyStructureService {
 
     public BuildQueue.DestructionSnapshot snapshotForSabotage(long build){if(recoveringTerrain.contains(build))throw new IllegalArgumentException("Территория стройки восстанавливается. Дождитесь возобновления строительства.");return buildQueue.snapshotForDestruction(build);}
     public void stopSabotagedBuild(long build){buildQueue.cancelBuild(build);}
+    /** Wait for preview cleanup and any older recovery before a camp restores its journal. */
+    public boolean stopBuildForCampRestore(long build) {
+        buildQueue.cancelBuild(build);
+        return !buildQueue.hasActiveBuild(build) && !recoveringTerrain.contains(build);
+    }
     public void updateSettings(ModernCivCraftSettings settings) {
         this.settings = settings;
         this.definitions.updateSettings(settings);
