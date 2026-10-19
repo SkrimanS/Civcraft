@@ -19,7 +19,7 @@ public final class GoodieEffects {
         public List<com.avrgaming.civcraft.modern.town.ConsumptionPlan.Exchange> cottageExchanges() {
             double fish=value("buff_fishing");
             if(fish==0)return List.of();
-            if(fish<1||fish!=Math.rint(fish)||fish>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid fishing food ratio");
+            if(fish<1||fish!=Math.rint(fish)||fish>Integer.MAX_VALUE)throw new IllegalArgumentException("Неверное соотношение еды для рыбалки");
             return List.of(new com.avrgaming.civcraft.modern.town.ConsumptionPlan.Exchange(297,349,(int)fish));
         }
     }
@@ -31,10 +31,10 @@ public final class GoodieEffects {
             String id=Objects.toString(raw.get("id"),"");
             String parent=Objects.toString(raw.get("parent"),id);if(parent.isBlank())parent=id;
             double value=Double.parseDouble(Objects.toString(raw.get("value"),"NaN"));
-            if(id.isBlank()||!Double.isFinite(value)||value<0||!(raw.get("stackable") instanceof Boolean))throw new IllegalArgumentException("Invalid trade buff: "+id);
-            if(loaded.putIfAbsent(id,new Buff(id,parent,value,(Boolean)raw.get("stackable")))!=null)throw new IllegalArgumentException("Duplicate trade buff: "+id);
+            if(id.isBlank()||!Double.isFinite(value)||value<0||!(raw.get("stackable") instanceof Boolean))throw new IllegalArgumentException("Неверный бонус торгового товара: "+id);
+            if(loaded.putIfAbsent(id,new Buff(id,parent,value,(Boolean)raw.get("stackable")))!=null)throw new IllegalArgumentException("Повторный бонус торгового товара: "+id);
         }
-        for(var good:goods.list())for(String id:good.buffs())if(!loaded.containsKey(id))throw new IllegalArgumentException("Missing trade buff: "+id);
+        for(var good:goods.list())for(String id:good.buffs())if(!loaded.containsKey(id))throw new IllegalArgumentException("Не настроен бонус торгового товара: "+id);
         buffs=Map.copyOf(loaded);
     }
     public Values calculate(Collection<String> heldGoods) {
@@ -77,7 +77,7 @@ public final class GoodieEffects {
         int result=0;
         for(long town:towns) {
             double value=town(db,town).value("buff_medicine");
-            if(value<0||value!=Math.rint(value)||value>Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid medicine respawn bonus");
+            if(value<0||value!=Math.rint(value)||value>Integer.MAX_VALUE)throw new IllegalArgumentException("Неверный бонус медицины к возрождению");
             result=Math.max(result,(int)value);
         }
         return result;

@@ -31,7 +31,7 @@ public final class CampFireService implements Listener {
         this.plugin=plugin;this.storage=plugin.storage();this.templates=templates;applied=new NamespacedKey(plugin,"last-camp-fuel");
         var config=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml"));
         maximum=config.getInt("camp.firepoints",24);coal=config.getInt("camp.coal_per_firepoint",4);
-        if(maximum<1 || coal<1)throw new IllegalArgumentException("Invalid camp fuel configuration");
+        if(maximum<1 || coal<1)throw new IllegalArgumentException("Неверные настройки топлива лагеря");
         storage.transaction(db->{CampFireStore.install(db);return null;});refreshLocks();
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,1L,20L);

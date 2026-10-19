@@ -58,7 +58,7 @@ public final class GoodieDepartureStore {
         }
     }
     public static void phase(Connection db,String id,String phase)throws SQLException {
-        if(!Set.of("ACTIVE","DONE").contains(phase))throw new IllegalArgumentException("Invalid departure phase");
+        if(!Set.of("ACTIVE","DONE").contains(phase))throw new IllegalArgumentException("Неверный этап отправления");
         try(var s=db.prepareStatement("UPDATE goodie_departure_items SET phase=? WHERE id=?")){s.setString(1,phase);s.setString(2,id);s.executeUpdate();}
     }
 }

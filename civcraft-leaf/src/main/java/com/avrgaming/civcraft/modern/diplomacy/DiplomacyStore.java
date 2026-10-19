@@ -37,7 +37,7 @@ public final class DiplomacyStore {
         }
     }
     public static Status status(Connection db,long first,long second)throws SQLException {
-        if(first<1 || second<1)throw new IllegalArgumentException("Invalid civilization ID");
+        if(first<1 || second<1)throw new IllegalArgumentException("Неверный ID цивилизации");
         return first==second?Status.ALLY:relation(db,first,second).status();
     }
     public static void authority(Connection db,long civ,UUID actor)throws SQLException {

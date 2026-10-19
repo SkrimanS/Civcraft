@@ -14,19 +14,19 @@ public final class RevolutionRules {
         technologies=points(new File(folder,"techs.yml"),"techs");var map=new HashMap<>(points(new File(folder,"structures.yml"),"structures"));map.putAll(points(new File(folder,"wonders.yml"),"wonders"));buildings=Map.copyOf(map);
         residentPoints=score.getLong("town_scores.resident",5000);claimPoints=score.getLong("town_scores.town_chunk",200);culturePoints=score.getLong("town_scores.culture_chunk",100);coinsPerPoint=score.getLong("coins_per_point",5);
         baseCost=war.getDouble("revolution.base_cost",50000);perTown=war.getDouble("revolution.coins_per_town",10000);perPoint=war.getDouble("revolution.coins_per_point",.1);maximum=war.getDouble("revolution.maximum_fee",1000000);cooldownDays=civ.getInt("civ.revolution_cooldown",2);
-        if(coinsPerPoint<1 || residentPoints<0 || claimPoints<0 || culturePoints<0 || cooldownDays<0 || cooldownDays>3650)throw new IllegalArgumentException("Invalid revolution score rules");
-        for(double value:new double[]{baseCost,perTown,perPoint,maximum})if(!Double.isFinite(value) || value<0 || value>1e12)throw new IllegalArgumentException("Invalid revolution fees");
+        if(coinsPerPoint<1 || residentPoints<0 || claimPoints<0 || culturePoints<0 || cooldownDays<0 || cooldownDays>3650)throw new IllegalArgumentException("Неверные правила очков революции");
+        for(double value:new double[]{baseCost,perTown,perPoint,maximum})if(!Double.isFinite(value) || value<0 || value>1e12)throw new IllegalArgumentException("Неверная стоимость революции");
     }
     private static Map<String,Long> points(File file,String key) {
         var out=new HashMap<String,Long>();for(var row:YamlConfiguration.loadConfiguration(file).getMapList(key)) {
             Object id=row.get("id"),value=row.get("points");if(id==null)continue;long n=value instanceof Number number?number.longValue():0;
-            if(n<0)throw new IllegalArgumentException("Negative score points: "+id);out.put(id.toString(),n);
+            if(n<0)throw new IllegalArgumentException("Количество очков не может быть отрицательным: "+id);out.put(id.toString(),n);
         }return Map.copyOf(out);
     }
     public int cooldownDays(){return cooldownDays;}
     public boolean cooldownPassed(long conquered,long now,ZoneId zone){return Instant.ofEpochMilli(now).isAfter(Instant.ofEpochMilli(conquered).atZone(zone).plusDays(cooldownDays).toInstant());}
     public static long price(double base,double towns,double perTown,double points,double perPoint,double cap) {
-        double fee=Math.min(cap,base+towns*perTown+points*perPoint);if(!Double.isFinite(fee) || fee<0 || fee>1e12)throw new IllegalArgumentException("Unsupported revolution fee");
+        double fee=Math.min(cap,base+towns*perTown+points*perPoint);if(!Double.isFinite(fee) || fee<0 || fee>1e12)throw new IllegalArgumentException("Неподдерживаемый сбор за революцию");
         // Town balances are whole coins. Never approve a balance below the original fractional fee.
         return (long)Math.ceil(fee);
     }

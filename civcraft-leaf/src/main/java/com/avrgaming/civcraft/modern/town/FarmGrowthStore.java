@@ -7,7 +7,7 @@ import java.util.*;
 public final class FarmGrowthStore {
     private FarmGrowthStore() {}
     public record Cell(FarmGrowthPlan.Position position,String before,String after) {
-        public Cell{Objects.requireNonNull(position);if(before==null || after==null || before.isBlank() || after.isBlank() || before.equals(after))throw new IllegalArgumentException("Invalid growth change");}
+        public Cell{Objects.requireNonNull(position);if(before==null || after==null || before.isBlank() || after.isBlank() || before.equals(after))throw new IllegalArgumentException("Неверное изменение роста");}
     }
     public record State(long build,long period,long tick,long missed) {}
     private static void transaction(Connection db)throws SQLException{if(db.getAutoCommit())throw new SQLException("Farm growth requires a transaction");}
@@ -36,13 +36,13 @@ public final class FarmGrowthStore {
         try(var s=db.prepareStatement("UPDATE farm_growth_state SET last_tick=MAX(last_tick,?),missed=? WHERE build_id=?")){s.setLong(1,tick);s.setLong(2,missed);s.setLong(3,build);s.executeUpdate();}
         return state(db,build);
     }
-    private static void valid(long period,long tick){if(period<1000 || tick<0)throw new IllegalArgumentException("Invalid farm clock");}
+    private static void valid(long period,long tick){if(period<1000 || tick<0)throw new IllegalArgumentException("Неверные параметры часов фермы");}
     public static ProductionStore.Pending prepare(Connection db,String id,long build,List<Cell> cells,byte[] emptyContainers)throws SQLException{
         transaction(db);var state=state(db,build);if(state==null || state.missed()<1)throw new SQLException("No farm growth cycle is due");
         String world;int x,z;
         try(var s=db.prepareStatement("SELECT world,x,z FROM active_structure_builds WHERE id=? AND structure_id='ti_farm' AND status='COMPLETE' AND town_id IS NOT NULL")){s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Farm is not complete");world=r.getString(1);x=Math.floorDiv(r.getInt(2),16);z=Math.floorDiv(r.getInt(3),16);}}
         if(FarmPlots.registered(db,world,x*16,z*16).orElseThrow().farm()!=build)throw new SQLException("Farm chunk belongs to another registration");
-        for(var cell:cells){var p=cell.position();if(!world.equals(p.world()) || Math.floorDiv(p.x(),16)!=x || Math.floorDiv(p.z(),16)!=z)throw new IllegalArgumentException("Growth outside registered farm chunk");
+        for(var cell:cells){var p=cell.position();if(!world.equals(p.world()) || Math.floorDiv(p.x(),16)!=x || Math.floorDiv(p.z(),16)!=z)throw new IllegalArgumentException("Рост за пределами зарегистрированного чанка фермы");
             try(var s=db.prepareStatement("SELECT 1 FROM resource_production_plantings WHERE world=? AND x=? AND y=? AND z=?")){s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());try(var r=s.executeQuery()){if(r.next())throw new SQLException("Windmill planting is pending");}}
         }
         var clock=ProductionStore.initialize(db,build,state.period(),0);

@@ -25,15 +25,15 @@ public final class CatalystEnhancements {
         var yaml=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/materials.yml"));
         for(var row:yaml.getMapList("materials"))if(row.get("components") instanceof List<?> components)for(Object raw:components)if(raw instanceof Map<?,?> component && "Catalyst".equals(component.get("name"))) {
             String enhancement=Objects.toString(component.get("enhancement"));
-            if(!Set.of("LoreEnhancementAttack","LoreEnhancementDefense").contains(enhancement))throw new IllegalArgumentException("Unknown catalyst enhancement: "+enhancement);
+            if(!Set.of("LoreEnhancementAttack","LoreEnhancementDefense").contains(enhancement))throw new IllegalArgumentException("Неизвестное усиление катализатора: "+enhancement);
             var allowed=new HashSet<String>();for(String id:Objects.toString(component.get("allowed_materials")).split(","))allowed.add(id.trim());
             double amount=Double.parseDouble(Objects.toString(component.get("amount")));int chance=Integer.parseInt(Objects.toString(component.get("chance")));
-            if(!Double.isFinite(amount) || amount<=0 || chance<0 || chance>100)throw new IllegalArgumentException("Invalid catalyst rule");
+            if(!Double.isFinite(amount) || amount<=0 || chance<0 || chance>100)throw new IllegalArgumentException("Неверное правило катализатора");
             catalysts.put(Objects.toString(row.get("id")),new Catalyst(enhancement.equals("LoreEnhancementAttack"),Set.copyOf(allowed),chance,amount));
         }
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         free=civ.getInt("global.free_catalyst_amount",3);extra=civ.getInt("global.extra_catalyst_amount",3);extraChance=civ.getDouble("global.extra_catalyst_percent",0);
-        if(!Double.isFinite(extraChance) || extraChance<0 || extraChance>1)throw new IllegalArgumentException("Invalid extra catalyst chance");
+        if(!Double.isFinite(extraChance) || extraChance<0 || extraChance>1)throw new IllegalArgumentException("Неверный шанс дополнительного катализатора");
     }
     public boolean catalyst(String id){return id!=null && catalysts.containsKey(id);}
     public record FreeUse(String catalyst,ItemStack item) {}

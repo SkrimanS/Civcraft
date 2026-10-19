@@ -29,7 +29,7 @@ public final class WarRespawnService implements Listener {
         this.plugin=plugin;this.storage=storage;
         var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
         baseDelay=config.getInt("war.respawn_time",30);controlDelay=config.getInt("war.control_block_respawn_time",30);invalidMinutes=config.getInt("war.invalid_respawn_penalty",10);
-        if(baseDelay<0||controlDelay<0||invalidMinutes<0)throw new IllegalArgumentException("Respawn delays must not be negative");
+        if(baseDelay<0||controlDelay<0||invalidMinutes<0)throw new IllegalArgumentException("Задержки возрождения не могут быть отрицательными");
         storage.transaction(db->{WarRespawnStore.install(db);return null;});
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
@@ -39,7 +39,7 @@ public final class WarRespawnService implements Listener {
             var halls=storage.query(db->{var out=new ArrayList<Hall>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,template_path,world,x,y,z FROM structure_builds WHERE status='COMPLETE' AND structure_id IN ('s_capitol','s_townhall')")){while(r.next())out.add(new Hall(r.getLong(1),r.getString(2),r.getString(3),r.getInt(4),r.getInt(5),r.getInt(6)));}return out;});
             for(var hall:halls) {
                 if(loaded.contains(hall.id()))continue;
-                if(!hall.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Respawn markers in schematic templates are not ported yet");
+                if(!hall.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Маркеры возрождения в шаблонах schematic ещё не перенесены");
                 var points=new ArrayList<WarRespawnStore.Point>();
                 var signs=new ArrayList<WarRespawnStore.SignPoint>();
                 for(var block:new LegacyDefTemplateLoader().load(Path.of(hall.path())).blocks()) {

@@ -8,7 +8,7 @@ public final class ConsumptionPlan {
     public record Exchange(int base, int alternative, int basePerAlternative) {
         public Exchange {
             if(base<1 || alternative<1 || base==alternative || basePerAlternative<1)
-                throw new IllegalArgumentException("Invalid food exchange");
+                throw new IllegalArgumentException("Неверный обмен еды");
         }
     }
     public record Meal(boolean enough,Map<Integer,Long> remaining) {
@@ -29,11 +29,11 @@ public final class ConsumptionPlan {
             if(!requirements.containsKey(exchange.base()) || requirements.containsKey(exchange.alternative())
                     || alternatives.putIfAbsent(exchange.base(),exchange)!=null
                     || !usedAlternatives.add(exchange.alternative()))
-                throw new IllegalArgumentException("Overlapping or unused food exchange");
+                throw new IllegalArgumentException("Обмен еды пересекается с другим или не используется");
         }
         var remaining=new HashMap<>(contents);
         for(var required:requirements.entrySet()) {
-            if(required.getKey()<1 || required.getValue()<1)throw new IllegalArgumentException("Invalid food requirement");
+            if(required.getKey()<1 || required.getValue()<1)throw new IllegalArgumentException("Неверное требование к еде");
             long amount=ConsumptionRules.amount(required.getValue(),rate);
             long base=remaining.getOrDefault(required.getKey(),0L);
             if(base>=amount) {
@@ -70,7 +70,7 @@ public final class ConsumptionPlan {
     }
     private static void validateContents(Map<Integer,Long> contents) {
         if(contents.entrySet().stream().anyMatch(e->e.getKey()<1 || e.getValue()<0))
-            throw new IllegalArgumentException("Invalid food contents");
+            throw new IllegalArgumentException("Неверное содержимое запаса еды");
     }
     private static void put(Map<Integer,Long> contents,int id,long amount) {
         if(amount==0)contents.remove(id);else contents.put(id,amount);

@@ -11,11 +11,11 @@ public final class FisheryLoot {
     private final double[] rates;
     public FisheryLoot(File file) {
         var config=YamlConfiguration.loadConfiguration(file);maximum=config.getInt("fishery.tierMax");
-        if(maximum<1)throw new IllegalArgumentException("Invalid fishery random range");
-        rates=new double[5];for(int i=0;i<5;i++){rates[i]=config.getDouble("fishery.t"+i+"_rate");if(!Double.isFinite(rates[i]) || rates[i]<0 || rates[i]>1)throw new IllegalArgumentException("Invalid fishery tier rate");}
+        if(maximum<1)throw new IllegalArgumentException("Неверный диапазон случайного выбора рыболовни");
+        rates=new double[5];for(int i=0;i<5;i++){rates[i]=config.getDouble("fishery.t"+i+"_rate");if(!Double.isFinite(rates[i]) || rates[i]<0 || rates[i]>1)throw new IllegalArgumentException("Неверный коэффициент уровня рыболовни");}
     }
     public int tier(int level,int roll) {
-        if(level<1 || level>4 || roll<0 || roll>=maximum)throw new IllegalArgumentException("Invalid fishery roll");
+        if(level<1 || level>4 || roll<0 || roll>=maximum)throw new IllegalArgumentException("Неверный результат случайного выбора рыболовни");
         for(int tier=4;tier>=1;tier--)if((tier==1 || level>=tier) && roll<(int)(rates[tier]*maximum))return tier;
         return 0;
     }
@@ -34,7 +34,7 @@ public final class FisheryLoot {
         {"rainbow_trout","wreckfish","widow_rockfish","yellowtail_flounder","sablefish","geoduck"}
     };
     public static String item(int tier,int group,int fishRoll,int junkRoll) {
-        if(tier<0 || tier>4 || group<0 || group>3 || fishRoll<0 || fishRoll>=100 || junkRoll<0 || junkRoll>=100)throw new IllegalArgumentException("Invalid fishery selection");
+        if(tier<0 || tier>4 || group<0 || group>3 || fishRoll<0 || fishRoll>=100 || junkRoll<0 || junkRoll>=100)throw new IllegalArgumentException("Неверный выбор рыболовни");
         if(tier==0) {
             if(fishRoll>=95)return "mat_fish_pufferfish";
             if(fishRoll>85)return "mat_fish_clownfish";
@@ -50,7 +50,7 @@ public final class FisheryLoot {
         return item(tier,group(legacyBiome),fish,tier==0&&fish<=50?random.nextInt(100):0);
     }
     public static int damageAfterUse(int damage) {
-        if(damage<0)throw new IllegalArgumentException("Invalid fishing rod damage");
+        if(damage<0)throw new IllegalArgumentException("Неверный износ удочки");
         return damage>=63?-1:damage+1;
     }
 }

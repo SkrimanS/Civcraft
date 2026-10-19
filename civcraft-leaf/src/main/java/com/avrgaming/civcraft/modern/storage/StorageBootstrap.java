@@ -547,7 +547,7 @@ public final class StorageBootstrap implements AutoCloseable {
      */
     public synchronized void issueSettlementInvite(UUID target, String kind, long settlementId, UUID inviter, long expiresAt) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
-            throw new IllegalArgumentException("Invalid settlement invitation type");
+            throw new IllegalArgumentException("Неверный тип приглашения в поселение");
         }
         try (PreparedStatement statement = connection.prepareStatement("""
                 INSERT INTO settlement_invites(target_uuid, kind, settlement_id, inviter_uuid, expires_at)
@@ -568,7 +568,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     public synchronized String acceptSettlementInvite(UUID target, String kind) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
-            throw new IllegalArgumentException("Invalid invitation type");
+            throw new IllegalArgumentException("Неверный тип приглашения");
         }
         connection.setAutoCommit(false);
         try {
@@ -697,7 +697,7 @@ public final class StorageBootstrap implements AutoCloseable {
 
     public synchronized List<String> settlementMemberNames(String kind, long id) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
-            throw new IllegalArgumentException("Invalid settlement type");
+            throw new IllegalArgumentException("Неверный тип поселения");
         }
         List<String> names = new ArrayList<>();
         String sql = kind.equals("CIV")
@@ -720,7 +720,7 @@ public final class StorageBootstrap implements AutoCloseable {
      */
     public synchronized void removeSettlementMember(UUID player, String kind, long settlementId) throws SQLException {
         if (!kind.equals("CIV") && !kind.equals("TOWN")) {
-            throw new IllegalArgumentException("Invalid settlement type");
+            throw new IllegalArgumentException("Неверный тип поселения");
         }
         connection.setAutoCommit(false);
         try {

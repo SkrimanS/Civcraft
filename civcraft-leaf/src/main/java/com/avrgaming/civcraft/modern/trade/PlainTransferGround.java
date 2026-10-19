@@ -40,9 +40,9 @@ final class PlainTransferGround implements Listener {
     static void prepare(Connection db,String operation,Location at,List<ItemStack> items)throws SQLException {
         if(items.isEmpty())return;
         if(db.getAutoCommit())throw new SQLException("Overflow drops require a transaction");
-        if(at==null || at.getWorld()==null || !Double.isFinite(at.getX()) || !Double.isFinite(at.getY()) || !Double.isFinite(at.getZ()) || items.size()>4096)throw new IllegalArgumentException("Invalid overflow drop plan");
+        if(at==null || at.getWorld()==null || !Double.isFinite(at.getX()) || !Double.isFinite(at.getY()) || !Double.isFinite(at.getZ()) || items.size()>4096)throw new IllegalArgumentException("Неверный план выброса переполнения");
         try(var s=db.prepareStatement("INSERT INTO ordinary_transfer_drops(operation_id,ordinal,world,x,y,z,item) VALUES(?,?,?,?,?,?,?)")) {
-            int i=0;for(var item:items){if(GoodieChestPlan.empty(item) || item.getAmount()>item.getMaxStackSize())throw new IllegalArgumentException("Invalid overflow stack");s.setString(1,operation);s.setInt(2,i++);s.setString(3,at.getWorld().getName());s.setDouble(4,at.getX());s.setDouble(5,at.getY());s.setDouble(6,at.getZ());s.setBytes(7,ItemStack.serializeItemsAsBytes(new ItemStack[]{item}));s.addBatch();}s.executeBatch();
+            int i=0;for(var item:items){if(GoodieChestPlan.empty(item) || item.getAmount()>item.getMaxStackSize())throw new IllegalArgumentException("Неверная стопка переполнения");s.setString(1,operation);s.setInt(2,i++);s.setString(3,at.getWorld().getName());s.setDouble(4,at.getX());s.setDouble(5,at.getY());s.setDouble(6,at.getZ());s.setBytes(7,ItemStack.serializeItemsAsBytes(new ItemStack[]{item}));s.addBatch();}s.executeBatch();
         }
     }
     private List<Drop> read(String operation)throws SQLException {

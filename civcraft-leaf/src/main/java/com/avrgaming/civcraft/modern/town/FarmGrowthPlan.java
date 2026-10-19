@@ -14,16 +14,16 @@ public final class FarmGrowthPlan {
         public String fruit(){if(!stem())throw new IllegalStateException("Not a stem");return this==MELON_STEM?"MELON":"PUMPKIN";}
     }
     public record Position(String world,int x,int y,int z) {
-        public Position{if(world==null || world.isBlank())throw new IllegalArgumentException("Missing farm world");}
+        public Position{if(world==null || world.isBlank())throw new IllegalArgumentException("Не найден мир фермы");}
         Position offset(int dx,int dz){return new Position(world,x+dx,y,z+dz);}
     }
     /** Neighbor order: west, east, north, south. null means outside the snapshot chunk. */
     public record Plant(Position position,Crop crop,int age,List<String> neighbors) {
         public Plant{
             Objects.requireNonNull(position);Objects.requireNonNull(crop);
-            if(age<0 || age>crop.maximum())throw new IllegalArgumentException("Invalid crop age");
+            if(age<0 || age>crop.maximum())throw new IllegalArgumentException("Неверный возраст растения");
             neighbors=Collections.unmodifiableList(new ArrayList<>(neighbors));
-            if(crop.stem() && neighbors.size()!=4)throw new IllegalArgumentException("Stem needs four neighbors");
+            if(crop.stem() && neighbors.size()!=4)throw new IllegalArgumentException("Стеблю нужны четыре соседних блока");
         }
         public boolean eligible(){
             if(!crop.stem())return age<crop.maximum();
@@ -34,12 +34,12 @@ public final class FarmGrowthPlan {
     public record Change(Position position,String material,int age,boolean spawn) {}
     public record Budget(double effectiveRate,int guaranteed,int fractionalChance) {}
     private final int growsPerTick;
-    public FarmGrowthPlan(int growsPerTick){if(growsPerTick<0)throw new IllegalArgumentException("Invalid growth budget");this.growsPerTick=growsPerTick;}
+    public FarmGrowthPlan(int growsPerTick){if(growsPerTick<0)throw new IllegalArgumentException("Неверный лимит роста");this.growsPerTick=growsPerTick;}
     public Budget budget(double townGrowth,double biomeMultiplier){
-        if(!Double.isFinite(townGrowth) || townGrowth<0 || !Double.isFinite(biomeMultiplier) || biomeMultiplier<0)throw new IllegalArgumentException("Invalid farm growth");
+        if(!Double.isFinite(townGrowth) || townGrowth<0 || !Double.isFinite(biomeMultiplier) || biomeMultiplier<0)throw new IllegalArgumentException("Неверные параметры роста фермы");
         double rate=townGrowth/100*biomeMultiplier;
         double count=rate*growsPerTick;
-        if(!Double.isFinite(count) || count>Integer.MAX_VALUE-1)throw new IllegalArgumentException("Growth budget overflow");
+        if(!Double.isFinite(count) || count>Integer.MAX_VALUE-1)throw new IllegalArgumentException("Переполнение лимита роста");
         // Original remainder uses town growth, not the biome-adjusted rate or grows_per_tick.
         return new Budget(rate,(int)count,(int)(townGrowth%100));
     }

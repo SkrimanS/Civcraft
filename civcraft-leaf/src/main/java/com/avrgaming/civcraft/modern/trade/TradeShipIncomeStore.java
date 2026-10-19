@@ -34,10 +34,10 @@ public final class TradeShipIncomeStore {
     /** Must share the transaction that commits ship progress and its inventory receipt. */
     public static boolean credit(Connection db,String receipt,long town,Plan plan)throws SQLException {
         if(db.getAutoCommit())throw new SQLException("Trade ship credit requires a transaction");
-        if(receipt==null || receipt.isBlank())throw new IllegalArgumentException("Missing trade ship receipt");
+        if(receipt==null || receipt.isBlank())throw new IllegalArgumentException("Не найдена квитанция торгового корабля");
         var payment=plan.payment();
         if(payment.town().signum()<0 || payment.civilization().signum()<0 || payment.culture()<0)
-            throw new IllegalArgumentException("Invalid trade ship payment");
+            throw new IllegalArgumentException("Неверная выплата торгового корабля");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO trade_ship_income_receipts VALUES(?,?,?,?,?,?)")) {
             s.setString(1,receipt);s.setLong(2,town);s.setLong(3,plan.civilization());s.setString(4,payment.town().toPlainString());
             s.setString(5,payment.civilization().toPlainString());s.setLong(6,payment.culture());if(s.executeUpdate()==0)return false;

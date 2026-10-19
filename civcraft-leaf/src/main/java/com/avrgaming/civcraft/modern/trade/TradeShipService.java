@@ -35,7 +35,7 @@ public final class TradeShipService implements Listener {
         catalog=new TradeShipCatalog(new File(data,"structures.yml"));rates=TradeShipIncome.rates(data);
         applied=new NamespacedKey(plugin,"last-trade-ship-operation");
         period=Long.getLong("civcraft.test.tradeShip.hourMillis",3600000L);
-        if(period<1000 || period>3600000)throw new IllegalArgumentException("Invalid trade ship period");
+        if(period<1000 || period>3600000)throw new IllegalArgumentException("Неверный период торгового корабля");
         storage.transaction(db->{TradeShipOperations.install(db);return null;});
         for(var operation:storage.query(TradeShipOperations::pending))lock(operation);
         plugin.getServer().getPluginManager().registerEvents(this,plugin);

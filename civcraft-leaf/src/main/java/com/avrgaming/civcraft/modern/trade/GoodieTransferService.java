@@ -145,7 +145,7 @@ public final class GoodieTransferService implements Listener {
         frozen.add(player.getUniqueId());var current=storage.query(db->BonusGoodieStore.origin(db,operation.before().origin()));
         if(current!=null&&!current.equals(operation.before()))throw new SQLException("Goodie changed before world recovery");
         boolean invalid=current==null;var contents=ItemStack.deserializeItemsFromBytes(operation.inventory());
-        if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Invalid goodie inventory image");
+        if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Неверный снимок инвентаря торгового товара");
         if(invalid)for(int i=0;i<contents.length;i++)if(operation.before().token().equals(items.token(contents[i])))contents[i]=null;
         var worlds=new HashSet<World>();
         if(operation.fromFrame()!=null) {

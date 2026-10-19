@@ -34,7 +34,7 @@ public final class BuildingDamageStore {
         return hit(db,id,actor,world,x,y,z,amount,now,true);
     }
     private static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now,boolean cannon)throws SQLException {
-        if(id==null || id.isBlank() || amount<1)throw new IllegalArgumentException("Invalid structure damage");
+        if(id==null || id.isBlank() || amount<1)throw new IllegalArgumentException("Неверный урон постройке");
         try(var s=db.prepareStatement("SELECT build_id FROM building_damage_hits WHERE id=?")) {
             s.setString(1,id);try(var r=s.executeQuery()){if(r.next())return health(db,r.getLong(1));}
         }

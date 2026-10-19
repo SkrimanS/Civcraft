@@ -8,7 +8,7 @@ import com.avrgaming.civcraft.modern.town.UpkeepStore;
 public final class CivilizationScienceStore {
     private CivilizationScienceStore() {}
     public static void install(Connection db,double coinsPerBeaker)throws SQLException {
-        if(!Double.isFinite(coinsPerBeaker) || coinsPerBeaker<=0)throw new IllegalArgumentException("Invalid coins per beaker");
+        if(!Double.isFinite(coinsPerBeaker) || coinsPerBeaker<=0)throw new IllegalArgumentException("Неверная стоимость научного очка в монетах");
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS civilization_science(civ_id INTEGER PRIMARY KEY REFERENCES civilizations(id) ON DELETE CASCADE,percentage REAL NOT NULL DEFAULT 0 CHECK(percentage BETWEEN 0 AND 1),treasury_fraction TEXT NOT NULL DEFAULT '0',extra_beakers REAL NOT NULL DEFAULT 0)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS science_conversion(singleton INTEGER PRIMARY KEY CHECK(singleton=1),coins_per_beaker REAL NOT NULL CHECK(coins_per_beaker>0))");

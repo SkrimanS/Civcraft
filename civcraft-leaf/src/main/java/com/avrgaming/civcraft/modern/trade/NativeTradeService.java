@@ -58,7 +58,7 @@ public final class NativeTradeService implements Listener {
         var civ=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String kind:List.of("iron","gold","diamond","emerald")) {
             double value=civ.getDouble("ore_rates."+kind);
-            if(!Double.isFinite(value) || value<0 || value>1_000_000_000)throw new IllegalArgumentException("Invalid ore rate: "+kind);
+            if(!Double.isFinite(value) || value<0 || value>1_000_000_000)throw new IllegalArgumentException("Неверный коэффициент руды: "+kind);
             oreRates.put(kind,value);
         }
         storage.transaction(db->{for(var entry:market.list())TradeStore.price(db,entry.ident(),MarketPrice.initial(entry.base(),market.rate()));return null;});
@@ -384,7 +384,7 @@ public final class NativeTradeService implements Listener {
     }
     private void restoreInventory(Player player,String id,byte[] inventory) {
         ItemStack[] contents=ItemStack.deserializeItemsFromBytes(inventory);
-        if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Saved trade inventory has wrong size");
+        if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Сохранённый торговый инвентарь имеет неверный размер");
         player.getInventory().setContents(contents);
         player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,id);
         if(plugin.goodieTransfers()!=null)plugin.goodieTransfers().checkpointCursor(player);

@@ -20,7 +20,7 @@ public final class TownClaimService {
     private com.avrgaming.civcraft.modern.town.TownCatalog townLevels;
     private int minimumCivilizationDistance=15;
     public void useLevels(com.avrgaming.civcraft.modern.town.TownCatalog levels,int distance)throws SQLException {
-        if(distance<0)throw new IllegalArgumentException("Invalid civilization land distance");
+        if(distance<0)throw new IllegalArgumentException("Неверное расстояние до земель цивилизации");
         this.townLevels=levels;minimumCivilizationDistance=distance;
         storage.transaction(db->{com.avrgaming.civcraft.modern.town.TownLimitsStore.install(db);com.avrgaming.civcraft.modern.town.TownLimitsStore.seed(db,System.currentTimeMillis());return null;});
     }

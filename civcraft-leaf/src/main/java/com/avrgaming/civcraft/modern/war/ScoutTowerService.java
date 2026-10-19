@@ -14,7 +14,7 @@ public final class ScoutTowerService {
     private record Tower(long id,long town,long civ,String name,String world,String path,int x,int y,int z) {}
     public ScoutTowerService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws java.sql.SQLException {
         this.plugin=plugin;this.storage=storage;var config=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());range=config.getDouble("scout_tower.range",400);
-        if(!Double.isFinite(range)||range<0)throw new IllegalArgumentException("Invalid scout range");clock=new ScoutClock(Integer.getInteger("civcraft.test.scout.intervalSeconds",(int)config.getDouble("scout_tower.update",120)));
+        if(!Double.isFinite(range)||range<0)throw new IllegalArgumentException("Неверная дальность разведки");clock=new ScoutClock(Integer.getInteger("civcraft.test.scout.intervalSeconds",(int)config.getDouble("scout_tower.update",120)));
         storage.transaction(db->{ScoutStore.install(db);return null;});plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,20L,20L);
     }
     private org.bukkit.util.Vector center(String path)throws java.io.IOException {

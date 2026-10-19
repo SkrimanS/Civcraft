@@ -13,7 +13,7 @@ public final class ConsumptionContainers {
     public record Position(String world,int x,int y,int z) {}
     public record Image(Position position,ItemStack[] contents) {
         public Image {
-            if(contents.length!=27)throw new IllegalArgumentException("Expected a physical chest half");
+            if(contents.length!=27)throw new IllegalArgumentException("Требуется отдельный блок сундука");
             contents=copy(contents);
         }
         @Override public ItemStack[] contents(){return copy(contents);}
@@ -28,7 +28,7 @@ public final class ConsumptionContainers {
         var ids=reverse(materials);var result=new HashMap<Integer,Long>();
         var positions=new HashSet<Position>();
         for(var image:images) {
-            if(!positions.add(image.position()))throw new IllegalArgumentException("Duplicate physical chest");
+            if(!positions.add(image.position()))throw new IllegalArgumentException("Повторный блок сундука");
             for(var stack:image.contents()) {
                 if(stack==null || stack.getType().isAir())continue;
                 var id=ids.get(stack.getType());if(id!=null)result.merge(id,(long)stack.getAmount(),Math::addExact);
@@ -42,7 +42,7 @@ public final class ConsumptionContainers {
         for(var image:before)changed.add(image.contents());
         for(var entry:materials.entrySet()) {
             long target=remaining.getOrDefault(entry.getKey(),0L);
-            if(target<0)throw new IllegalArgumentException("Negative food remainder");
+            if(target<0)throw new IllegalArgumentException("Остаток еды не может быть отрицательным");
             long remove=counts.getOrDefault(entry.getKey(),0L)-target;
             if(remove<=0)continue;
             for(var inventory:changed)for(int slot=0;slot<inventory.length && remove>0;slot++) {
@@ -50,11 +50,11 @@ public final class ConsumptionContainers {
                 int amount=(int)Math.min(remove,stack.getAmount());remove-=amount;
                 if(amount==stack.getAmount())inventory[slot]=null;else stack.setAmount(stack.getAmount()-amount);
             }
-            if(remove!=0)throw new IllegalArgumentException("Food plan exceeds available stock");
+            if(remove!=0)throw new IllegalArgumentException("План потребления превышает запас еды");
         }
         for(var entry:remaining.entrySet()) {
             var material=materials.get(entry.getKey());
-            if(material==null)throw new IllegalArgumentException("Food plan contains an unmapped item");
+            if(material==null)throw new IllegalArgumentException("В плане потребления есть предмет без соответствия");
             long add=entry.getValue()-counts.getOrDefault(entry.getKey(),0L);if(add<=0)continue;
             var ordinary=new ItemStack(material);
             for(var inventory:changed)for(var stack:inventory) {
@@ -142,11 +142,11 @@ public final class ConsumptionContainers {
     static Map<Material,Integer> reverse(Map<Integer,Material> materials) {
         var result=new EnumMap<Material,Integer>(Material.class);
         for(var entry:materials.entrySet())if(result.putIfAbsent(entry.getValue(),entry.getKey())!=null)
-            throw new IllegalArgumentException("Ambiguous legacy food mapping");
+            throw new IllegalArgumentException("Неоднозначное соответствие старой еды");
         // Legacy FISH_RAW (349) used one numeric ID for all four raw fish variants.
         if(materials.containsKey(349))for(var fish:List.of(Material.COD,Material.SALMON,Material.TROPICAL_FISH,Material.PUFFERFISH)) {
             var existing=result.putIfAbsent(fish,349);
-            if(existing!=null && existing!=349)throw new IllegalArgumentException("Ambiguous legacy fish mapping");
+            if(existing!=null && existing!=349)throw new IllegalArgumentException("Неоднозначное соответствие старой рыбы");
         }
         return result;
     }

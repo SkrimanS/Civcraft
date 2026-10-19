@@ -13,11 +13,11 @@ public final class BuildingRegenerationService {
         var folder=plugin.getDataFolder().toPath().resolve("civcraft/data");
         for(String section:List.of("structures","wonders"))for(var raw:YamlConfiguration.loadConfiguration(folder.resolve(section+".yml").toFile()).getMapList(section)) {
             Object configured=raw.get("regen_rate");int rate=configured==null?0:Integer.parseInt(configured.toString());
-            if(rate<0)throw new IllegalArgumentException("Negative regeneration rate: "+raw.get("id"));
+            if(rate<0)throw new IllegalArgumentException("Скорость восстановления не может быть отрицательной: "+raw.get("id"));
             rates.put(String.valueOf(raw.get("id")),rate);
         }
-        wonderRate=YamlConfiguration.loadConfiguration(folder.resolve("buffs.yml").toFile()).getMapList("buffs").stream().filter(raw->"buff_chichen_itza_regen_rate".equals(raw.get("id"))).mapToInt(raw->Integer.parseInt(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Chichen Itza regeneration buff"));
-        if(wonderRate<0)throw new IllegalArgumentException("Negative Chichen Itza regeneration");
+        wonderRate=YamlConfiguration.loadConfiguration(folder.resolve("buffs.yml").toFile()).getMapList("buffs").stream().filter(raw->"buff_chichen_itza_regen_rate".equals(raw.get("id"))).mapToInt(raw->Integer.parseInt(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Не настроен бонус Чичен-Ицы к восстановлению"));
+        if(wonderRate<0)throw new IllegalArgumentException("Восстановление от Чичен-Ицы не может быть отрицательным");
     }
     public void tick() {
         try{storage.transaction(db->BuildingRegenerationStore.tick(db,rates,wonderRate,(connection,id)->{var state=HallValidationStore.state(connection,id);return !state.validated()||state.valid();}));}

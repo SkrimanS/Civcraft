@@ -20,7 +20,7 @@ public final class TownUpgradeService {
         this.plugin=plugin;this.storage=storage;
         catalog=new TownCatalog(new File(plugin.getDataFolder(),"civcraft/data/town.yml"));
         dailyHour=Integer.getInteger("civcraft.test.daily.hour",YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getInt("global.daily_upkeep_hour",20));
-        if(dailyHour<0 || dailyHour>23)throw new IllegalArgumentException("Invalid daily economy hour");
+        if(dailyHour<0 || dailyHour>23)throw new IllegalArgumentException("Неверный час суточного расчёта экономики");
         zone=ZoneId.of(plugin.getConfig().getString("server.timezone",ZoneId.systemDefault().getId()));
         storage.query(db->{UpgradeStore.install(db);BankDailyStore.install(db);return null;});
     }

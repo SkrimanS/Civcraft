@@ -15,7 +15,7 @@ public final class WarCampDropsStore {
     }
     public static Drop prepare(Connection db,long camp,String world,int x,int y,int z,byte[] items)throws SQLException {
         try(var s=db.prepareStatement("SELECT * FROM war_camp_drops WHERE camp_id=? AND world=? AND x=? AND y=? AND z=?")){s.setLong(1,camp);s.setString(2,world);s.setInt(3,x);s.setInt(4,y);s.setInt(5,z);try(var r=s.executeQuery()){if(r.next())return new Drop(r.getString("id"),camp,world,x,y,z,r.getBytes("items"),r.getString("state"),r.getBoolean("released"));}}
-        if(!WarCampStore.camp(db,camp).state().equals("RESTORING"))throw new IllegalArgumentException("Camp is not restoring");
+        if(!WarCampStore.camp(db,camp).state().equals("RESTORING"))throw new IllegalArgumentException("Лагерь не находится в состоянии восстановления");
         String id=UUID.randomUUID().toString();try(var s=db.prepareStatement("INSERT INTO war_camp_drops(id,camp_id,world,x,y,z,items,state) VALUES(?,?,?,?,?,?,?,'PREPARED')")){s.setString(1,id);s.setLong(2,camp);s.setString(3,world);s.setInt(4,x);s.setInt(5,y);s.setInt(6,z);s.setBytes(7,items);s.executeUpdate();}return new Drop(id,camp,world,x,y,z,items.clone(),"PREPARED");
     }
     public static void finish(Connection db,long camp)throws SQLException {

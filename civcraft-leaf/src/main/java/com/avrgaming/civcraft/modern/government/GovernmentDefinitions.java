@@ -11,7 +11,7 @@ public final class GovernmentDefinitions {
     public GovernmentDefinitions(File file) {
         var yaml=YamlConfiguration.loadConfiguration(file);
         maximumAnarchyHours=yaml.getDouble("anarchy_duration",24);
-        if(!Double.isFinite(maximumAnarchyHours) || maximumAnarchyHours<0)throw new IllegalArgumentException("Invalid anarchy duration");
+        if(!Double.isFinite(maximumAnarchyHours) || maximumAnarchyHours<0)throw new IllegalArgumentException("Неверная длительность анархии");
         notreMaximumHours=yaml.getDouble("notre_dame_max_anarchy",2);
         var buffs=YamlConfiguration.loadConfiguration(new File(file.getParentFile(),"buffs.yml"));
         Map<String,Double> values=new HashMap<>();
@@ -23,10 +23,10 @@ public final class GovernmentDefinitions {
         notreReduction=values.getOrDefault("buff_notre_dame_no_anarchy",0.5);
         if(!Double.isFinite(notreMaximumHours) || notreMaximumHours<0
                 || !Double.isFinite(broadcastReduction) || broadcastReduction<0 || broadcastReduction>1
-                || !Double.isFinite(notreReduction) || notreReduction<0 || notreReduction>1)throw new IllegalArgumentException("Invalid reduced anarchy settings");
+                || !Double.isFinite(notreReduction) || notreReduction<0 || notreReduction>1)throw new IllegalArgumentException("Неверные настройки сокращённой анархии");
         for(var raw:yaml.getMapList("governments")) {
             String id=text(raw.get("id"));
-            if(id.isBlank())throw new IllegalArgumentException("Government without id");
+            if(id.isBlank())throw new IllegalArgumentException("Не указан ID правительства");
             var definition=new GovernmentDefinition(id,text(raw.get("displayName")),text(raw.get("require_tech")),
                     number(raw,"hammer_rate"),number(raw,"beaker_rate"),number(raw,"trade_rate"),number(raw,"cottage_rate"),
                     number(raw,"upkeep_rate"),number(raw,"growth_rate"),number(raw,"culture_rate"),number(raw,"maximum_tax_rate"));
@@ -51,7 +51,7 @@ public final class GovernmentDefinitions {
     private static double number(Map<?,?> map,String key) {
         Object value=map.get(key);
         double number=value==null?1:Double.parseDouble(value.toString());
-        if(!Double.isFinite(number) || number<0)throw new IllegalArgumentException("Invalid government rate: "+key);
+        if(!Double.isFinite(number) || number<0)throw new IllegalArgumentException("Неверный коэффициент правительства: "+key);
         return number;
     }
 }

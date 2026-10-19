@@ -10,7 +10,7 @@ import org.bukkit.inventory.ItemStack;
 public record CampSifterRules(double goldChance,double ironChance) {
     public CampSifterRules {
         if(!Double.isFinite(goldChance) || !Double.isFinite(ironChance) || goldChance<0 || goldChance>1 || ironChance<0 || ironChance>1)
-            throw new IllegalArgumentException("Invalid camp sifter probabilities");
+            throw new IllegalArgumentException("Неверные вероятности просеивателя лагеря");
     }
     public Material roll(RandomGenerator random) {
         if(random.nextInt(1000)<goldChance*1000)return Material.GOLD_NUGGET;
@@ -20,8 +20,8 @@ public record CampSifterRules(double goldChance,double ironChance) {
     public Optional<List<ConsumptionContainers.Image>> plan(List<ConsumptionContainers.Image> source,List<ConsumptionContainers.Image> destination,RandomGenerator random) {
         if(source.isEmpty() || destination.isEmpty())return Optional.empty();
         var occupied=new HashSet<ConsumptionContainers.Position>();
-        for(var image:source)if(!occupied.add(image.position()))throw new IllegalArgumentException("Duplicate sifter input");
-        for(var image:destination)if(!occupied.add(image.position()))throw new IllegalArgumentException("Sifter input and output overlap");
+        for(var image:source)if(!occupied.add(image.position()))throw new IllegalArgumentException("Повторный входной материал просеивателя");
+        for(var image:destination)if(!occupied.add(image.position()))throw new IllegalArgumentException("Входные и выходные материалы просеивателя совпадают");
         // Original output guard requires an empty slot even when an existing stack could merge.
         boolean empty=destination.stream().flatMap(i->Arrays.stream(i.contents())).anyMatch(s->s==null || s.getType().isAir());
         if(!empty)return Optional.empty();

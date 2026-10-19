@@ -11,7 +11,7 @@ public final class CampLonghouseStore {
         public Pending(String id,long camp,UUID leader,int level,int count,double coins,String result,byte[] containers){this(id,camp,leader,level,count,coins,result,containers,null);}
     }
     public static void install(Connection db,int maximum)throws SQLException {
-        if(maximum<1)throw new IllegalArgumentException("Invalid longhouse maximum");
+        if(maximum<1)throw new IllegalArgumentException("Неверный предел большого дома");
         try(var s=db.createStatement()) {
             s.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS camp_longhouse_operations(

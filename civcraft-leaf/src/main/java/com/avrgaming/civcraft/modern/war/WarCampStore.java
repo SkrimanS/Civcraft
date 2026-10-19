@@ -31,7 +31,7 @@ public final class WarCampStore {
         try(var s=db.prepareStatement("SELECT start_at FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>? ORDER BY start_at LIMIT 1")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Военный лагерь создают только в боевой период.");return new Authority(town,civ,r.getLong(1));}}
     }
     public static int cooldownMinutes(Long builtAt,int timeoutMinutes,long now) {
-        if(timeoutMinutes<0)throw new IllegalArgumentException("Negative camp rebuild timeout");
+        if(timeoutMinutes<0)throw new IllegalArgumentException("Время восстановления лагеря не может быть отрицательным");
         if(builtAt==null)return 0;
         long deadline=Math.addExact(builtAt,Math.multiplyExact((long)timeoutMinutes,60000));
         // The source truncates to whole minutes and permits rebuilding in the last minute.
@@ -39,7 +39,7 @@ public final class WarCampStore {
     }
     public static Camp prepare(Connection db,String request,UUID actor,String world,int x,int y,int z,List<Block> blocks,int maximum,int timeout,long now)throws SQLException {
         try(var s=db.prepareStatement("SELECT id FROM war_camps WHERE request_id=?")){s.setString(1,request);try(var r=s.executeQuery()){if(r.next())return camp(db,r.getLong(1));}}
-        if(request==null||request.isBlank()||maximum<1||blocks.isEmpty())throw new IllegalArgumentException("Invalid camp preparation");
+        if(request==null||request.isBlank()||maximum<1||blocks.isEmpty())throw new IllegalArgumentException("Неверная подготовка лагеря");
         var authority=authority(db,actor,now);
         try(var s=db.prepareStatement("SELECT COUNT(*) FROM war_camps WHERE civ_id=? AND war_start=? AND state IN ('PREPARED','ACTIVE')")){s.setLong(1,authority.civilization());s.setLong(2,authority.war());try(var r=s.executeQuery()){r.next();if(r.getInt(1)>=maximum)throw new IllegalArgumentException("Достигнут предел военных лагерей: "+maximum+".");}}
         try(var s=db.prepareStatement("SELECT built_at FROM war_camp_cooldowns WHERE civ_id=?")){s.setLong(1,authority.civilization());try(var r=s.executeQuery()){int left=cooldownMinutes(r.next()?r.getLong(1):null,timeout,now);if(left>0)throw new IllegalArgumentException("До нового военного лагеря: "+left+" мин.");}}
@@ -88,13 +88,13 @@ public final class WarCampStore {
         Long next=nextRestoration(db);if(next==null||next!=id)throw new IllegalArgumentException("Сначала нужно восстановить более поздний лагерь.");transition(db,id,"RESTORED",now);
     }
     public static void point(Connection db,long camp,String kind,String world,int x,int y,int z,int maximum)throws SQLException {
-        if(!Set.of("control","respawn").contains(kind)||maximum<0||(kind.equals("control")&&maximum==0))throw new IllegalArgumentException("Invalid camp point");
+        if(!Set.of("control","respawn").contains(kind)||maximum<0||(kind.equals("control")&&maximum==0))throw new IllegalArgumentException("Неверная точка лагеря");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO war_camp_points VALUES(?,?,?,?,?,?,?,?)")){s.setLong(1,camp);s.setString(2,kind);s.setString(3,world);s.setInt(4,x);s.setInt(5,y);s.setInt(6,z);s.setInt(7,maximum);s.setInt(8,maximum);s.executeUpdate();}
     }
     public record Hit(long camp,int health,boolean destroyed) {}
     public static Hit hit(Connection db,String request,UUID actor,long camp,String world,int x,int y,int z,int amount,long now)throws SQLException {
         try(var s=db.prepareStatement("SELECT camp_id,after_hp FROM war_camp_hits WHERE id=?")){s.setString(1,request);try(var r=s.executeQuery()){if(r.next())return new Hit(r.getLong(1),r.getInt(2),false);}}
-        if(request==null||request.isBlank()||amount<1)throw new IllegalArgumentException("Invalid camp hit");
+        if(request==null||request.isBlank()||amount<1)throw new IllegalArgumentException("Неверный удар по лагерю");
         var current=camp(db,camp);if(!current.state().equals("ACTIVE"))throw new IllegalArgumentException("Этот лагерь недоступен для атаки.");
         try(var s=db.prepareStatement("SELECT 1 FROM war_sessions WHERE start_at=? AND state='ACTIVE' AND start_at<=? AND end_at>?")){s.setLong(1,current.war());s.setLong(2,now);s.setLong(3,now);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Лагерь атакуют только в его боевой период.");}}
         long town,civ;try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM residents r JOIN towns t ON t.id=r.town_id AND t.civ_id=r.civ_id WHERE r.uuid=?")){s.setString(1,actor.toString());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Для атаки лагеря нужно состоять в городе.");town=r.getLong(1);civ=r.getLong(2);}}

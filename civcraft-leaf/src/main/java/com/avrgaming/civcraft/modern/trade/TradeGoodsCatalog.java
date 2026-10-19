@@ -17,13 +17,13 @@ public final class TradeGoodsCatalog {
             double value=((Number)raw.get("value")).doubleValue();
             double rarity=raw.get("rarity") instanceof Number number?number.doubleValue():1;
             if(id.isBlank()||!Double.isFinite(value)||value<0||!Double.isFinite(rarity)||rarity<0)
-                throw new IllegalArgumentException("Invalid trade good: "+id);
+                throw new IllegalArgumentException("Неверный торговый товар: "+id);
             var good=new Good(id,Objects.toString(raw.get("name"),id),value,section.equals("water_goods"),
                     ((Number)raw.get("material")).intValue(),((Number)raw.get("material_data")).intValue(),
                     split(raw.get("buffs")),split(raw.get("hemispheres")),rarity);
-            if(loaded.putIfAbsent(id,good)!=null)throw new IllegalArgumentException("Duplicate trade good: "+id);
+            if(loaded.putIfAbsent(id,good)!=null)throw new IllegalArgumentException("Повторный торговый товар: "+id);
         }
-        if(loaded.isEmpty())throw new IllegalArgumentException("No trade goods configured");
+        if(loaded.isEmpty())throw new IllegalArgumentException("Торговые товары не настроены");
         goods=Collections.unmodifiableMap(loaded);
     }
     private static List<String> split(Object text) {

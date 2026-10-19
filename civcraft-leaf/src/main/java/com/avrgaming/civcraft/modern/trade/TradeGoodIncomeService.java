@@ -19,9 +19,9 @@ public final class TradeGoodIncomeService {
         this.plugin=plugin;this.storage=storage;var folder=new File(plugin.getDataFolder(),"civcraft/data");
         income=new TradeGoodIncome(folder);happiness=new HappinessRules(new File(folder,"happiness.yml"));
         long seconds=YamlConfiguration.loadConfiguration(new File(folder,"civ.yml")).getLong("global.hourly_tick",3600);
-        if(seconds<1||seconds>86400)throw new IllegalArgumentException("Invalid legacy trade hour");
+        if(seconds<1||seconds>86400)throw new IllegalArgumentException("Неверный старый час торговли");
         period=Long.getLong("civcraft.test.goodieIncome.hourMillis",seconds*1000);
-        if(period<1000||period>86400000)throw new IllegalArgumentException("Invalid trade good income period");
+        if(period<1000||period>86400000)throw new IllegalArgumentException("Неверный период дохода торговых товаров");
         storage.transaction(db->{TradeGoodIncomeStore.install(db);TradeGoodIncomeStore.start(db,period,System.currentTimeMillis()/period);return null;});
     }
     public void tick() {

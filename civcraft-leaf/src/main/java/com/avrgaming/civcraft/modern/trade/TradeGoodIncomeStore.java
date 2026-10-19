@@ -52,7 +52,7 @@ public final class TradeGoodIncomeStore {
     }
     public static boolean credit(Connection db,long period,long hour,long town,long civ,TradeShipIncome.Payment payment)throws SQLException {
         transaction(db);validate(period,hour);
-        if(payment.culture()!=0||payment.town().signum()<0||payment.civilization().signum()<0)throw new IllegalArgumentException("Invalid goodie payment");
+        if(payment.culture()!=0||payment.town().signum()<0||payment.civilization().signum()<0)throw new IllegalArgumentException("Неверная выплата за торговый товар");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO goodie_income_hours VALUES(?,?,?,?,?,?)")) {
             s.setLong(1,period);s.setLong(2,hour);s.setLong(3,town);s.setLong(4,civ);s.setString(5,payment.town().toPlainString());s.setString(6,payment.civilization().toPlainString());if(s.executeUpdate()==0)return false;
         }
@@ -61,5 +61,5 @@ public final class TradeGoodIncomeStore {
         return true;
     }
     private static void transaction(Connection db)throws SQLException {if(db.getAutoCommit())throw new SQLException("Goodie income requires a transaction");}
-    private static void validate(long period,long hour){if(period<1000||hour<0)throw new IllegalArgumentException("Invalid goodie income clock");}
+    private static void validate(long period,long hour){if(period<1000||hour<0)throw new IllegalArgumentException("Неверные параметры часов дохода торговых товаров");}
 }

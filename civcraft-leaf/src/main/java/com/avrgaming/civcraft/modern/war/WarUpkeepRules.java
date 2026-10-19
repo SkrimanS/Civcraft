@@ -4,9 +4,9 @@ import java.util.*;
 import org.bukkit.configuration.file.YamlConfiguration;
 public record WarUpkeepRules(double base,double perPoint) {
     public record Cost(long civ,long enemy,long ownScore,long enemyScore,boolean doubled,double coins) {}
-    public WarUpkeepRules {if(!Double.isFinite(base)||base<0||!Double.isFinite(perPoint)||perPoint<0)throw new IllegalArgumentException("Invalid war upkeep rules");}
+    public WarUpkeepRules {if(!Double.isFinite(base)||base<0||!Double.isFinite(perPoint)||perPoint<0)throw new IllegalArgumentException("Неверные правила военного содержания");}
     public static WarUpkeepRules load(java.io.File file){var config=YamlConfiguration.loadConfiguration(file);return new WarUpkeepRules(config.getDouble("war.upkeep_per_war",3000),config.getDouble("war.upkeep_per_war_multiplier",.005));}
-    public static double amount(double base,double multiplier,long own,long enemy,boolean doubled){double result=(base+Math.max(0,(double)own-enemy)*multiplier)*(doubled?2:1);if(!Double.isFinite(result)||result<0||result>1e12)throw new IllegalArgumentException("War upkeep overflow");return result;}
+    public static double amount(double base,double multiplier,long own,long enemy,boolean doubled){double result=(base+Math.max(0,(double)own-enemy)*multiplier)*(doubled?2:1);if(!Double.isFinite(result)||result<0||result>1e12)throw new IllegalArgumentException("Переполнение стоимости военного содержания");return result;}
     public List<Cost> plan(Connection db)throws SQLException {
         record Pair(long civ,long enemy) {}
         var pairs=new ArrayList<Pair>();try(var s=db.createStatement();var r=s.executeQuery("""

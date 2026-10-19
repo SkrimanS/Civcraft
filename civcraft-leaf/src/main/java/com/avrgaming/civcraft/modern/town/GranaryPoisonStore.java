@@ -13,7 +13,7 @@ public final class GranaryPoisonStore {
     }
     /** Overlapping missions retain the longest duration, as old session entries did. */
     public static void apply(Connection db,long town,int ticks)throws SQLException {
-        if(ticks<1)throw new IllegalArgumentException("Invalid poison duration");
+        if(ticks<1)throw new IllegalArgumentException("Неверная длительность отравления");
         try(var s=db.prepareStatement("INSERT INTO granary_poison VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET ticks=MAX(ticks,excluded.ticks)")) {
             s.setLong(1,town);s.setInt(2,ticks);s.executeUpdate();
         }

@@ -14,7 +14,7 @@ public final class GoodieTransferStore {
     public record Drop(String world,double x,double y,double z) {
         public Drop {
             if(world==null||world.isBlank()||!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z))
-                throw new IllegalArgumentException("Invalid goodie drop location");
+                throw new IllegalArgumentException("Неверное место выпадения торгового товара");
         }
     }
     public enum Completion { COMPLETE, INVALIDATED, ALREADY_COMPLETE }
@@ -62,7 +62,7 @@ public final class GoodieTransferStore {
                                   BonusGoodieStore.Kind kind,String holder,Long town,byte[] inventory,Drop drop,long now)throws SQLException {
         transaction(db);
         if(id==null||id.isBlank()||player==null||inventory==null||inventory.length==0||inventory.length>16*1024*1024||now<0)
-            throw new IllegalArgumentException("Invalid goodie transfer intent");
+            throw new IllegalArgumentException("Неверный план переноса торгового товара");
         if(!before.equals(BonusGoodieStore.origin(db,before.origin())))throw new IllegalArgumentException("Состояние товара уже изменилось.");
         GoodieChestStore.requireOriginUnlocked(db,before.origin());
         boolean taking=kind==BonusGoodieStore.Kind.PLAYER&&(before.kind()==BonusGoodieStore.Kind.SOURCE||before.kind()==BonusGoodieStore.Kind.FRAME||before.kind()==BonusGoodieStore.Kind.ITEM);
@@ -71,7 +71,7 @@ public final class GoodieTransferStore {
         if(!taking&&!placing&&!dropping)throw new IllegalArgumentException("Недопустимый перенос торгового товара.");
         if((before.kind()==BonusGoodieStore.Kind.PLAYER&&!before.holder().equals(player.toString()))||(taking&&!player.toString().equals(holder)))throw new IllegalArgumentException("Товар переносит другой игрок.");
         if((dropping&&(drop==null||!id.equals(holder)))||(!dropping&&drop!=null))throw new IllegalArgumentException("Выпадение товара требует сохранённой позиции и идентификатора операции.");
-        if(holder==null||holder.isBlank()||(town!=null&&kind!=BonusGoodieStore.Kind.FRAME))throw new IllegalArgumentException("Invalid goodie transfer destination");
+        if(holder==null||holder.isBlank()||(town!=null&&kind!=BonusGoodieStore.Kind.FRAME))throw new IllegalArgumentException("Неверное место назначения торгового товара");
         if(kind==BonusGoodieStore.Kind.SOURCE&&!holder.equals(Long.toString(before.origin())))throw new IllegalArgumentException("Товар возвращается только в свой исходный пост.");
         var after=new BonusGoodieStore.State(before.origin(),before.good(),before.token(),Math.addExact(before.revision(),1),kind,holder,town);
         String from=frame(before),to=frame(after);var locked=lockedFrames(db);

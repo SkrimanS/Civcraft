@@ -10,7 +10,7 @@ public record SiegeCannonCatalog(String template,int tnt,int cooldownSeconds,int
     }
     public SiegeCannonCatalog {
         if(template==null || !template.matches("[a-zA-Z0-9_-]+") || tnt<1 || cooldownSeconds<0 || health<1 || !Double.isFinite(radius) || radius<0 || radius>64 || !Double.isFinite(playerDamage) || playerDamage<0 || structureDamage<0 || !Double.isFinite(maximumRange) || maximumRange<=0 || controlDamage<0)
-            throw new IllegalArgumentException("Invalid deployable cannon configuration");
+            throw new IllegalArgumentException("Неверные настройки осадной пушки");
     }
     public static SiegeCannonCatalog load(File war) {
         var y=YamlConfiguration.loadConfiguration(war);

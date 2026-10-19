@@ -8,12 +8,12 @@ import java.util.*;
 public final class GoodieChestStore {
     private GoodieChestStore() {}
     public record Position(String world,int x,int y,int z) {
-        public Position{if(world==null || world.isBlank())throw new IllegalArgumentException("Missing chest world");}
+        public Position{if(world==null || world.isBlank())throw new IllegalArgumentException("Не найден мир сундука");}
         public String holder(){return world.length()+":"+world+":"+x+":"+y+":"+z;}
     }
     public record Image(Position position,String material,byte[] before,byte[] after) {
         public Image {
-            Objects.requireNonNull(position);if(!Set.of("CHEST","TRAPPED_CHEST").contains(material))throw new IllegalArgumentException("Only physical chests can hold trade goods");
+            Objects.requireNonNull(position);if(!Set.of("CHEST","TRAPPED_CHEST").contains(material))throw new IllegalArgumentException("Торговые товары можно хранить только в установленных сундуках");
             before=bounded(before);after=bounded(after);
         }
         @Override public byte[] before(){return before.clone();}
@@ -34,7 +34,7 @@ public final class GoodieChestStore {
         @Override public byte[] item(){return item.clone();}
     }
     public record PlainCursor(String receipt,byte[] item,boolean clear){public PlainCursor{item=bounded(item);}@Override public byte[] item(){return item.clone();}}
-    private static byte[] bounded(byte[] data){if(data==null || data.length<1 || data.length>16*1024*1024)throw new IllegalArgumentException("Invalid chest inventory image");return data.clone();}
+    private static byte[] bounded(byte[] data){if(data==null || data.length<1 || data.length>16*1024*1024)throw new IllegalArgumentException("Неверный снимок инвентаря сундука");return data.clone();}
     private static void transaction(Connection db)throws SQLException{if(db.getAutoCommit())throw new SQLException("Chest transfer requires a transaction");}
     public static void install(Connection db)throws SQLException {
         PlainTransferGround.install(db);
@@ -114,8 +114,8 @@ public final class GoodieChestStore {
         var reserved=locked(db);var producers=producerPositions(db);if(positions.stream().anyMatch(p->reserved.contains(p) || producers.contains(p)))throw new IllegalArgumentException("Сундук участвует в незавершённой операции.");
     }
     public static Pending prepare(Connection db,String id,UUID player,byte[] inventory,byte[] cursor,List<Image> images,List<Move> moves,String cursorToken,Long cursorRevision,long now)throws SQLException {
-        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.size()>2 || moves.size()>128)throw new IllegalArgumentException("Invalid chest transfer");
-        if((cursorToken==null)!=(cursorRevision==null))throw new IllegalArgumentException("Incomplete cursor checkpoint");
+        transaction(db);if(id==null || id.isBlank() || player==null || now<0 || images.size()>2 || moves.size()>128)throw new IllegalArgumentException("Неверный перенос содержимого сундука");
+        if((cursorToken==null)!=(cursorRevision==null))throw new IllegalArgumentException("Неполный снимок предмета на курсоре");
         var pending=new Pending(id,player,inventory,cursor,images,moves,cursorToken,cursorRevision);
         try(var s=db.prepareStatement("SELECT 1 FROM trade_receipts WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_transfers WHERE player_uuid=? AND status='PREPARED' UNION ALL SELECT 1 FROM goodie_chest_transfers WHERE player_uuid=? AND status='PREPARED'")){for(int i=1;i<=3;i++)s.setString(i,player.toString());try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Сначала завершите предыдущий обмен.");}}
         var occupied=locked(db);var producers=producerPositions(db);var positions=new HashSet<Position>();var holders=new HashSet<String>();
@@ -130,10 +130,10 @@ public final class GoodieChestStore {
                 else if(after && kind==BonusGoodieStore.Kind.ITEM && move.drop()!=null && holder.equals(id+":"+before.origin())){}
                 else if(kind!=BonusGoodieStore.Kind.CONTAINER || !holders.contains(holder))throw new IllegalArgumentException("Товар должен находиться в открытом сундуке или у игрока.");
             }
-            if((move.kind()==BonusGoodieStore.Kind.ITEM)!=(move.drop()!=null))throw new IllegalArgumentException("Invalid chest item drop");
+            if((move.kind()==BonusGoodieStore.Kind.ITEM)!=(move.drop()!=null))throw new IllegalArgumentException("Неверный выброс предмета из сундука");
             move.after(); // Validate revision overflow before any intent is inserted.
         }
-        if(cursorToken!=null && moves.stream().noneMatch(m->m.before().token().equals(cursorToken) && m.after().revision()==cursorRevision && m.kind()==BonusGoodieStore.Kind.PLAYER))throw new IllegalArgumentException("Cursor checkpoint does not match the transferred good");
+        if(cursorToken!=null && moves.stream().noneMatch(m->m.before().token().equals(cursorToken) && m.after().revision()==cursorRevision && m.kind()==BonusGoodieStore.Kind.PLAYER))throw new IllegalArgumentException("Снимок курсора не соответствует переносимому торговому товару");
         try(var s=db.prepareStatement("INSERT INTO goodie_chest_transfers VALUES(?,?,?,?,?,?,'PREPARED',?)")){s.setString(1,id);s.setString(2,player.toString());s.setBytes(3,inventory);s.setBytes(4,cursor);s.setString(5,cursorToken);if(cursorRevision==null)s.setNull(6,Types.BIGINT);else s.setLong(6,cursorRevision);s.setLong(7,now);s.executeUpdate();}
         for(var image:images)try(var s=db.prepareStatement("INSERT INTO goodie_chest_images VALUES(?,?,?,?,?,?,?,?)")){s.setString(1,id);s.setString(2,image.position().world());s.setInt(3,image.position().x());s.setInt(4,image.position().y());s.setInt(5,image.position().z());s.setString(6,image.material());s.setBytes(7,image.before());s.setBytes(8,image.after());s.executeUpdate();}
         for(var move:moves)try(var s=db.prepareStatement("INSERT INTO goodie_chest_moves VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)")){var b=move.before();s.setString(1,id);s.setLong(2,b.origin());s.setString(3,b.good());s.setString(4,b.token());s.setLong(5,b.revision());s.setString(6,b.kind().name());s.setString(7,b.holder());if(b.hostTown()==null)s.setNull(8,Types.BIGINT);else s.setLong(8,b.hostTown());s.setString(9,move.kind().name());s.setString(10,move.holder());s.setString(11,move.drop()==null?null:move.drop().world());if(move.drop()==null){s.setNull(12,Types.DOUBLE);s.setNull(13,Types.DOUBLE);s.setNull(14,Types.DOUBLE);}else{s.setDouble(12,move.drop().x());s.setDouble(13,move.drop().y());s.setDouble(14,move.drop().z());}s.executeUpdate();}

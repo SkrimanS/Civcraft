@@ -9,7 +9,7 @@ public record StaticAttributes(Map<String,Double> values) {
         if(components instanceof List<?> list)for(Object item:list)if(item instanceof Map<?,?> raw && "AttributeStatic".equals(raw.get("name"))) {
             String attribute=String.valueOf(raw.get("attribute")).toUpperCase(Locale.ROOT);
             double value=Double.parseDouble(String.valueOf(raw.get("value")));
-            if(!Double.isFinite(value))throw new IllegalArgumentException("Invalid static attribute: "+attribute);
+            if(!Double.isFinite(value))throw new IllegalArgumentException("Неверный статический атрибут: "+attribute);
             values.merge(attribute,value,Double::sum);
         }
         return new StaticAttributes(Map.copyOf(values));

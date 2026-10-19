@@ -42,10 +42,10 @@ public final class ProductionService implements Listener {
     private record Input(int pool,Position position) {}
     public ProductionService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException,IOException {
         this.plugin=plugin;this.storage=storage;applied=new NamespacedKey(plugin,"last-resource-production");
-        fisheryPeriod=Long.getLong("civcraft.test.fishery.periodMillis",20000L);if(fisheryPeriod<1000 || fisheryPeriod>20000)throw new IllegalArgumentException("Invalid fishery period");
-        trommelPeriod=Long.getLong("civcraft.test.trommel.periodMillis",1000L);if(trommelPeriod<1000 || trommelPeriod>60000)throw new IllegalArgumentException("Invalid trommel period");
-        quarryPeriod=Long.getLong("civcraft.test.quarry.periodMillis",1000L);if(quarryPeriod<1000 || quarryPeriod>60000)throw new IllegalArgumentException("Invalid quarry period");
-        windmillPeriod=Long.getLong("civcraft.test.windmill.periodMillis",60000L);if(windmillPeriod<1000 || windmillPeriod>60000)throw new IllegalArgumentException("Invalid windmill period");
+        fisheryPeriod=Long.getLong("civcraft.test.fishery.periodMillis",20000L);if(fisheryPeriod<1000 || fisheryPeriod>20000)throw new IllegalArgumentException("Неверный период рыболовни");
+        trommelPeriod=Long.getLong("civcraft.test.trommel.periodMillis",1000L);if(trommelPeriod<1000 || trommelPeriod>60000)throw new IllegalArgumentException("Неверный период промывателя");
+        quarryPeriod=Long.getLong("civcraft.test.quarry.periodMillis",1000L);if(quarryPeriod<1000 || quarryPeriod>60000)throw new IllegalArgumentException("Неверный период карьера");
+        windmillPeriod=Long.getLong("civcraft.test.windmill.periodMillis",60000L);if(windmillPeriod<1000 || windmillPeriod>60000)throw new IllegalArgumentException("Неверный период мельницы");
         loot=new FisheryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         trommel=new TrommelLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         quarry=new QuarryLoot(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));plugin.nativeItems().require("mat_tungsten_ore");
@@ -54,8 +54,8 @@ public final class ProductionService implements Listener {
         var farmConfig=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/structures.yml"));
         farmGrowth=new FarmGrowthPlan(farmConfig.getInt("farm.grows_per_tick"));
         long normalFarmPeriod=Math.multiplyExact(farmConfig.getLong("farm.grow_tick_rate"),1000);
-        farmGrowthPeriod=Long.getLong("civcraft.test.farm.periodMillis",normalFarmPeriod);if(farmGrowthPeriod<1000 || farmGrowthPeriod>normalFarmPeriod)throw new IllegalArgumentException("Invalid farm period");
-        for(var entry:farmConfig.getMapList("structures"))if("ti_farm".equals(entry.get("id")) && entry.get("components") instanceof List<?> components)for(Object value:components)if(value instanceof Map<?,?> component && "ActivateOnBiome".equals(component.get("name")) && "GROWTH".equals(component.get("attribute"))){double multiplier=Double.parseDouble(String.valueOf(component.get("value")));if(!Double.isFinite(multiplier) || multiplier<0)throw new IllegalArgumentException("Invalid farm biome multiplier");for(String biome:String.valueOf(component.get("biomes")).split(","))farmBiomeRates.putIfAbsent(biome.trim().toUpperCase(Locale.ROOT),multiplier);}
+        farmGrowthPeriod=Long.getLong("civcraft.test.farm.periodMillis",normalFarmPeriod);if(farmGrowthPeriod<1000 || farmGrowthPeriod>normalFarmPeriod)throw new IllegalArgumentException("Неверный период фермы");
+        for(var entry:farmConfig.getMapList("structures"))if("ti_farm".equals(entry.get("id")) && entry.get("components") instanceof List<?> components)for(Object value:components)if(value instanceof Map<?,?> component && "ActivateOnBiome".equals(component.get("name")) && "GROWTH".equals(component.get("attribute"))){double multiplier=Double.parseDouble(String.valueOf(component.get("value")));if(!Double.isFinite(multiplier) || multiplier<0)throw new IllegalArgumentException("Неверный множитель биома для фермы");for(String biome:String.valueOf(component.get("biomes")).split(","))farmBiomeRates.putIfAbsent(biome.trim().toUpperCase(Locale.ROOT),multiplier);}
         for(String item:trommel.items())plugin.nativeItems().require(item);
         biomes=new BiomePotential(YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getMapList("culture_biomes"));
         // Fail at startup if a migrated native fish definition is missing, before any rod is spent.

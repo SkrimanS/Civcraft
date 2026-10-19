@@ -29,7 +29,7 @@ public final class LegacyCombatListener implements Listener {
         bowEnhancement=new NamespacedKey(plugin,"fired-bow-enhancement");
         var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         attackMultiplier=config.getDouble("global.attack_catalyst_multiplier",1);defenseMultiplier=config.getDouble("global.defense_catalyst_multiplier",1);
-        if(!Double.isFinite(attackMultiplier) || !Double.isFinite(defenseMultiplier) || attackMultiplier<0 || defenseMultiplier<0)throw new IllegalArgumentException("Invalid catalyst combat multipliers");
+        if(!Double.isFinite(attackMultiplier) || !Double.isFinite(defenseMultiplier) || attackMultiplier<0 || defenseMultiplier<0)throw new IllegalArgumentException("Неверные боевые множители катализатора");
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
 

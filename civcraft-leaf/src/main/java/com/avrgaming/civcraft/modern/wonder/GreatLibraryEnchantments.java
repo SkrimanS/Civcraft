@@ -16,10 +16,10 @@ public final class GreatLibraryEnchantments {
     private final List<Offer> offers;
     private static final NamespacedKey PUNCHOUT=new NamespacedKey("civcraft","punchout");
     public GreatLibraryEnchantments(File file) {
-        var costs=new HashMap<String,Long>();for(var row:YamlConfiguration.loadConfiguration(file).getMapList("enchants")){double cost=((Number)row.get("cost")).doubleValue();if(!Double.isFinite(cost) || cost<0 || cost!=Math.rint(cost) || cost>1_000_000_000_000L)throw new IllegalArgumentException("Invalid great library price");costs.put(Objects.toString(row.get("id")),(long)cost);}
+        var costs=new HashMap<String,Long>();for(var row:YamlConfiguration.loadConfiguration(file).getMapList("enchants")){double cost=((Number)row.get("cost")).doubleValue();if(!Double.isFinite(cost) || cost<0 || cost!=Math.rint(cost) || cost>1_000_000_000_000L)throw new IllegalArgumentException("Неверная цена Александрийской библиотеки");costs.put(Objects.toString(row.get("id")),(long)cost);}
         offers=List.of(new Offer(0,"Заговор огня II",required(costs,"ench_fire_aspect"),Enchantment.FIRE_ASPECT,2),new Offer(1,"Огнеупорность III",required(costs,"ench_fire_protection"),Enchantment.FIRE_PROTECTION,3),new Offer(2,"Воспламенение",required(costs,"ench_flame"),Enchantment.FLAME,1),new Offer(3,"Пробой зданий",required(costs,"ench_punchout"),null,1));
     }
-    private static long required(Map<String,Long> costs,String id){var price=costs.get(id);if(price==null)throw new IllegalArgumentException("Missing great library enchantment: "+id);return price;}
+    private static long required(Map<String,Long> costs,String id){var price=costs.get(id);if(price==null)throw new IllegalArgumentException("Не настроены чары Александрийской библиотеки: "+id);return price;}
     public Offer offer(int slot){if(slot<0 || slot>=offers.size())throw new IllegalArgumentException("Неизвестное зачарование Великой библиотеки.");return offers.get(slot);}
     public ItemStack apply(ItemStack original,int slot,NativeLegacyItems items) {
         var offer=offer(slot);if(original==null || original.getType().isAir())throw new IllegalArgumentException("Держите предмет для зачарования в руке.");var result=original.clone();

@@ -9,7 +9,7 @@ public final class WindmillStore {
     public record Bed(WindmillPlan.Spot spot,WindmillPlan.Crop crop,String before) {
         public Bed {
             Objects.requireNonNull(spot);Objects.requireNonNull(crop);
-            if(!Set.of("minecraft:air","minecraft:cave_air","minecraft:void_air").contains(before))throw new IllegalArgumentException("Windmill requires an empty planting position");
+            if(!Set.of("minecraft:air","minecraft:cave_air","minecraft:void_air").contains(before))throw new IllegalArgumentException("Для мельницы нужно свободное место посадки");
         }
         public String after(){return "minecraft:"+crop.block().toLowerCase(Locale.ROOT)+"[age=0]";}
     }

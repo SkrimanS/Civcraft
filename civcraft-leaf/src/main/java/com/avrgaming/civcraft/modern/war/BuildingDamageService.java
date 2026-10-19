@@ -15,7 +15,7 @@ public final class BuildingDamageService implements Listener {
     public BuildingDamageService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         var buffs=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile());
-        double towerRate=buffs.getMapList("buffs").stream().filter(raw->"buff_chichen_itza_tower_hp".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Chichen Itza tower health buff"));
+        double towerRate=buffs.getMapList("buffs").stream().filter(raw->"buff_chichen_itza_tower_hp".equals(raw.get("id"))).mapToDouble(raw->Double.parseDouble(raw.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Не настроен бонус Чичен-Ицы к здоровью башен"));
         storage.transaction(db->{BuildingDamageStore.install(db);TowerHealthStore.preserveExisting(db);TowerHealthStore.configure(db,towerRate);return null;});plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true)

@@ -35,12 +35,12 @@ public final class ConsumptionService implements Listener {
     public ConsumptionService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException,IOException {
         this.plugin=plugin;this.storage=storage;applied=new NamespacedKey(plugin,"last-building-meal");
         period=Long.getLong("civcraft.test.consumption.hourMillis",3600000L);
-        if(period<1000 || period>3600000)throw new IllegalArgumentException("Invalid consumption period");
+        if(period<1000 || period>3600000)throw new IllegalArgumentException("Неверный период потребления");
         var folder=new File(plugin.getDataFolder(),"civcraft/data");
         catalog=new ConsumptionCatalog(new File(folder,"structures.yml"));
         happiness=new HappinessRules(new File(folder,"happiness.yml"));
         taxationBonus=YamlConfiguration.loadConfiguration(new File(folder,"techs.yml")).getDouble("taxation_cottage_buff",2);
-        if(!Double.isFinite(taxationBonus) || taxationBonus<0)throw new IllegalArgumentException("Invalid taxation cottage bonus");
+        if(!Double.isFinite(taxationBonus) || taxationBonus<0)throw new IllegalArgumentException("Неверный налоговый бонус коттеджа");
         var legacy=new LegacyItemMaterials(plugin.getResource("legacy-materials.properties"));
         materials.put(349,legacy.resolve(349,0));
         for(var type:List.of("s_temple","ti_cottage","ti_mine"))for(var level:catalog.levels(type).values())
@@ -131,9 +131,9 @@ public final class ConsumptionService implements Listener {
             if(taxation)bonus=taxationBonus;
         }
         double raw=cycle.rawOutput()*rate;
-        if(!Double.isFinite(raw) || raw<0 || raw>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production");
+        if(!Double.isFinite(raw) || raw<0 || raw>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Неверная выработка постройки");
         double multiplied=Math.round(raw)*bonus;
-        if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Invalid building production bonus");
+        if(!Double.isFinite(multiplied) || multiplied>Long.MAX_VALUE/2.0)throw new IllegalArgumentException("Неверный бонус выработки постройки");
         // Original compound integer multiplication applies taxation after rounding.
         long output=poisoned || building.type().equals("ti_mine")?0:building.type().equals("ti_cottage")?com.avrgaming.civcraft.modern.wonder.WonderBonuses.cottageOutput(raw,wonder.cottageIncome(),bonus):(long)multiplied,townCoins=0,civCoins=0,culture=0;
         if(building.type().equals("s_temple"))culture=output;
@@ -141,7 +141,7 @@ public final class ConsumptionService implements Listener {
             double tax=storage.query(db->{try(var s=db.prepareStatement("SELECT income_tax_rate FROM civilizations WHERE id=?")) {
                 s.setLong(1,civ.id());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Civilization missing");return r.getDouble(1);}
             }});
-            if(!Double.isFinite(tax) || tax<0 || tax>1)throw new IllegalArgumentException("Invalid civilization income tax");
+            if(!Double.isFinite(tax) || tax<0 || tax>1)throw new IllegalArgumentException("Неверный подоходный налог цивилизации");
             var payout=storage.query(db->com.avrgaming.civcraft.modern.war.OccupationRules.income(output,tax,com.avrgaming.civcraft.modern.war.OccupationRules.captured(db,town.id()),storage.capturedPenalty()));
             civCoins=payout.civilization();townCoins=payout.town();
         }

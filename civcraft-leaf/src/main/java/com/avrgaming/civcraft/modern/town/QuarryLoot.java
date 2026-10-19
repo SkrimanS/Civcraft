@@ -13,24 +13,24 @@ public final class QuarryLoot {
     private final Map<String,Double> chances;
     public QuarryLoot(File file) {
         var config=YamlConfiguration.loadConfiguration(file);maximum=config.getInt("quarry.max");
-        if(maximum<1)throw new IllegalArgumentException("Invalid quarry random range");
+        if(maximum<1)throw new IllegalArgumentException("Неверный диапазон случайного выбора карьера");
         despotism=config.getDouble("quarry.despotism_rate");penalty=config.getDouble("quarry.penalty_rate");
-        if(!Double.isFinite(despotism) || despotism<0 || !Double.isFinite(penalty) || penalty<0)throw new IllegalArgumentException("Invalid quarry government rates");
+        if(!Double.isFinite(despotism) || despotism<0 || !Double.isFinite(penalty) || penalty<0)throw new IllegalArgumentException("Неверные коэффициенты правительства для карьера");
         var rates=new HashMap<String,Double>();
         for(String key:List.of("rare_chance","tungsten_chance","gold_chance","redstone_chance","iron_chance","coal_rate","other_rate","cobblestone_rate")) {
-            double rate=config.getDouble("quarry."+key);if(!Double.isFinite(rate) || rate<0 || rate>1)throw new IllegalArgumentException("Invalid quarry rate: "+key);rates.put(key,rate);
+            double rate=config.getDouble("quarry."+key);if(!Double.isFinite(rate) || rate<0 || rate>1)throw new IllegalArgumentException("Неверный коэффициент карьера: "+key);rates.put(key,rate);
         }
         chances=Map.copyOf(rates);
     }
     public int maximum(){return maximum;}
     public static boolean accepts(String tool,int level) {
-        if(level<1 || level>4)throw new IllegalArgumentException("Invalid quarry level");
+        if(level<1 || level>4)throw new IllegalArgumentException("Неверный уровень карьера");
         return switch(tool){case "WOODEN_PICKAXE","GOLDEN_PICKAXE"->true;case "STONE_PICKAXE"->level>=2;case "IRON_PICKAXE"->level>=3;case "DIAMOND_PICKAXE"->level>=4;default->false;};
     }
-    public static int modifier(int efficiency){if(efficiency<0 || efficiency>255)throw new IllegalArgumentException("Invalid Efficiency level");return efficiency+1;}
+    public static int modifier(int efficiency){if(efficiency<0 || efficiency>255)throw new IllegalArgumentException("Неверный уровень Эффективности");return efficiency+1;}
     public static int damageAfterUse(String tool,int damage,int modifier,int amount) {
-        int maximum=switch(tool){case "WOODEN_PICKAXE"->59;case "STONE_PICKAXE"->131;case "IRON_PICKAXE"->250;case "GOLDEN_PICKAXE"->32;case "DIAMOND_PICKAXE"->1561;default->throw new IllegalArgumentException("Unsupported quarry tool");};
-        if(damage<0 || modifier<1 || amount<1)throw new IllegalArgumentException("Invalid quarry tool state");
+        int maximum=switch(tool){case "WOODEN_PICKAXE"->59;case "STONE_PICKAXE"->131;case "IRON_PICKAXE"->250;case "GOLDEN_PICKAXE"->32;case "DIAMOND_PICKAXE"->1561;default->throw new IllegalArgumentException("Неподдерживаемый инструмент карьера");};
+        if(damage<0 || modifier<1 || amount<1)throw new IllegalArgumentException("Неверное состояние инструмента карьера");
         long after=(long)damage+modifier;return amount==1 && after<maximum?(int)after:-1;
     }
     private double chance(String key,double extraction,String government) {
@@ -40,7 +40,7 @@ public final class QuarryLoot {
         return value;
     }
     public String select(String tool,double extraction,String government,int roll) {
-        if(!accepts(tool,4) || !Double.isFinite(extraction) || extraction<0 || extraction>1000 || roll<0 || roll>=maximum)throw new IllegalArgumentException("Invalid quarry roll");
+        if(!accepts(tool,4) || !Double.isFinite(extraction) || extraction<0 || extraction>1000 || roll<0 || roll>=maximum)throw new IllegalArgumentException("Неверный результат случайного выбора карьера");
         boolean wood=tool.equals("WOODEN_PICKAXE"),gold=tool.equals("GOLDEN_PICKAXE"),stone=tool.equals("STONE_PICKAXE");
         if(!wood && !gold) {
             if(!stone) {
@@ -58,8 +58,8 @@ public final class QuarryLoot {
         return "JUNK";
     }
     public String detail(String result,int roll) {
-        if(result.equals("JUNK")){if(roll<0 || roll>=10)throw new IllegalArgumentException("Invalid quarry junk roll");return roll<2?"PODZOL":roll<5?"COARSE_DIRT":"DIRT";}
-        if(roll<0 || roll>=maximum)throw new IllegalArgumentException("Invalid quarry detail roll");
+        if(result.equals("JUNK")){if(roll<0 || roll>=10)throw new IllegalArgumentException("Неверный результат выбора отходов карьера");return roll<2?"PODZOL":roll<5?"COARSE_DIRT":"DIRT";}
+        if(roll<0 || roll>=maximum)throw new IllegalArgumentException("Неверный результат дополнительного выбора карьера");
         return switch(result){case "OTHER"->roll<maximum/8?"ANDESITE":roll<maximum/5?"DIORITE":"GRANITE";case "RARE"->roll<maximum/5?"EMERALD":"DIAMOND";default->result;};
     }
     public Reward roll(String tool,int efficiency,double extraction,String government,RandomGenerator random) {

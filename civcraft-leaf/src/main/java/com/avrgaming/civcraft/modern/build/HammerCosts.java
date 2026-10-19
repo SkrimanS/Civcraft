@@ -14,7 +14,7 @@ public final class HammerCosts {
         for(var raw:YamlConfiguration.loadConfiguration(new File(folder,"structures.yml")).getMapList("structures"))if(Boolean.TRUE.equals(raw.get("tile_improvement")))ids.add(Objects.toString(raw.get("id")));
         improvements=Set.copyOf(ids);Double value=null;
         for(var buff:YamlConfiguration.loadConfiguration(new File(folder,"buffs.yml")).getMapList("buffs"))if("buff_mother_tree_tile_improvement_cost".equals(buff.get("id")))value=Double.parseDouble(Objects.toString(buff.get("value")));
-        if(value==null||!Double.isFinite(value)||value<0||value>1)throw new IllegalArgumentException("Invalid Mother Tree hammer cost bonus");motherTree=value;
+        if(value==null||!Double.isFinite(value)||value<0||value>1)throw new IllegalArgumentException("Неверный бонус Древа Жизни к стоимости в молотках");motherTree=value;
     }
     public double cost(Connection db,long town,String type,double base,double rush)throws SQLException {
         boolean mother=false;
@@ -27,10 +27,10 @@ public final class HammerCosts {
         return apply(base,rush,mother?motherTree:0);
     }
     public static double apply(double base,double rush,double motherTree) {
-        for(double value:new double[]{base,rush,motherTree})if(!Double.isFinite(value)||value<0)throw new IllegalArgumentException("Invalid building hammer cost");
+        for(double value:new double[]{base,rush,motherTree})if(!Double.isFinite(value)||value<0)throw new IllegalArgumentException("Неверная стоимость постройки в молотках");
         double rate=1-rush-motherTree;
-        if(rate<0)throw new IllegalArgumentException("Building hammer cost reduction exceeds 100%");
-        double result=base*rate;if(!Double.isFinite(result))throw new IllegalArgumentException("Building hammer cost overflow");
+        if(rate<0)throw new IllegalArgumentException("Снижение стоимости постройки в молотках превышает 100%");
+        double result=base*rate;if(!Double.isFinite(result))throw new IllegalArgumentException("Переполнение стоимости постройки в молотках");
         return result;
     }
 }

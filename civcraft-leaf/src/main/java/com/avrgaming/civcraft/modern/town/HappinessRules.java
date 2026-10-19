@@ -21,16 +21,16 @@ public final class HappinessRules {
             list.add(new State(level,name,number(raw,"amount"),number(raw,"hammer_rate"),number(raw,"beaker_rate"),number(raw,"coin_rate"),number(raw,"culture_rate")));
         }
         list.sort(Comparator.comparingInt(State::level));states=List.copyOf(list);
-        if(states.isEmpty() || states.getFirst().level()!=0)throw new IllegalArgumentException("Missing happiness state zero");
+        if(states.isEmpty() || states.getFirst().level()!=0)throw new IllegalArgumentException("Не настроено нулевое состояние счастья");
     }
     private static double number(Map<?,?> raw,String key){return value(((Number)raw.get(key)).doubleValue());}
-    private static double value(double value){if(!Double.isFinite(value) || value<0)throw new IllegalArgumentException("Invalid happiness configuration");return value;}
-    public double base(int level){var base=bases.get(level);if(base==null)throw new IllegalArgumentException("Unknown happiness town level");return base;}
+    private static double value(double value){if(!Double.isFinite(value) || value<0)throw new IllegalArgumentException("Неверные настройки счастья");return value;}
+    public double base(int level){var base=bases.get(level);if(base==null)throw new IllegalArgumentException("Неизвестный уровень города для счастья");return base;}
     public double population(int residents,int foreignGroupMembers,int freeGroupMembers){return resident*(residents+.25*foreignGroupMembers+freeGroupMembers);}
     public double empire(int ordinaryTowns,int capturedTowns){return town*ordinaryTowns+captured*capturedTowns;}
     public double distance(double blocks,boolean connected){return Math.round(Math.min(distanceMaximum,distanceBase*Math.pow(blocks,connected?distanceTouching:distanceSeparate)));}
     public Result evaluate(double happy,double unhappy) {
-        if(!Double.isFinite(happy) || !Double.isFinite(unhappy))throw new IllegalArgumentException("Invalid happiness source");
+        if(!Double.isFinite(happy) || !Double.isFinite(unhappy))throw new IllegalArgumentException("Неверный источник счастья");
         happy=Math.max(0,happy);unhappy=Math.max(0,unhappy);
         double fraction=happy+unhappy==0?0:happy/(happy+unhappy),rounded=Math.round(fraction*100)/100.0;
         State selected=states.getFirst();for(var state:states)if(rounded>=state.threshold())selected=state;

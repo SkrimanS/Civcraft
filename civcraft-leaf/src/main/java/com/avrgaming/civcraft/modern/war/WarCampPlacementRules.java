@@ -4,7 +4,7 @@ public final class WarCampPlacementRules {
     private WarCampPlacementRules() {}
     public record Origin(int x,int y,int z,String direction) {}
     public static String direction(float yaw) {
-        if(!Float.isFinite(yaw))throw new IllegalArgumentException("Invalid camp yaw");
+        if(!Float.isFinite(yaw))throw new IllegalArgumentException("Неверный угол поворота лагеря");
         double rotation=(yaw-90)%360;if(rotation<0)rotation+=360;
         if(rotation<67.5||rotation>=292.5)return "west";
         if(rotation<112.5)return "north";
@@ -13,7 +13,7 @@ public final class WarCampPlacementRules {
     }
     private static int chunkOrigin(double coordinate){return Math.floorDiv((int)Math.floor(coordinate),16)*16;}
     public static Origin origin(double x,double y,double z,float yaw,int width,int depth) {
-        if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||width<1||width>256||depth<1||depth>256)throw new IllegalArgumentException("Invalid camp origin");
+        if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z)||width<1||width>256||depth<1||depth>256)throw new IllegalArgumentException("Неверная исходная точка лагеря");
         String direction=direction(yaw);int ox,oz;
         if(direction.equals("east")||direction.equals("west")){ox=chunkOrigin(x);oz=chunkOrigin(z-depth/2.0);if(direction.equals("west"))ox-=width;}
         else {ox=chunkOrigin(x-width/2.0);oz=chunkOrigin(z);if(direction.equals("north"))oz-=depth;}

@@ -12,7 +12,7 @@ import org.bukkit.persistence.PersistentDataType;
 public final class CampFireContainers {
     private CampFireContainers() {}
     public record Image(Position position,ItemStack[] contents) {
-        public Image {if(contents.length!=3)throw new IllegalArgumentException("Expected furnace inventory");contents=copy(contents);}
+        public Image {if(contents.length!=3)throw new IllegalArgumentException("Требуется инвентарь печи");contents=copy(contents);}
         @Override public ItemStack[] contents(){return copy(contents);}
     }
     private static ItemStack[] copy(ItemStack[] source){var out=source.clone();for(int i=0;i<out.length;i++)if(out[i]!=null)out[i]=out[i].clone();return out;}
@@ -20,7 +20,7 @@ public final class CampFireContainers {
         var out=new ArrayList<Image>();for(var p:new LinkedHashSet<>(positions))out.add(new Image(p,furnace(p).getInventory().getContents()));return List.copyOf(out);
     }
     public static Optional<List<Image>> consume(List<Image> before,int amount) {
-        if(amount<1)throw new IllegalArgumentException("Invalid camp coal consumption");
+        if(amount<1)throw new IllegalArgumentException("Неверный расход угля в лагере");
         long available=0;for(var image:before)for(var item:image.contents())if(item!=null && item.getType()==Material.COAL)available+=item.getAmount();
         if(available<amount)return Optional.empty();
         var out=new ArrayList<Image>();int left=amount;

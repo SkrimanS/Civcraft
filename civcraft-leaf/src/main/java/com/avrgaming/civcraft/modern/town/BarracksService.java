@@ -21,9 +21,9 @@ public final class BarracksService implements org.bukkit.event.Listener {
     public BarracksService(CivCraftModernPlugin plugin,StorageBootstrap storage) {
         this.plugin=plugin;this.storage=storage;
         for(var row:YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/units.yml")).getMapList("units")) {
-            String id=text(row.get("id"));if(!Set.of("u_settler","u_spy").contains(id))throw new IllegalArgumentException("Unknown legacy unit: "+id);
+            String id=text(row.get("id"));if(!Set.of("u_settler","u_spy").contains(id))throw new IllegalArgumentException("Неизвестный старый юнит: "+id);
             double cost=((Number)row.get("cost")).doubleValue(),hammers=((Number)row.get("hammer_cost")).doubleValue();
-            if(!Double.isFinite(cost) || cost<0 || cost!=Math.rint(cost) || cost>1_000_000_000_000L || !Double.isFinite(hammers) || hammers<=0)throw new IllegalArgumentException("Invalid unit cost");
+            if(!Double.isFinite(cost) || cost<0 || cost!=Math.rint(cost) || cost>1_000_000_000_000L || !Double.isFinite(hammers) || hammers<=0)throw new IllegalArgumentException("Неверная стоимость юнита");
             units.add(new Unit(id,text(row.get("name")),(long)cost,hammers,text(row.get("require_tech")),text(row.get("require_struct")),text(row.get("require_upgrade")),((Number)row.get("item_id")).intValue(),((Number)row.get("item_data")).intValue()));
         }
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,20L,20L);

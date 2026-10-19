@@ -16,7 +16,7 @@ public final class TradeMarkerStore {
     }
     public static Job prepare(Connection db,TradeGoodsCatalog catalog,String good,String world,int x,int y,int z,int face)throws SQLException {
         if(db.getAutoCommit())throw new SQLException("Trade marker creation requires a transaction");
-        if(face<0||face>3)throw new IllegalArgumentException("Invalid trade marker direction");
+        if(face<0||face>3)throw new IllegalArgumentException("Неверное направление торгового маркера");
         try(var s=db.prepareStatement("SELECT 1 FROM trade_deposits WHERE world=? AND x=? AND z=?")) {
             s.setString(1,world);s.setInt(2,x);s.setInt(3,z);try(var r=s.executeQuery()){if(r.next())return null;}
         }

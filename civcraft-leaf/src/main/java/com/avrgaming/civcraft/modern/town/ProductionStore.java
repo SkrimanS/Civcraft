@@ -33,21 +33,21 @@ public final class ProductionStore {
         try(var s=db.prepareStatement("SELECT period,last_tick FROM resource_production_clock WHERE build_id=?")){s.setLong(1,build);try(var r=s.executeQuery()){return r.next()?new Clock(build,r.getLong(1),r.getLong(2)):null;}}
     }
     public static Clock initialize(Connection db,long build,long period,long tick)throws SQLException {
-        transaction(db);if(period<1000 || tick<0)throw new IllegalArgumentException("Invalid production clock");
+        transaction(db);if(period<1000 || tick<0)throw new IllegalArgumentException("Неверные параметры часов производства");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO resource_production_clock VALUES(?,?,?)")){s.setLong(1,build);s.setLong(2,period);s.setLong(3,tick);s.executeUpdate();}return clock(db,build);
     }
     public static void start(Connection db,long period,long tick)throws SQLException {
         start(db,null,period,tick);
     }
     public static void start(Connection db,String type,long period,long tick)throws SQLException {
-        transaction(db);if(period<1000 || tick<0)throw new IllegalArgumentException("Invalid production clock");
+        transaction(db);if(period<1000 || tick<0)throw new IllegalArgumentException("Неверные параметры часов производства");
         if(!pending(db).isEmpty())throw new SQLException("Production recovery must finish before clock starts");
         try(var s=db.prepareStatement("UPDATE resource_production_clock SET period=?,last_tick=CASE WHEN period<>? THEN ? ELSE MAX(last_tick,?) END"+(type==null?"":" WHERE build_id IN (SELECT id FROM structure_builds WHERE structure_id=?)"))){s.setLong(1,period);s.setLong(2,period);s.setLong(3,tick);s.setLong(4,tick);if(type!=null)s.setString(5,type);s.executeUpdate();}
     }
     public static Pending prepare(Connection db,String id,Clock before,long tick,int produced,byte[] containers)throws SQLException {
         transaction(db);
         com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
-        if(id==null || id.isBlank() || tick<=before.tick() || produced<0 || containers==null || containers.length==0)throw new IllegalArgumentException("Invalid production operation");
+        if(id==null || id.isBlank() || tick<=before.tick() || produced<0 || containers==null || containers.length==0)throw new IllegalArgumentException("Неверная операция производства");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Production clock changed");
         long town;
         try(var s=db.prepareStatement("SELECT town_id FROM active_structure_builds WHERE id=? AND structure_id IN ('ti_fish_hatchery','s_trommel','ti_quarry','ti_windmill','ti_farm','s_mob_grinder','s_barracks') AND status='COMPLETE' AND town_id IS NOT NULL")) {

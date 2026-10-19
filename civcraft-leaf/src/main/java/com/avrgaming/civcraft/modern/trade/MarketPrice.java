@@ -8,7 +8,7 @@ public record MarketPrice(long sell,long buy,int counter) {
     }
     private static long buyValue(long sell,double rate) {return Math.max(sell+1,sell+(long)(sell*rate));}
     public Quote trade(boolean buying,int amount,int step,int stepCount,double rate,boolean stackable) {
-        if(amount<1 || amount>64 || step<1 || stepCount<1)throw new IllegalArgumentException("Invalid market amount or price step");
+        if(amount<1 || amount>64 || step<1 || stepCount<1)throw new IllegalArgumentException("Неверное количество или шаг цены рынка");
         long priceSell=sell,priceBuy=buy,total=0;
         int count=counter;
         if(buying) {

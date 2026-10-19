@@ -8,7 +8,7 @@ public final class PastureRules {
     public static boolean controlled(String type){return Set.of("COW","SHEEP","MOOSHROOM","PIG","CHICKEN","RABBIT").contains(type);}
     public static boolean horse(String type){return CreatureSpawnRules.horse(type);}
     public static boolean room(long animals,long pending,int maximum){
-        if(animals<0 || pending<0 || maximum<0)throw new IllegalArgumentException("Invalid pasture population");
+        if(animals<0 || pending<0 || maximum<0)throw new IllegalArgumentException("Неверное поголовье пастбища");
         return animals<maximum && pending<maximum-animals;
     }
 }

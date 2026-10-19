@@ -16,11 +16,11 @@ public final class TradeShipCatalog {
             int id = ((Number)raw.get("level")).intValue();
             var level = new TradeShipProgress.Level(id,((Number)raw.get("upgradeTrade")).intValue(),
                     ((Number)raw.get("maxTrade")).intValue(),((Number)raw.get("culture")).doubleValue());
-            if (loaded.putIfAbsent(id,level)!=null) throw new IllegalArgumentException("Duplicate trade ship level: "+id);
+            if (loaded.putIfAbsent(id,level)!=null) throw new IllegalArgumentException("Повторный уровень торгового корабля: "+id);
         }
-        if (loaded.isEmpty() || loaded.size()>10) throw new IllegalArgumentException("Missing or excessive trade ship levels");
+        if (loaded.isEmpty() || loaded.size()>10) throw new IllegalArgumentException("Не хватает уровней торгового корабля или их слишком много");
         for (int i=1;i<=loaded.size();i++)
-            if(!loaded.containsKey(i)) throw new IllegalArgumentException("Missing trade ship level: "+i);
+            if(!loaded.containsKey(i)) throw new IllegalArgumentException("Не настроен уровень торгового корабля: "+i);
         levels = Map.copyOf(loaded);
     }
     public Map<Integer,TradeShipProgress.Level> levels() {return levels;}

@@ -13,7 +13,7 @@ public final class WarCampItemStore {
     }
     public static Receipt prepare(Connection db,String id,long camp,String player,byte[] after,long now)throws SQLException {
         try(var s=db.prepareStatement("SELECT * FROM war_camp_item_receipts WHERE id=?")){s.setString(1,id);try(var r=s.executeQuery()){if(r.next())return new Receipt(id,r.getLong("camp_id"),r.getString("player_uuid"),r.getBytes("inventory"),r.getString("state"));}}
-        if(!WarCampStore.camp(db,camp).state().equals("PREPARED"))throw new IllegalArgumentException("Camp no longer awaits item consumption");
+        if(!WarCampStore.camp(db,camp).state().equals("PREPARED"))throw new IllegalArgumentException("Лагерь больше не ожидает списания предмета");
         try(var s=db.prepareStatement("INSERT INTO war_camp_item_receipts VALUES(?,?,?,?,'PREPARED',?)")){s.setString(1,id);s.setLong(2,camp);s.setString(3,player);s.setBytes(4,after);s.setLong(5,now);s.executeUpdate();}return new Receipt(id,camp,player,after.clone(),"PREPARED");
     }
     public static Receipt pending(Connection db,String player)throws SQLException {

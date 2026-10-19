@@ -16,9 +16,9 @@ public final class ControlPointService {
         this.plugin=plugin;this.storage=storage;
         var config=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());
         capitolHp=config.getInt("war.control_block_hitpoints_capitol",100);hallHp=config.getInt("war.control_block_hitpoints_townhall",20);
-        if(capitolHp<1 || hallHp<1)throw new IllegalArgumentException("Control point health must be positive");
+        if(capitolHp<1 || hallHp<1)throw new IllegalArgumentException("Здоровье контрольной точки должно быть положительным");
         var buffs=YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/buffs.yml").toFile());
-        chichenHp=buffs.getMapList("buffs").stream().filter(b->"buff_chichen_itza_cp_bonus_hp".equals(b.get("id"))).mapToInt(b->(int)Double.parseDouble(b.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Missing Chichen Itza control health buff"));
+        chichenHp=buffs.getMapList("buffs").stream().filter(b->"buff_chichen_itza_cp_bonus_hp".equals(b.get("id"))).mapToInt(b->(int)Double.parseDouble(b.get("value").toString())).findFirst().orElseThrow(()->new IllegalArgumentException("Не настроен бонус Чичен-Ицы к здоровью контрольных точек"));
         storage.transaction(db->{ControlPointStore.install(db);return null;});
     }
     private void discover()throws Exception {
@@ -26,11 +26,11 @@ public final class ControlPointService {
         var halls=storage.query(db->{var out=new ArrayList<Hall>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,structure_id,template_path,world,x,y,z FROM structure_builds WHERE status='COMPLETE' AND structure_id IN ('s_townhall','s_capitol')")){while(r.next())out.add(new Hall(r.getLong(1),r.getString(2),r.getString(3),r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7)));}return out;});
         for(var h:halls) {
             if(loaded.contains(h.id()))continue;
-            if(!h.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Control markers in schematic templates are not ported yet");
+            if(!h.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Контрольные маркеры в шаблонах schematic ещё не перенесены");
             var template=new LegacyDefTemplateLoader().load(Path.of(h.path()));var points=new ArrayList<ControlPointStore.Point>();
             for(var b:template.blocks())if(!b.signLines().isEmpty() && b.signLines().getFirst().trim().equalsIgnoreCase("/control"))
                 points.add(new ControlPointStore.Point(h.id(),h.world(),h.x()+b.x(),h.y()+b.y()+1,h.z()+b.z(),h.type().equals("s_capitol")?capitolHp:hallHp,h.type().equals("s_capitol")?"SANDSTONE":"OAK_FENCE"));
-            if(points.isEmpty())throw new IllegalArgumentException("Town hall template has no control markers");
+            if(points.isEmpty())throw new IllegalArgumentException("В шаблоне ратуши нет контрольных маркеров");
             var w=Bukkit.getWorld(h.world());if(w==null)throw new IllegalStateException("Control point world unavailable");
             for(var p:points) {
                 var base=w.getBlockAt(p.x(),p.y()-1,p.z());var top=w.getBlockAt(p.x(),p.y(),p.z());

@@ -48,7 +48,7 @@ public final class HallValidationService {
                 job=new Job();job.hall=hall;job.requester=request==null?null:request.player();
                 boolean skip=storage.query(db->{try(var s=db.prepareStatement("SELECT structure_id FROM structure_builds WHERE id=?")){s.setLong(1,hall.id());try(var r=s.executeQuery()){return r.next()&&exempt.contains(r.getString(1));}}});
                 if(!enabled||skip){finish(true,"",now);return;}
-                if(!hall.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Foundation validation of schematic halls is not ported yet");
+                if(!hall.path().toLowerCase(Locale.ROOT).endsWith(".def"))throw new IllegalArgumentException("Проверка фундамента ратуш schematic ещё не перенесена");
                 var footprint=columns.get(hall.id());
                 if(footprint==null){var found=new ArrayList<Column>();for(var block:new LegacyDefTemplateLoader().load(Path.of(hall.path())).blocks())if(block.y()==0&&block.legacyId()!=0)found.add(new Column(hall.x()+block.x(),hall.z()+block.z()));footprint=List.copyOf(found);columns.put(hall.id(),footprint);}
                 var world=Bukkit.getWorld(hall.world());if(world==null)throw new IllegalStateException("Validation world unavailable");

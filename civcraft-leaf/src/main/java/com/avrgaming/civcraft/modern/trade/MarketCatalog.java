@@ -15,14 +15,14 @@ public final class MarketCatalog {
         var yaml=YamlConfiguration.loadConfiguration(file);
         stepCount=yaml.getInt("step_count",512);rate=yaml.getDouble("rate",0.15);
         int defaultStep=yaml.getInt("step",1);
-        if(stepCount<1 || defaultStep<1 || !Double.isFinite(rate) || rate<0)throw new IllegalArgumentException("Invalid market pricing settings");
+        if(stepCount<1 || defaultStep<1 || !Double.isFinite(rate) || rate<0)throw new IllegalArgumentException("Неверные настройки цен рынка");
         for(var raw:yaml.getMapList("items")) {
             int id=((Number)raw.get("id")).intValue(),type=((Number)raw.get("type_id")).intValue(),data=((Number)raw.get("data")).intValue();
             String custom=raw.get("custom_id")==null?null:raw.get("custom_id").toString();
             ItemStack stack=custom==null?items.vanilla(type,data,1):items.create(custom,1);
             long base=((Number)raw.get("value")).longValue();
             int step=raw.get("step")==null?defaultStep:((Number)raw.get("step")).intValue();
-            if(base<1 || base>1_000_000_000 || step<1)throw new IllegalArgumentException("Invalid market price for "+id);
+            if(base<1 || base>1_000_000_000 || step<1)throw new IllegalArgumentException("Неверная рыночная цена для "+id);
             entries.put(id,new Entry(id,raw.get("name").toString(),custom==null?type+":"+data:custom,custom,stack,base,step,!Boolean.FALSE.equals(raw.get("stackable"))));
         }
     }

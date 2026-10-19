@@ -19,7 +19,7 @@ public final class WarCampPlacement {
     public WarCampPlacement(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         var config=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile());template=config.getString("warcamp.template","warcamp");
-        if(!template.matches("[A-Za-z0-9_-]+"))throw new IllegalArgumentException("Invalid war camp template name");
+        if(!template.matches("[A-Za-z0-9_-]+"))throw new IllegalArgumentException("Неверное имя шаблона военного лагеря");
         var civ=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(plugin.getDataFolder().toPath().resolve("civcraft/data/civ.yml").toFile());minimum=civ.getInt("global.min_build_height",1);
         foundationEnabled=Boolean.parseBoolean(civ.getString("global.structure_validation","true"));
         administrativeDistance=civ.getDouble("global.distance_from_spawn",1000);

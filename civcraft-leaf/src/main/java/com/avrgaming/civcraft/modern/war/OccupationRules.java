@@ -3,9 +3,9 @@ import java.sql.*;
 public final class OccupationRules {
     private OccupationRules() {}
     public record Income(long town,long civilization,long discarded) {}
-    public static void validatePenalty(double penalty){if(!Double.isFinite(penalty) || penalty<0 || penalty>1)throw new IllegalArgumentException("Captured penalty must be between zero and one");}
+    public static void validatePenalty(double penalty){if(!Double.isFinite(penalty) || penalty<0 || penalty>1)throw new IllegalArgumentException("Штраф захвата должен быть от нуля до единицы");}
     public static Income income(long gross,double tax,boolean captured,double penalty) {
-        validatePenalty(penalty);if(gross<0 || !Double.isFinite(tax) || tax<0 || tax>1)throw new IllegalArgumentException("Invalid town income");
+        validatePenalty(penalty);if(gross<0 || !Double.isFinite(tax) || tax<0 || tax>1)throw new IllegalArgumentException("Неверный доход города");
         long tribute=Math.min(gross,Math.round(gross*tax)),net=gross-tribute;
         long local=captured?Math.min(net,Math.round(net*penalty)):net;
         return new Income(local,tribute,net-local);

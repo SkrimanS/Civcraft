@@ -15,7 +15,7 @@ public record TradeGoodAttributes(List<Rule> rules) {
             String attribute=Objects.toString(raw.get("attribute"),"").toUpperCase(Locale.ROOT);
             double value=Double.parseDouble(Objects.toString(raw.get("value"),"NaN"));
             var goods=new HashSet<String>();for(String id:Objects.toString(raw.get("goods"),"").split(","))if(!id.isBlank())goods.add(id.trim().toLowerCase(Locale.ROOT));
-            if(attribute.isBlank()||!Double.isFinite(value)||goods.isEmpty())throw new IllegalArgumentException("Invalid trade good attribute");
+            if(attribute.isBlank()||!Double.isFinite(value)||goods.isEmpty())throw new IllegalArgumentException("Неверный атрибут торгового товара");
             rules.add(new Rule(attribute,value,goods));
         }
         return new TradeGoodAttributes(rules);
@@ -23,10 +23,10 @@ public record TradeGoodAttributes(List<Rule> rules) {
     public StaticAttributes calculate(Map<String,Integer> heldGoods) {
         var values=new LinkedHashMap<String,Double>();
         for(var rule:rules)for(var good:heldGoods.entrySet()) {
-            if(good.getValue()<0)throw new IllegalArgumentException("Negative held trade good count");
+            if(good.getValue()<0)throw new IllegalArgumentException("Количество удерживаемых торговых товаров не может быть отрицательным");
             if(rule.goods().contains(good.getKey().toLowerCase(Locale.ROOT)))values.merge(rule.attribute(),rule.value()*good.getValue(),Double::sum);
         }
-        if(values.values().stream().anyMatch(value->!Double.isFinite(value)))throw new IllegalArgumentException("Trade good attribute overflow");
+        if(values.values().stream().anyMatch(value->!Double.isFinite(value)))throw new IllegalArgumentException("Переполнение атрибута торгового товара");
         return new StaticAttributes(Map.copyOf(values));
     }
 }

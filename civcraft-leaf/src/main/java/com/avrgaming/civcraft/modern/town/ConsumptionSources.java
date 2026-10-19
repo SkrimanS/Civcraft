@@ -6,7 +6,7 @@ public final class ConsumptionSources {
     private ConsumptionSources() {}
     public static List<ConsumptionContainers.Position> positions(Connection db,long build,long town,String type)throws SQLException {
         boolean cottage=type.equals("ti_cottage");
-        if(!cottage && !type.equals("s_temple") && !type.equals("ti_mine"))throw new IllegalArgumentException("Unsupported food source");
+        if(!cottage && !type.equals("s_temple") && !type.equals("ti_mine"))throw new IllegalArgumentException("Неподдерживаемый источник еды");
         var result=new ArrayList<ConsumptionContainers.Position>();
         String owner=cottage?"b.town_id=? AND b.structure_id='s_granary'":"b.id=?";
         int group=type.equals("ti_mine")?0:1;

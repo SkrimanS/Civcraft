@@ -21,7 +21,7 @@ public final class HangingGardensHealing {
         }
     }
     public static double nextHealth(double health,double maximum) {
-        if(!Double.isFinite(health)||!Double.isFinite(maximum)||health<0||maximum<=0||health>maximum)throw new IllegalArgumentException("Invalid player health");
+        if(!Double.isFinite(health)||!Double.isFinite(maximum)||health<0||maximum<=0||health>maximum)throw new IllegalArgumentException("Неверное здоровье игрока");
         if(health==0||health>=20||health>=maximum)return health;
         return Math.min(Math.min(20,maximum),health+1);
     }

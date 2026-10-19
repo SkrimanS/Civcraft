@@ -14,14 +14,14 @@ public final class TradeDepositStore {
         }
     }
     public static void register(Connection db,TradeGoodsCatalog catalog,String good,String world,int x,int y,int z)throws SQLException {
-        catalog.require(good);if(world==null || world.isBlank())throw new IllegalArgumentException("Missing trade good world");
+        catalog.require(good);if(world==null || world.isBlank())throw new IllegalArgumentException("Не найден мир торгового товара");
         try(var s=db.prepareStatement("INSERT INTO trade_deposits(good_id,world,x,y,z) VALUES(?,?,?,?,?)")) {
             s.setString(1,good);s.setString(2,world);s.setInt(3,x);s.setInt(4,y);s.setInt(5,z);s.executeUpdate();
         }
     }
     public static Deposit require(Connection db,TradeGoodsCatalog catalog,String type,String world,int x,int y,int z,int width,int height,int depth)throws SQLException {
-        if(!outpost(type))throw new IllegalArgumentException("Not a trade outpost");
-        if(width<1||height<1||depth<1)throw new IllegalArgumentException("Invalid trade outpost dimensions");
+        if(!outpost(type))throw new IllegalArgumentException("Это не торговый аванпост");
+        if(width<1||height<1||depth<1)throw new IllegalArgumentException("Неверные размеры торгового аванпоста");
         Deposit deposit;
         // Original x/y/z scan keeps the last marker, and requires y+3 < regionY.
         try(var s=db.prepareStatement("SELECT * FROM trade_deposits WHERE world=? AND x>=? AND x<? AND y>=? AND y<=? AND z>=? AND z<? ORDER BY x DESC,y DESC,z DESC LIMIT 1")) {

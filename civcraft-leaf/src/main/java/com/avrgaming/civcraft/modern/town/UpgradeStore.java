@@ -66,15 +66,15 @@ public final class UpgradeStore {
         }
         switch(upgrade.action()) {
             case "set_town_level" -> {
-                int level=Integer.parseInt(upgrade.value());if(level<1 || level>9)throw new IllegalArgumentException("Invalid town level");
+                int level=Integer.parseInt(upgrade.value());if(level<1 || level>9)throw new IllegalArgumentException("Неверный уровень города");
                 try(var update=db.prepareStatement("UPDATE towns SET level=MAX(level,?) WHERE id=?")){update.setInt(1,level);update.setLong(2,town);update.executeUpdate();}
             }
             case "set_bank_level" -> {
-                int level=Integer.parseInt(upgrade.value());if(level<1 || level>10)throw new IllegalArgumentException("Invalid bank level");
+                int level=Integer.parseInt(upgrade.value());if(level<1 || level>10)throw new IllegalArgumentException("Неверный уровень банка");
                 try(var update=db.prepareStatement("INSERT INTO town_trade_settings(town_id,bank_level) VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET bank_level=MAX(bank_level,excluded.bank_level)")){update.setLong(1,town);update.setInt(2,level);update.executeUpdate();}
             }
             case "set_bank_interest" -> {
-                double rate=Double.parseDouble(upgrade.value());if(!Double.isFinite(rate) || rate<0 || rate>1)throw new IllegalArgumentException("Invalid interest rate");
+                double rate=Double.parseDouble(upgrade.value());if(!Double.isFinite(rate) || rate<0 || rate>1)throw new IllegalArgumentException("Неверная процентная ставка");
                 try(var update=db.prepareStatement("INSERT INTO bank_interest_accounts(town_id,interest_rate,principal) SELECT id,?,coins FROM towns WHERE id=? ON CONFLICT(town_id) DO UPDATE SET interest_rate=MAX(interest_rate,excluded.interest_rate)")){update.setDouble(1,rate);update.setLong(2,town);update.executeUpdate();}
             }
             case "set_grocer_level" -> com.avrgaming.civcraft.modern.trade.GrocerStore.level(db,town,Integer.parseInt(upgrade.value()));
@@ -85,7 +85,7 @@ public final class UpgradeStore {
             case "enable_library_enchantment" -> com.avrgaming.civcraft.modern.trade.LibraryStore.add(db,town,com.avrgaming.civcraft.modern.trade.LibraryOffer.parse(upgrade.value()));
             case "set_store_material" -> com.avrgaming.civcraft.modern.trade.BuildingSupplyStore.add(db,town,com.avrgaming.civcraft.modern.trade.BuildingSupplyStore.Offer.parse(upgrade.value()));
             case "set_tradeship_upgrade_level" -> com.avrgaming.civcraft.modern.trade.TradeShipStore.upgrade(db,town,Integer.parseInt(upgrade.value()));
-            default -> throw new IllegalArgumentException("Unknown upgrade action");
+            default -> throw new IllegalArgumentException("Неизвестное действие улучшения");
         }
         try(var insert=db.prepareStatement("INSERT INTO town_upgrades VALUES(?,?,?)")){insert.setLong(1,town);insert.setString(2,upgrade.id());insert.setLong(3,now);insert.executeUpdate();}
     }

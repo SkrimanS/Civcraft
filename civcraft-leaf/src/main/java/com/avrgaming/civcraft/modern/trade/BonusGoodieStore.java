@@ -47,8 +47,8 @@ public final class BonusGoodieStore {
     }
     public static State move(Connection db,State before,Kind kind,String holder,Long hostTown)throws SQLException {
         transaction(db);Objects.requireNonNull(kind);
-        if(holder==null||holder.isBlank()||(hostTown!=null&&kind!=Kind.FRAME))throw new IllegalArgumentException("Invalid goodie holder");
-        if(kind==Kind.SOURCE&&!holder.equals(Long.toString(before.origin())))throw new IllegalArgumentException("Goodie must return to its own outpost");
+        if(holder==null||holder.isBlank()||(hostTown!=null&&kind!=Kind.FRAME))throw new IllegalArgumentException("Неверный держатель торгового товара");
+        if(kind==Kind.SOURCE&&!holder.equals(Long.toString(before.origin())))throw new IllegalArgumentException("Торговый товар должен вернуться на свой аванпост");
         try(var s=db.prepareStatement("UPDATE bonus_goodies SET holder_kind=?,holder_id=?,host_town=?,revision=revision+1 WHERE origin_build=? AND token=? AND revision=?")) {
             s.setString(1,kind.name());s.setString(2,holder);if(hostTown==null)s.setNull(3,Types.BIGINT);else s.setLong(3,hostTown);
             s.setLong(4,before.origin());s.setString(5,before.token());s.setLong(6,before.revision());

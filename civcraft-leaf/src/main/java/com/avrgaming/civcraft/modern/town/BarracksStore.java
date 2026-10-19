@@ -25,7 +25,7 @@ public final class BarracksStore {
         if(unit.equals("u_settler"))try(var s=db.prepareStatement("INSERT INTO civ_settler_training_counts VALUES(?,1) ON CONFLICT(civ_id) DO UPDATE SET amount=amount+1")){s.setLong(1,civ);s.executeUpdate();}
     }
     public static void advance(Connection db,long build,double hammers)throws SQLException {
-        if(!Double.isFinite(hammers) || hammers<0)throw new IllegalArgumentException("Invalid training production");
+        if(!Double.isFinite(hammers) || hammers<0)throw new IllegalArgumentException("Неверная выработка обучения");
         try(var s=db.prepareStatement("UPDATE barracks_training SET progress=MIN(required,progress+?) WHERE build_id=? AND state='TRAINING'")){s.setDouble(1,hammers);s.setLong(2,build);s.executeUpdate();}
     }
     public static void full(Connection db,long build)throws SQLException {

@@ -81,7 +81,7 @@ public final class CampService {
         reloadMessages();
         initializeStorage();
         int raidHours=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml")).getInt("camp.raid_length",2);
-        if(raidHours<1 || raidHours>24)throw new IllegalArgumentException("Invalid daily camp raid duration");
+        if(raidHours<1 || raidHours>24)throw new IllegalArgumentException("Неверная длительность ежедневного рейда лагеря");
         raidLengthMillis=raidHours*3600000L;
         try {
             int base=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/war.yml")).getInt("war.control_block_hitpoints_camp",100);

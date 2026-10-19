@@ -39,9 +39,9 @@ public final class ControlPointStore {
         try(var s=db.prepareStatement("SELECT hitpoints FROM war_control_health WHERE war_start=? AND world=? AND x=? AND y=? AND z=?")){s.setLong(1,war);s.setString(2,point.world());s.setInt(3,point.x());s.setInt(4,point.y());s.setInt(5,point.z());try(var r=s.executeQuery()){return r.next()?r.getInt(1):point.maximum();}}
     }
     public static Hit hit(Connection db,String id,UUID actor,Point point,int damage,long now)throws SQLException {
-        if(id==null || id.isBlank() || damage<1)throw new IllegalArgumentException("Invalid control damage");
+        if(id==null || id.isBlank() || damage<1)throw new IllegalArgumentException("Неверный урон контрольной точке");
         try(var s=db.prepareStatement("SELECT war_start,world,x,y,z FROM war_control_hits WHERE id=?")){s.setString(1,id);try(var r=s.executeQuery()){if(r.next()){var actual=point(db,r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5));long war=r.getLong(1);return new Hit(war,actual,health(db,actual,war),false,false);}}}
-        if(!point.equals(point(db,point.world(),point.x(),point.y(),point.z())))throw new IllegalArgumentException("Unknown control point");
+        if(!point.equals(point(db,point.world(),point.x(),point.y(),point.z())))throw new IllegalArgumentException("Неизвестная контрольная точка");
         CapitalStore.seed(db);
         long war;
         try(var s=db.prepareStatement("SELECT start_at FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>? ORDER BY start_at LIMIT 1")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Контрольные блоки атакуют только во время боя.");war=r.getLong(1);}}

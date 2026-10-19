@@ -146,7 +146,7 @@ public final class CampTemplateService implements Listener {
             }else {
                 boolean food=cell.command().equals("/foodinput");boolean enabled=food?cell.longhouse():cell.sifter();
                 prefix=food?"food_chest":cell.parameter().trim().equalsIgnoreCase("id:0")?"breaker_input":cell.parameter().trim().equalsIgnoreCase("id:1")?"breaker_output":null;
-                if(prefix==null)throw new IllegalArgumentException("Unknown camp sifter ID: "+cell.parameter());
+                if(prefix==null)throw new IllegalArgumentException("Неизвестный ID просеивателя лагеря: "+cell.parameter());
                 if(enabled && !(block.getState() instanceof Chest)) {
                     if(block.getState() instanceof Container)throw new IllegalStateException("Container occupies camp workstation: "+p);
                     StructureChestBlocks.place(block,(byte)cell.data());worlds.add(world);

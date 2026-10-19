@@ -262,7 +262,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             throw new IllegalStateException("Unable to initialize native trading",exception);
         }
         int dailyTickSeconds=Integer.getInteger("civcraft.test.daily.tickSeconds",60);
-        if(dailyTickSeconds<1||dailyTickSeconds>60)throw new IllegalArgumentException("Invalid daily test tick period");
+        if(dailyTickSeconds<1||dailyTickSeconds>60)throw new IllegalArgumentException("Неверный интервал тестового суточного такта");
         getServer().getScheduler().runTaskTimer(this,townUpgrades::tick,20L*dailyTickSeconds,20L*dailyTickSeconds);
         getServer().getScheduler().runTaskTimer(this,culture::tick,40L,20L);
         try {
@@ -270,7 +270,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             goodieIncome=new com.avrgaming.civcraft.modern.trade.TradeGoodIncomeService(this,storage);
             getServer().getScheduler().runTaskTimer(this,goodieIncome::tick,40L,20L);
             int scienceSeconds=Integer.getInteger("civcraft.test.culture.minuteSeconds",60);
-            if(scienceSeconds<1 || scienceSeconds>60)throw new IllegalArgumentException("Invalid science test interval");
+            if(scienceSeconds<1 || scienceSeconds>60)throw new IllegalArgumentException("Неверный тестовый интервал исследований");
             getServer().getScheduler().runTaskTimer(this,cultureClock::minute,20L*scienceSeconds,20L*scienceSeconds);
             getServer().getScheduler().runTaskTimer(this,cultureClock::tick,40L,20L);
             consumption=new com.avrgaming.civcraft.modern.town.ConsumptionService(this,storage);

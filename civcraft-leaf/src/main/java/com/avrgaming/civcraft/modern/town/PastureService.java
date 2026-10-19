@@ -25,7 +25,7 @@ public final class PastureService implements Listener {
     private long lastWarning,lastLocations;
     public PastureService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException{
         this.plugin=plugin;this.storage=storage;identity=new NamespacedKey(plugin,"pasture-origin");
-        maximum=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/structures.yml")).getInt("pasture.max_mobs");if(maximum<0)throw new IllegalArgumentException("Invalid pasture maximum");
+        maximum=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/structures.yml")).getInt("pasture.max_mobs");if(maximum<0)throw new IllegalArgumentException("Неверный предел поголовья пастбища");
         storage.transaction(db->{PastureStore.install(db);return null;});plugin.getServer().getPluginManager().registerEvents(this,plugin);
     }
     public int maximum(){return maximum;}

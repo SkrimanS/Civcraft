@@ -13,7 +13,7 @@ public final class MissionEffects {
     private final double famine;
     public MissionEffects(java.io.File file) {
         var yaml=YamlConfiguration.loadConfiguration(file);poisonMin=yaml.getInt("espionage.poison_granary_min_ticks",3);poisonMax=yaml.getInt("espionage.poison_granary_max_ticks",50);famine=yaml.getDouble("espionage.poison_granary_famine_chance",.05);
-        if(poisonMin<1 || poisonMax<=poisonMin || !Double.isFinite(famine) || famine<0 || famine>1)throw new IllegalArgumentException("Invalid espionage poison configuration");
+        if(poisonMin<1 || poisonMax<=poisonMin || !Double.isFinite(famine) || famine<0 || famine>1)throw new IllegalArgumentException("Неверные настройки шпионского отравления");
     }
     public String apply(Connection db,long source,MissionTargets.Target target,long now)throws SQLException {
         return apply(db,source,target,now,null);

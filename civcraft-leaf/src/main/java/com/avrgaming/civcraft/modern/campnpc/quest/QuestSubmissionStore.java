@@ -22,7 +22,7 @@ public final class QuestSubmissionStore {
     }
     public static void prepare(Connection db,String operation,long camp,String quest,UUID player,int before,int removed,int target)throws SQLException {
         if(db.getAutoCommit())throw new SQLException("Quest submission requires a transaction");
-        if(before<0 || removed<1 || target<1 || before>=target || removed>target-before || quest==null || quest.isBlank())throw new IllegalArgumentException("Invalid quest submission");
+        if(before<0 || removed<1 || target<1 || before>=target || removed>target-before || quest==null || quest.isBlank())throw new IllegalArgumentException("Неверная сдача ресурсов задания");
         com.avrgaming.civcraft.modern.camp.CampLonghouseStore.requireUnlocked(db,camp);
         try(var statement=db.prepareStatement("SELECT 1 FROM camps c WHERE c.id=? AND (c.owner_uuid=? OR EXISTS(SELECT 1 FROM camp_members m WHERE m.camp_id=c.id AND m.uuid=?))")) {
             statement.setLong(1,camp);statement.setString(2,player.toString());statement.setString(3,player.toString());try(var rows=statement.executeQuery()){if(!rows.next())throw new IllegalArgumentException("Вы больше не состоите в этом лагере.");}

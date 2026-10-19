@@ -15,7 +15,7 @@ public final class TaxService {
         double coinsPerBeaker=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getDouble("civ.coins_per_beaker",10);
         storage.transaction(db->{TaxStore.install(db);com.avrgaming.civcraft.modern.research.CivilizationScienceStore.install(db,coinsPerBeaker);return null;});
         long hours=org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(new java.io.File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getLong("global.join_civ_cooldown",12);
-        if(hours<0 || hours>87600)throw new IllegalArgumentException("Invalid civilization rejoin cooldown");
+        if(hours<0 || hours>87600)throw new IllegalArgumentException("Неверная задержка повторного вступления в цивилизацию");
         storage.setJoinCooldownMillis(hours*3600000);
     }
     public void settings(Player player,String[] args,boolean civilization)throws SQLException {

@@ -8,18 +8,18 @@ public final class TradeShipProgress {
     public record Level(int level, int threshold, int stacks, double culture) {
         public Level {
             if (level < 1 || threshold < 1 || stacks < 1 || !Double.isFinite(culture) || culture < 0)
-                throw new IllegalArgumentException("Invalid trade ship level");
+                throw new IllegalArgumentException("Неверный уровень торгового корабля");
         }
     }
     public record State(int level, int count) {
         public State {
-            if (level < 1 || count < 0) throw new IllegalArgumentException("Invalid trade ship progress");
+            if (level < 1 || count < 0) throw new IllegalArgumentException("Неверный прогресс торгового корабля");
         }
     }
     public record Cargo(int amount, boolean tradeable, double value) {
         public Cargo {
             if (amount < 1 || !Double.isFinite(value) || value < 0)
-                throw new IllegalArgumentException("Invalid trade ship cargo");
+                throw new IllegalArgumentException("Неверный груз торгового корабля");
         }
     }
     public enum Result { STAGNATE, GROW, LEVELUP, MAXED }
@@ -27,7 +27,7 @@ public final class TradeShipProgress {
                           int consumed, double money, long culture) {}
 
     public static Outcome consume(Map<Integer,Level> levels, State state, int upgrade, List<Cargo> slots) {
-        if (upgrade < 1 || upgrade > 6) throw new IllegalArgumentException("Invalid trade ship upgrade");
+        if (upgrade < 1 || upgrade > 6) throw new IllegalArgumentException("Неверное улучшение торгового корабля");
         Level current = Objects.requireNonNull(levels.get(state.level()),"Missing trade ship level");
         int remaining = Math.addExact(current.stacks(), (upgrade-1)*2);
         int consumed = 0;
@@ -41,7 +41,7 @@ public final class TradeShipProgress {
             money += cargo.amount()*cargo.value();
             remaining--;
         }
-        if (!Double.isFinite(money)) throw new IllegalArgumentException("Invalid cargo monetary value");
+        if (!Double.isFinite(money)) throw new IllegalArgumentException("Неверная стоимость груза в монетах");
         State next = state;
         Result result = Result.STAGNATE;
         if (consumed > 0) {

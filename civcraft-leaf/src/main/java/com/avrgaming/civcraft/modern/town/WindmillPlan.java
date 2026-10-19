@@ -16,7 +16,7 @@ public final class WindmillPlan {
         public static Optional<Crop> seed(String material){return Arrays.stream(values()).filter(c->c.seed.equals(material)).findFirst();}
     }
     public record Spot(long farm,String world,int x,int y,int z) {
-        public Spot{if(farm<1 || world==null || world.isBlank())throw new IllegalArgumentException("Invalid planting bed");}
+        public Spot{if(farm<1 || world==null || world.isBlank())throw new IllegalArgumentException("Неверная грядка");}
     }
     private record Position(String world,int x,int y,int z) {}
     public record Plant(Spot spot,Crop crop) {}
@@ -25,11 +25,11 @@ public final class WindmillPlan {
     }
     private final int maximum;
     public WindmillPlan(File file){this(YamlConfiguration.loadConfiguration(file).getInt("windmill.plant_max"));}
-    public WindmillPlan(int maximum){if(maximum<0)throw new IllegalArgumentException("Invalid windmill capacity");this.maximum=maximum;}
+    public WindmillPlan(int maximum){if(maximum<0)throw new IllegalArgumentException("Неверная вместимость мельницы");this.maximum=maximum;}
     public int capacity(boolean machinery){return machinery?Math.multiplyExact(maximum,2):maximum;}
     public Result plan(Collection<Spot> candidates,Map<Crop,Long> seeds,boolean machinery,boolean war,RandomGenerator random) {
         var remaining=new EnumMap<Crop,Long>(Crop.class);long total=0;
-        for(var crop:Crop.values()){long count=seeds.getOrDefault(crop,0L);if(count<0)throw new IllegalArgumentException("Negative windmill seed stock");remaining.put(crop,count);total=Math.addExact(total,count);}
+        for(var crop:Crop.values()){long count=seeds.getOrDefault(crop,0L);if(count<0)throw new IllegalArgumentException("Запас семян мельницы не может быть отрицательным");remaining.put(crop,count);total=Math.addExact(total,count);}
         if(war || total==0 || capacity(machinery)==0)return new Result(List.of(),remaining);
         var unique=new LinkedHashMap<Position,Spot>();for(var spot:candidates)unique.putIfAbsent(new Position(spot.world(),spot.x(),spot.y(),spot.z()),spot);
         var available=new ArrayList<>(unique.values());int count=(int)Math.min(Math.min((long)available.size(),total),capacity(machinery));

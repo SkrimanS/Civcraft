@@ -37,7 +37,7 @@ public final class EspionageService implements Listener,CommandExecutor {
     public EspionageService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;var file=new File(plugin.getDataFolder(),"civcraft/data/espionage.yml");catalog=new MissionCatalog(file);effects=new MissionEffects(file);config=YamlConfiguration.loadConfiguration(file);
         scoutRange=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/war.yml")).getDouble("scout_tower.range",300);
-        if(!Double.isFinite(scoutRange) || scoutRange<0)throw new IllegalArgumentException("Invalid spy scout range");
+        if(!Double.isFinite(scoutRange) || scoutRange<0)throw new IllegalArgumentException("Неверная дальность разведки шпиона");
         storage.transaction(db->{EspionageStore.install(db);try(var s=db.prepareStatement("UPDATE spy_missions SET state='ABORTED',result='Сервер был остановлен',finished_at=? WHERE state='ACTIVE'")){s.setLong(1,System.currentTimeMillis());s.executeUpdate();}return null;});
         for(var player:Bukkit.getOnlinePlayers())joined.put(player.getUniqueId(),System.currentTimeMillis());
         plugin.getServer().getPluginManager().registerEvents(this,plugin);Objects.requireNonNull(plugin.getCommand("spy")).setExecutor(this);

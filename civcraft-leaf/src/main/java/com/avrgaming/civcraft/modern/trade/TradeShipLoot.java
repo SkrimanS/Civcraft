@@ -9,12 +9,12 @@ public final class TradeShipLoot {
     public record Chances(double pack,double medium,double big,double huge) {
         public Chances {
             for(double value:new double[]{pack,medium,big,huge})
-                if(!Double.isFinite(value)||value<0||value>1) throw new IllegalArgumentException("Invalid trade cargo chance");
+                if(!Double.isFinite(value)||value<0||value>1) throw new IllegalArgumentException("Неверный шанс торгового груза");
         }
     }
     public record Reward(String item,int amount,boolean custom) {}
     public static List<Reward> roll(String item,int amount,Chances chances,RandomGenerator random) {
-        if(item==null || amount<0) throw new IllegalArgumentException("Invalid trade cargo");
+        if(item==null || amount<0) throw new IllegalArgumentException("Неверный торговый груз");
         List<Reward> result=new ArrayList<>();
         boolean egg=item.contains("_egg");
         int tier=item.contains("_egg_4")?4:item.contains("_egg_3")?3:item.contains("_egg_2")?2:1;

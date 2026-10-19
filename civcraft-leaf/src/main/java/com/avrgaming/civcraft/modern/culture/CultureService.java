@@ -23,7 +23,7 @@ public final class CultureService {
         this.plugin=plugin;this.storage=storage;
         levels=new CultureLevels(YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getMapList("culture_levels"));
         double base=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/town.yml")).getDouble("town.base_hammer_rate",1);
-        if(!Double.isFinite(base) || base<=0)throw new IllegalArgumentException("Invalid legacy base hammer rate");
+        if(!Double.isFinite(base) || base<=0)throw new IllegalArgumentException("Неверная базовая скорость производства молотков");
         storage.setLegacyTownBaseHammers(base);
         storage.transaction(db->{
             boolean found=false;try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info(towns)")){while(r.next())if(r.getString("name").equals("accumulated_culture"))found=true;}

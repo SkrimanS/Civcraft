@@ -17,7 +17,7 @@ public final class WarCalendar {
     }
     public WarCalendar(int calendarDay,int hour,int minutes,int declareDays,int allyHours,ZoneId zone) {
         if(calendarDay<1 || calendarDay>7 || hour<0 || hour>23 || minutes<1 || minutes>10080 || declareDays<0 || declareDays>7 || allyHours<0 || allyHours>168)
-            throw new IllegalArgumentException("Invalid war calendar");
+            throw new IllegalArgumentException("Неверный календарь войны");
         this.day=DayOfWeek.of((calendarDay+5)%7+1);this.hour=hour;this.minutes=minutes;this.declareDays=declareDays;this.allyHours=allyHours;this.zone=zone;
     }
     public ZoneId zone(){return zone;}

@@ -52,7 +52,7 @@ public final class HallValidationStore {
         }
     }
     public static void geometry(Connection db,long build,int width,int depth)throws SQLException {
-        if(width<1||width>256||depth<1||depth>256)throw new IllegalArgumentException("Invalid validation footprint dimensions");
+        if(width<1||width>256||depth<1||depth>256)throw new IllegalArgumentException("Неверные размеры области проверки");
         try(var s=db.prepareStatement("INSERT INTO structure_validation_geometry VALUES(?,?,?) ON CONFLICT(build_id) DO UPDATE SET width=excluded.width,depth=excluded.depth")){s.setLong(1,build);s.setInt(2,width);s.setInt(3,depth);s.executeUpdate();}
     }
 }

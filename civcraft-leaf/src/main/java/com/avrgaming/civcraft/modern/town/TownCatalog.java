@@ -16,7 +16,7 @@ public final class TownCatalog {
         }
         for(var raw:yaml.getMapList("upgrades")) {
             String[] action=text(raw.get("action")).split(",",2);
-            if(action.length!=2)throw new IllegalArgumentException("Invalid upgrade action: "+raw.get("id"));
+            if(action.length!=2)throw new IllegalArgumentException("Неверное действие улучшения: "+raw.get("id"));
             String id=text(raw.get("id"));
             upgrades.put(id,new UpgradeDefinition(id,text(raw.get("name")),money(raw.get("cost")),action[0].trim(),action[1].trim(),text(raw.get("require_upgrade")),text(raw.get("require_tech")),text(raw.get("require_structure")),text(raw.get("category"))));
         }
@@ -36,7 +36,7 @@ public final class TownCatalog {
     private static String text(Object value){return value==null?"":value.toString().trim();}
     private static long money(Object value) {
         double amount=value==null?0:((Number)value).doubleValue();
-        if(!Double.isFinite(amount) || amount<0 || amount!=Math.rint(amount) || amount>1_000_000_000_000L)throw new IllegalArgumentException("Invalid town amount");
+        if(!Double.isFinite(amount) || amount<0 || amount!=Math.rint(amount) || amount>1_000_000_000_000L)throw new IllegalArgumentException("Неверное количество для города");
         return (long)amount;
     }
 }

@@ -63,7 +63,7 @@ public final class TradeStore {
         }
     }
     public static Pending prepare(Connection db,String id,String player,byte[] inventory,long debit,long credit,Long town,long fee)throws SQLException {
-        if(debit<0 || credit<0 || fee<0)throw new IllegalArgumentException("Negative trade amount");
+        if(debit<0 || credit<0 || fee<0)throw new IllegalArgumentException("Количество торговых операций не может быть отрицательным");
         if(pending(db,player)!=null)throw new IllegalArgumentException("Предыдущий обмен ещё не завершён.");
         try(var query=db.prepareStatement("SELECT coins FROM residents WHERE uuid=?")) {
             query.setString(1,player);try(var result=query.executeQuery()) {

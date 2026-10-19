@@ -123,7 +123,7 @@ public final class GoodieChestService implements Listener {
         if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Quest inventory mutations require the server thread");
         ready(player);
         if(!plugin.getCampApi().canApplyCampQuest(camp,player.getUniqueId()))throw new IllegalArgumentException("Инвентари лагеря ещё сохраняются.");
-        if(inventory.length!=player.getInventory().getSize())throw new IllegalArgumentException("Invalid quest inventory snapshot");
+        if(inventory.length!=player.getInventory().getSize())throw new IllegalArgumentException("Неверный снимок инвентаря задания");
         var before=new GoodieChestPlan(new ItemStack[0],player.getInventory().getContents(),player.getItemOnCursor());
         var after=new GoodieChestPlan(new ItemStack[0],inventory,player.getItemOnCursor());
         return submit(player,List.of(),before,after,(db,id)->com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.prepare(db,id,camp,quest,player.getUniqueId(),beforeAmount,removed,target));

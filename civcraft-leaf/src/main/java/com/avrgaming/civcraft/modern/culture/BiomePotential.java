@@ -14,12 +14,12 @@ public final class BiomePotential {
             String name=String.valueOf(entry.get("name")).toUpperCase(Locale.ROOT);
             result.put(name,new Yield(number(entry,"coins"),number(entry,"hammers"),number(entry,"growth"),number(entry,"happiness"),number(entry,"beakers")));
         }
-        if(!result.containsKey("UNKNOWN"))throw new IllegalArgumentException("Missing UNKNOWN culture biome");
+        if(!result.containsKey("UNKNOWN"))throw new IllegalArgumentException("Не настроен биом культуры UNKNOWN");
         yields=Map.copyOf(result);
     }
     private static double number(Map<?,?> entry,String field) {
         Object value=entry.get(field);double number=value instanceof Number n?n.doubleValue():Double.parseDouble(String.valueOf(value));
-        if(!Double.isFinite(number) || number<0)throw new IllegalArgumentException("Invalid biome potential: "+field);
+        if(!Double.isFinite(number) || number<0)throw new IllegalArgumentException("Неверный потенциал биома: "+field);
         return number;
     }
     public Yield yield(String biome){return yields.getOrDefault(legacy(biome),yields.get("UNKNOWN"));}

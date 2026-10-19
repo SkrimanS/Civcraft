@@ -27,9 +27,9 @@ public final class LegacyStarterKit implements Listener {
         var config=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml"));
         for(String entry:config.getStringList("global.start_kit")) {
             String[] parts=entry.split(":",-1);
-            if(parts.length!=2)throw new IllegalArgumentException("Invalid starting item: "+entry);
+            if(parts.length!=2)throw new IllegalArgumentException("Неверный стартовый предмет: "+entry);
             int quantity=Integer.parseInt(parts[1]);
-            if(quantity<1 || quantity>64)throw new IllegalArgumentException("Invalid starting quantity: "+entry);
+            if(quantity<1 || quantity>64)throw new IllegalArgumentException("Неверное стартовое количество: "+entry);
             ItemStack stack=parts[0].startsWith("mat_")?items.create(parts[0],quantity):items.vanilla(Integer.parseInt(parts[0]),quantity);
             var meta=stack.getItemMeta();
             meta.getPersistentDataContainer().set(soulbound,PersistentDataType.BYTE,(byte)1);

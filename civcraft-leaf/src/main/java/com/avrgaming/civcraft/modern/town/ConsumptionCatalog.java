@@ -9,10 +9,10 @@ public final class ConsumptionCatalog {
     public record Level(int number, int count, Map<Integer,Integer> food, double output) {
         public Level {
             if(number<1 || count<1 || !Double.isFinite(output) || output<0)
-                throw new IllegalArgumentException("Invalid consumption level");
+                throw new IllegalArgumentException("Неверный уровень потребления");
             food=Map.copyOf(food);
             if(food.isEmpty() || food.entrySet().stream().anyMatch(e->e.getKey()<1 || e.getValue()<1))
-                throw new IllegalArgumentException("Invalid consumption food");
+                throw new IllegalArgumentException("Неверная еда для потребления");
         }
     }
     private final Map<String,Map<Integer,Level>> buildings;
@@ -29,7 +29,7 @@ public final class ConsumptionCatalog {
     }
     public Map<Integer,Level> levels(String structure) {
         var result=buildings.get(structure);
-        if(result==null)throw new IllegalArgumentException("Unsupported consuming structure: "+structure);
+        if(result==null)throw new IllegalArgumentException("Неподдерживаемая постройка с потреблением: "+structure);
         return result;
     }
     private static Map<Integer,Level> read(YamlConfiguration yaml,String section,String outputKey) {
@@ -37,28 +37,28 @@ public final class ConsumptionCatalog {
         for(var raw:yaml.getMapList(section)) {
             int number=integer(raw.get("level")),count=integer(raw.get("count"));
             if(!(raw.get(outputKey) instanceof Number output))
-                throw new IllegalArgumentException("Invalid consumption configuration: "+section);
+                throw new IllegalArgumentException("Неверные настройки потребления: "+section);
             var food=new LinkedHashMap<Integer,Integer>();
             if(section.equals("mine_levels"))food.put(331,integer(raw.get("amount")));
             else {
-                if(!(raw.get("consumes") instanceof List<?> consumes))throw new IllegalArgumentException("Missing consumption requirements: "+section);
+                if(!(raw.get("consumes") instanceof List<?> consumes))throw new IllegalArgumentException("Не настроены требования потребления: "+section);
                 for(var value:consumes) {
                 var pair=value.toString().split(",",-1);
-                if(pair.length!=2)throw new IllegalArgumentException("Invalid food requirement: "+value);
+                if(pair.length!=2)throw new IllegalArgumentException("Неверное требование к еде: "+value);
                 int id=Integer.parseInt(pair[0].trim()),amount=Integer.parseInt(pair[1].trim());
-                if(food.putIfAbsent(id,amount)!=null)throw new IllegalArgumentException("Duplicate food requirement: "+id);
+                if(food.putIfAbsent(id,amount)!=null)throw new IllegalArgumentException("Повторное требование к еде: "+id);
                 }
             }
             if(result.putIfAbsent(number,new Level(number,count,food,output.doubleValue()))!=null)
-                throw new IllegalArgumentException("Duplicate consumption level: "+number);
+                throw new IllegalArgumentException("Повторный уровень потребления: "+number);
         }
         if(result.isEmpty() || result.lastKey()!=result.size() || result.firstKey()!=1)
-            throw new IllegalArgumentException("Consumption levels must be consecutive from one: "+section);
+            throw new IllegalArgumentException("Уровни потребления должны идти подряд, начиная с первого: "+section);
         return Collections.unmodifiableMap(result);
     }
     private static int integer(Object value) {
         if(!(value instanceof Number n) || !Double.isFinite(n.doubleValue()) || n.doubleValue()!=n.intValue())
-            throw new IllegalArgumentException("Invalid consumption integer: "+value);
+            throw new IllegalArgumentException("Неверное целое число в настройках потребления: "+value);
         return n.intValue();
     }
 }

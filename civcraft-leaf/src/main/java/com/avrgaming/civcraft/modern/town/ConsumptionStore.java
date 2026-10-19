@@ -47,7 +47,7 @@ public final class ConsumptionStore {
     }
     /** First discovery skips prior hours. Existing progress is not reset on restart. */
     public static State initialize(Connection db,long build,long period,long hour)throws SQLException {
-        if(period<1000 || hour<0)throw new IllegalArgumentException("Invalid consumption clock");
+        if(period<1000 || hour<0)throw new IllegalArgumentException("Неверные параметры часов потребления");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO building_consumption VALUES(?,1,0,'UNKNOWN',?,?)")) {
             s.setLong(1,build);s.setLong(2,period);s.setLong(3,hour);s.executeUpdate();
         }
@@ -55,7 +55,7 @@ public final class ConsumptionStore {
     }
     /** Skip offline hours, but recover existing receipts before advancing the clock. */
     public static void start(Connection db,long period,long hour)throws SQLException {
-        if(period<1000 || hour<0)throw new IllegalArgumentException("Invalid consumption clock");
+        if(period<1000 || hour<0)throw new IllegalArgumentException("Неверные параметры часов потребления");
         if(!pending(db).isEmpty())throw new SQLException("Consumption recovery must finish before clock restart");
         try(var s=db.prepareStatement("UPDATE building_consumption SET period=?,last_hour=CASE WHEN period!=? THEN ? ELSE MAX(last_hour,?) END")) {
             s.setLong(1,period);s.setLong(2,period);s.setLong(3,hour);s.setLong(4,hour);s.executeUpdate();
@@ -70,10 +70,10 @@ public final class ConsumptionStore {
         if(id==null || id.isBlank() || before.period()<1000 || hour<=before.hour() || after.level()<1 || after.count()<0
                 || townCoins<0 || civCoins<0 || culture<0 || containers==null || containers.length==0
                 || (!after.consumed() && (townCoins!=0 || civCoins!=0 || culture!=0)))
-            throw new IllegalArgumentException("Invalid consumption intent");
+            throw new IllegalArgumentException("Неверный план операции потребления");
         com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
         if(poisoned && (!after.consumed() || townCoins!=0 || civCoins!=0 || culture!=0))
-            throw new IllegalArgumentException("Poisoned meals must consume food and cannot earn production");
+            throw new IllegalArgumentException("Отравленная еда должна расходоваться без начисления выработки");
         if(!before.equals(state(db,before.build())))throw new SQLException("Consumption state changed before prepare");
         long town,civ;
         try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM active_structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.status='COMPLETE'")) {

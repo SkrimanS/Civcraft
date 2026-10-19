@@ -22,7 +22,7 @@ public final class EndGameService {
         rules=new EndGameRules(file,new File(plugin.getDataFolder(),"civcraft/data/culture.yml"));
         zone=ZoneId.of(plugin.getConfig().getString("server.timezone",ZoneId.systemDefault().getId()));
         hour=Integer.getInteger("civcraft.test.daily.hour",YamlConfiguration.loadConfiguration(file).getInt("global.daily_upkeep_hour",20));
-        if(hour<0 || hour>23)throw new IllegalArgumentException("Invalid victory check hour");
+        if(hour<0 || hour>23)throw new IllegalArgumentException("Неверный час проверки победы");
         storage.transaction(db->{EndGameStore.install(db,System.currentTimeMillis(),rules.scienceTech());return null;});
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::notifyProgress,20L*3600,20L*3600);
     }

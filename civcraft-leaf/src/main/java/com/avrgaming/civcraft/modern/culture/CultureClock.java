@@ -15,9 +15,9 @@ public final class CultureClock {
     public CultureClock(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
         this.plugin=plugin;this.storage=storage;
         period=Long.getLong("civcraft.test.culture.hourMillis",3600000L);
-        if(period<1000 || period>3600000)throw new IllegalArgumentException("Invalid culture clock period");
+        if(period<1000 || period>3600000)throw new IllegalArgumentException("Неверный период часов культуры");
         conversion=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/culture.yml")).getDouble("beakers_per_culture",.1);
-        if(!Double.isFinite(conversion) || conversion<0)throw new IllegalArgumentException("Invalid culture conversion");
+        if(!Double.isFinite(conversion) || conversion<0)throw new IllegalArgumentException("Неверное преобразование культуры");
         storage.transaction(db->{CultureClockStore.install(db);CultureClockStore.start(db,period,System.currentTimeMillis()/period);return null;});
     }
     public void minute() {

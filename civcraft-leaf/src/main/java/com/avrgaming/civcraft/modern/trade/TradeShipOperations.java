@@ -56,14 +56,14 @@ public final class TradeShipOperations {
         }
     }
     public static Clock initialize(Connection db,long build,long period,long hour)throws SQLException {
-        transaction(db);if(period<1000 || hour<0)throw new IllegalArgumentException("Invalid trade ship clock");
+        transaction(db);if(period<1000 || hour<0)throw new IllegalArgumentException("Неверные параметры часов торгового корабля");
         try(var s=db.prepareStatement("INSERT OR IGNORE INTO trade_ship_clock VALUES(?,?,?)")) {
             s.setLong(1,build);s.setLong(2,period);s.setLong(3,hour);s.executeUpdate();
         }
         return clock(db,build);
     }
     public static void start(Connection db,long period,long hour)throws SQLException {
-        transaction(db);if(period<1000 || hour<0)throw new IllegalArgumentException("Invalid trade ship clock");
+        transaction(db);if(period<1000 || hour<0)throw new IllegalArgumentException("Неверные параметры часов торгового корабля");
         if(!pending(db).isEmpty())throw new SQLException("Trade ship recovery must finish before starting clock");
         try(var s=db.prepareStatement("UPDATE trade_ship_clock SET period=?,last_hour=CASE WHEN period!=? THEN ? ELSE MAX(last_hour,?) END")) {
             s.setLong(1,period);s.setLong(2,period);s.setLong(3,hour);s.setLong(4,hour);s.executeUpdate();
@@ -74,7 +74,7 @@ public final class TradeShipOperations {
         transaction(db);
         com.avrgaming.civcraft.modern.trade.GoodieChestStore.requireImagesUnlocked(db,containers);
         if(id==null || id.isBlank() || hour<=before.hour() || outcome.state().level()>10 || containers==null || containers.length==0)
-            throw new IllegalArgumentException("Invalid trade ship intent");
+            throw new IllegalArgumentException("Неверный план операции торгового корабля");
         if(!before.equals(clock(db,before.build())))throw new SQLException("Trade ship progress changed before preparation");
         long town,civ;
         try(var s=db.prepareStatement("SELECT t.id,t.civ_id FROM active_structure_builds b JOIN towns t ON t.id=b.town_id WHERE b.id=? AND b.structure_id='ti_trade_ship' AND b.status='COMPLETE'")) {

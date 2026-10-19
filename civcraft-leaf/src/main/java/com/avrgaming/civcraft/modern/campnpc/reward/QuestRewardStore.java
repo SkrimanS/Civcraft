@@ -9,8 +9,8 @@ public final class QuestRewardStore {
     public record Effect(String kind,double amount,String value) {
         public Effect {
             if(!Double.isFinite(amount))throw new IllegalArgumentException("Некорректное количество в награде квеста.");
-            if(!Set.of("MONEY","VAULT","XP","HP","UPGRADE","HEALTH","DAMAGE").contains(kind))throw new IllegalArgumentException("Unknown quest reward effect");
-            if(kind.equals("VAULT") && (value==null || value.isBlank()))throw new IllegalArgumentException("Missing quest reward economy provider");
+            if(!Set.of("MONEY","VAULT","XP","HP","UPGRADE","HEALTH","DAMAGE").contains(kind))throw new IllegalArgumentException("Неизвестный эффект награды задания");
+            if(kind.equals("VAULT") && (value==null || value.isBlank()))throw new IllegalArgumentException("Не найден провайдер экономики для награды задания");
             if(kind.equals("XP") && (Math.round(amount)>Integer.MAX_VALUE || Math.round(amount)<Integer.MIN_VALUE))throw new IllegalArgumentException("Слишком большая награда опыта.");
             if(kind.equals("HP") && (Math.round(amount)>Integer.MAX_VALUE || Math.round(amount)<Integer.MIN_VALUE))throw new IllegalArgumentException("Слишком большая награда здоровья лагеря.");
             if(kind.equals("UPGRADE") && !Set.of("farm_upgrade","breaker_upgrade","longhouse_upgrade").contains(value))throw new IllegalArgumentException("Неизвестное улучшение лагеря.");

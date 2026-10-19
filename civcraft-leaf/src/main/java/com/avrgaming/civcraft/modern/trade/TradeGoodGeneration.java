@@ -8,7 +8,7 @@ public final class TradeGoodGeneration {
     public record Settings(int minimum,int maximum,int radiusX,int radiusZ,int seed) {
         public Settings {
             if(minimum<1||maximum<minimum||radiusX<1||radiusZ<1)
-                throw new IllegalArgumentException("Invalid trade good generation settings");
+                throw new IllegalArgumentException("Неверные настройки генерации торговых товаров");
         }
     }
     public record Hemisphere(int minX,int maxX,int minZ,int maxZ) {
@@ -39,7 +39,7 @@ public final class TradeGoodGeneration {
                 .map(hemispheres::get).filter(Objects::nonNull).anyMatch(h->h.contains(x,z))).toList();
     }
     public static String pick(List<TradeGoodsCatalog.Good> goods,int roll,Random random) {
-        if(roll<0||roll>=100)throw new IllegalArgumentException("Invalid trade good rarity roll");
+        if(roll<0||roll>=100)throw new IllegalArgumentException("Неверный результат выбора редкости торгового товара");
         double lowest=goods.stream().filter(g->roll<g.rarity()*100).mapToDouble(TradeGoodsCatalog.Good::rarity).min().orElse(Double.NaN);
         var matches=goods.stream().filter(g->g.rarity()==lowest).toList();
         return matches.isEmpty()?null:matches.get(random.nextInt(matches.size())).id();

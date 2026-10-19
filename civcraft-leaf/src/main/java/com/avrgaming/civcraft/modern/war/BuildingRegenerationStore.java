@@ -6,7 +6,7 @@ public final class BuildingRegenerationStore {
     private BuildingRegenerationStore() {}
     @FunctionalInterface public interface Validity { boolean valid(Connection db,long build)throws SQLException; }
     public static int tick(Connection db,Map<String,Integer> baseRates,int wonderRate,Validity validity)throws SQLException {
-        if(wonderRate<0 || baseRates.values().stream().anyMatch(rate->rate<0))throw new IllegalArgumentException("Negative building regeneration");
+        if(wonderRate<0 || baseRates.values().stream().anyMatch(rate->rate<0))throw new IllegalArgumentException("Восстановление постройки не может быть отрицательным");
         record Target(long id,String type,int hp,int maximum,boolean chichen) {}
         var targets=new ArrayList<Target>();
         try(var s=db.createStatement();var r=s.executeQuery("SELECT b.id,b.structure_id,h.hitpoints,h.maximum,EXISTS(SELECT 1 FROM structure_builds w JOIN towns wt ON wt.id=w.town_id WHERE wt.civ_id=t.civ_id AND w.structure_id='w_chichen_itza' AND w.status='COMPLETE') AS chichen FROM building_combat_health h JOIN structure_builds b ON b.id=h.build_id JOIN towns t ON t.id=b.town_id WHERE b.status IN ('QUEUED','BUILDING','COMPLETE') AND h.phase='DAMAGED' AND h.hitpoints>0")) {

@@ -88,7 +88,7 @@ public final class BuildQueue {
     private record Timeline(long start,long finish) {}
     private final Map<Long,Timeline> updatedClocks=new LinkedHashMap<>();
     public void synchronizeClock(long id,long start,long finish) {
-        if(finish<start)throw new IllegalArgumentException("Invalid build clock");
+        if(finish<start)throw new IllegalArgumentException("Неверные параметры часов строительства");
         var active=activeBuilds.get(id);if(active!=null)active.synchronizeClock(start,finish);else updatedClocks.put(id,new Timeline(start,finish));
     }
     private void applyClock(long id,CancellableBuild session){var clock=updatedClocks.remove(id);if(clock!=null)session.synchronizeClock(clock.start(),clock.finish());}

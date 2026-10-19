@@ -21,7 +21,7 @@ public final class EspionageStore {
         try(var s=db.prepareStatement("INSERT INTO spy_missions(id,player,source_town,target_town,target_civ,mission,remaining,state,created_at) VALUES(?,?,?,?,?,?,?,'ACTIVE',?)")){s.setString(1,run.id());s.setString(2,run.player().toString());s.setLong(3,run.source());s.setLong(4,run.target());s.setLong(5,run.targetCiv());s.setString(6,run.mission());s.setInt(7,run.remaining());s.setLong(8,now);s.executeUpdate();}
     }
     public static double exposure(Connection db,UUID player,double add)throws SQLException {
-        if(!Double.isFinite(add) || add<0)throw new IllegalArgumentException("Invalid exposure");
+        if(!Double.isFinite(add) || add<0)throw new IllegalArgumentException("Неверная вероятность разоблачения");
         try(var s=db.prepareStatement("INSERT INTO spy_exposure VALUES(?,?) ON CONFLICT(player) DO UPDATE SET amount=amount+excluded.amount")){s.setString(1,player.toString());s.setDouble(2,add);s.executeUpdate();}
         try(var s=db.prepareStatement("SELECT amount FROM spy_exposure WHERE player=?")){s.setString(1,player.toString());try(var r=s.executeQuery()){r.next();return r.getDouble(1);}}
     }
@@ -30,7 +30,7 @@ public final class EspionageStore {
         int left=Math.max(0,run.remaining()-1);try(var s=db.prepareStatement("UPDATE spy_missions SET remaining=? WHERE id=? AND state='ACTIVE' AND remaining=?")){s.setInt(1,left);s.setString(2,run.id());s.setInt(3,run.remaining());if(s.executeUpdate()!=1)throw new SQLException("Mission changed during countdown");}return left;
     }
     public static void finish(Connection db,String id,String state,String result,long now)throws SQLException {
-        if(!Set.of("SUCCESS","FAILED","ABORTED").contains(state))throw new IllegalArgumentException("Invalid mission result");
+        if(!Set.of("SUCCESS","FAILED","ABORTED").contains(state))throw new IllegalArgumentException("Неверный результат задания");
         try(var s=db.prepareStatement("UPDATE spy_missions SET state=?,result=?,finished_at=? WHERE id=? AND state='ACTIVE'")){s.setString(1,state);s.setString(2,result);s.setLong(3,now);s.setString(4,id);if(s.executeUpdate()!=1)throw new SQLException("Mission is no longer active");}
     }
 }

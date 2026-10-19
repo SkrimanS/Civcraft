@@ -21,7 +21,7 @@ public final class NewbieProtectionService implements Listener {
     public NewbieProtectionService(CivCraftModernPlugin plugin)throws SQLException {
         this.plugin=plugin;storage=plugin.storage();
         int minutes=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/civ.yml")).getInt("global.pvp_timer",120);
-        if(minutes<0)throw new IllegalArgumentException("Invalid newbie PvP timer");duration=minutes*60000L;
+        if(minutes<0)throw new IllegalArgumentException("Неверная длительность защиты новичка от PvP");duration=minutes*60000L;
         storage.transaction(db->{NewbieProtectionStore.install(db,System.currentTimeMillis());return null;});
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::expire,20L*30,20L*30);

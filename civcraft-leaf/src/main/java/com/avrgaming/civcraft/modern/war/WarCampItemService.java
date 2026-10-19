@@ -96,7 +96,7 @@ public final class WarCampItemService implements Listener {
         catch(Exception failure){plugin.getLogger().severe("War camp item transaction retained: "+failure.getMessage());player.kick(Component.text("Основание лагеря приостановлено. Переподключитесь для восстановления."));}
     }
     private void inventory(Player player,WarCampItemStore.Receipt receipt) {
-        var contents=ItemStack.deserializeItemsFromBytes(receipt.inventory());if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Invalid saved camp inventory size");
+        var contents=ItemStack.deserializeItemsFromBytes(receipt.inventory());if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Неверный размер сохранённого инвентаря лагеря");
         player.getInventory().setContents(contents);player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,receipt.id());player.saveData();
     }
     private void apply(Player player,WarCampItemStore.Receipt receipt)throws SQLException {
