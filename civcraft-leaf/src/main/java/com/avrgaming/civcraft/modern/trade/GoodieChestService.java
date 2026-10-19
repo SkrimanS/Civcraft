@@ -59,9 +59,12 @@ public final class GoodieChestService implements Listener {
     private boolean locked(Inventory inventory){var holder=inventory.getHolder();if(holder instanceof Chest chest)return locks.contains(position(chest.getBlock()));if(holder instanceof DoubleChest chest)return locked(chest.getLeftSide()) || locked(chest.getRightSide());return false;}
     private boolean locked(InventoryHolder holder){return holder instanceof Chest chest && locks.contains(position(chest.getBlock()));}
     private void ready(Player player)throws SQLException {
+        ready(player,false);
+    }
+    private void ready(Player player,boolean foundationRefund)throws SQLException {
         if(paused)throw new IllegalArgumentException("Переносы товаров приостановлены до восстановления сервера.");
         plugin.goodieTransfers().requireUnlocked(player.getUniqueId());
-        if(plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите размещение постройки.");
+        if(!foundationRefund && plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите размещение постройки.");
         plugin.trades().recover(player);
     }
     /** Returns true when the old blanket restriction must not handle this action again. */
@@ -123,6 +126,38 @@ public final class GoodieChestService implements Listener {
         submit(player,halves,before,after,(db,id)->{});
     }
     @FunctionalInterface private interface IntentSideEffect {void prepare(java.sql.Connection db,String id)throws SQLException;}
+    public void reserveFoundation(Player player,EquipmentSlot hand,ItemStack expected,String kind,String escrow)throws SQLException {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Foundation reservations require the server thread");
+        ready(player);int slot=hand==EquipmentSlot.HAND?player.getInventory().getHeldItemSlot():hand==EquipmentSlot.OFF_HAND?40:-1;
+        if(slot<0 || GoodieChestPlan.empty(expected) || good(expected))throw new IllegalArgumentException("Недопустимый предмет основания.");
+        var before=new GoodieChestPlan(new ItemStack[0],player.getInventory().getContents(),player.getItemOnCursor());
+        if(!Objects.equals(before.player[slot],expected))throw new IllegalArgumentException("Предмет основания изменился. Повторите действие.");
+        var after=new GoodieChestPlan(before.top,before.player,before.cursor);var reserved=expected.clone();reserved.setAmount(1);
+        after.player[slot].setAmount(after.player[slot].getAmount()-1);after.player[slot]=GoodieChestPlan.clone(after.player[slot]);
+        submit(player,List.of(),before,after,(db,id)->com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.reserve(db,escrow,player.getUniqueId(),kind,ItemStack.serializeItemsAsBytes(new ItemStack[]{reserved}),id,System.currentTimeMillis()),true);
+    }
+    public void refundFoundation(Player player,String escrow)throws SQLException {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Foundation refunds require the server thread");
+        var saved=storage.query(db->com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.find(db,escrow));
+        if(saved==null || !saved.player().equals(player.getUniqueId()) || !saved.state().equals("CANCEL_REQUESTED"))throw new IllegalArgumentException("Нет ожидающего возврата основания.");
+        if(!storage.query(db->com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.reservationSaved(db,escrow)))throw new IllegalArgumentException("Предмет основания ещё сохраняется.");
+        ready(player,true);
+        var held=ItemStack.deserializeItemsFromBytes(saved.item());if(held.length!=1 || GoodieChestPlan.empty(held[0]) || held[0].getAmount()!=1 || good(held[0]))throw new IllegalStateException("Invalid reserved foundation item");
+        var before=new GoodieChestPlan(new ItemStack[0],player.getInventory().getContents(),player.getItemOnCursor());var after=new GoodieChestPlan(before.top,before.player,before.cursor);
+        after.drops.addAll(com.avrgaming.civcraft.modern.town.UnitInventoryLayout.keepOneUnit(after.player,this::unit));
+        boolean dropUnit=unit(held[0]) && Arrays.stream(after.player).anyMatch(this::unit);
+        if(unit(held[0]) && !dropUnit) {
+            var origin=held[0].getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin,"unit-town"),PersistentDataType.LONG);
+            var owner=origin==null?null:storage.findTown(origin).orElse(null);var resident=storage.findResident(player.getUniqueId()).orElse(null);
+            dropUnit=owner!=null && (resident==null || resident.civId()==null || resident.civId()!=owner.civId());
+        }
+        var remainder=dropUnit?held[0]:addReward(after.player,held[0],Math.min(36,after.player.length));if(!GoodieChestPlan.empty(remainder))after.drops.add(remainder);
+        var at=player.getLocation().clone();
+        submit(player,List.of(),before,after,(db,id)->{
+            com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.refund(db,escrow,player.getUniqueId(),id);
+            PlainTransferGround.prepare(db,id,at,after.drops.stream().filter(item->!good(item)).toList());
+        },true);
+    }
     public String changeUnitInventory(Player player,java.util.function.BiFunction<ItemStack[],ItemStack,GoodieTransferService.InventoryChange> change)throws SQLException {
         if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Unit inventory changes require the server thread");
         ready(player);
@@ -221,7 +256,7 @@ public final class GoodieChestService implements Listener {
     private boolean unit(ItemStack item){String id=plugin.nativeItems().id(item);return "u_spy".equals(id)||"u_settler".equals(id);}
     private void validateUnits(Player player,ItemStack[] before,ItemStack[] after)throws SQLException {
         int count=0;for(var item:after)if(unit(item))count+=item.getAmount();if(count>1)throw new IllegalArgumentException("Можно носить только один юнит.");
-        for(var item:after)if(unit(item) && Arrays.stream(before).noneMatch(item::equals)) {
+        for(var item:after)if(unit(item) && Arrays.stream(before).noneMatch(item::isSimilar)) {
             var town=item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin,"unit-town"),PersistentDataType.LONG);if(town==null)continue;
             var owner=storage.findTown(town).orElse(null);if(owner==null)continue;var resident=storage.findResident(player.getUniqueId()).orElse(null);
             if(resident==null || resident.civId()==null || resident.civId()!=owner.civId())throw new IllegalArgumentException("Этот юнит принадлежит другой цивилизации.");

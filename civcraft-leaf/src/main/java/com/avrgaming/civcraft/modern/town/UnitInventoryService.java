@@ -139,14 +139,7 @@ public final class UnitInventoryService implements Listener {
             try {
                 plugin.goodieTransfers().changeUnitInventory(player,(inventory,cursor)->{
                     var drops=new ArrayList<ItemStack>();
-                    if(clean) {
-                        boolean kept=false;
-                        for(int i=0;i<inventory.length;i++)if(unit(inventory[i])) {
-                            var item=inventory[i];int remove=kept?item.getAmount():Math.max(0,item.getAmount()-1);
-                            if(!kept){kept=true;inventory[i]=item.clone();inventory[i].setAmount(1);}else inventory[i]=null;
-                            while(remove>0){var drop=item.clone();int count=Math.min(remove,item.getMaxStackSize());drop.setAmount(count);drops.add(drop);remove-=count;}
-                        }
-                    }
+                    if(clean)drops.addAll(UnitInventoryLayout.keepOneUnit(inventory,this::unit));
                     if(target!=null)drops.addAll(UnitInventoryLayout.reposition(inventory,target.item(),target.groundPickup()));
                     return new GoodieTransferService.InventoryChange(inventory,cursor,drops);
                 });

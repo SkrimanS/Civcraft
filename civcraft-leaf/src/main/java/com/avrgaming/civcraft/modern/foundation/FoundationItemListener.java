@@ -44,7 +44,13 @@ public final class FoundationItemListener implements Listener {
     private final double settlerFriendlyDistance,settlerEnemyDistance,settlerLandDistance;
     private ModernCivCraftSettings settings;
     private final Map<UUID, PendingFoundation> pending = new ConcurrentHashMap<>();
-    public boolean hasPending(UUID player){return pending.containsKey(player);}
+    private long lastRecoveryWarning;
+    public boolean hasPending(UUID player){
+        if(pending.containsKey(player))return true;
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)try{return civ.storage().query(db->FoundationEscrowStore.activePlayer(db,player));}
+        catch(SQLException failure){warnRecovery(failure);return true;}
+        return false;
+    }
 
     public FoundationItemListener(JavaPlugin plugin, CivCraftGameService game, LegacyStructureService structures, TabPrefixService tabPrefixes, ModernCivCraftSettings settings) {
         this(plugin, game, structures, tabPrefixes, settings, new Lang(plugin));
@@ -63,7 +69,9 @@ public final class FoundationItemListener implements Listener {
         settlerEnemyDistance=towns.getDouble("town.min_town_distance_enemy",settlerFriendlyDistance);
         settlerLandDistance=civs.getDouble("civ.min_distance",15);
         if(!Double.isFinite(settlerFriendlyDistance) || settlerFriendlyDistance<0 || !Double.isFinite(settlerEnemyDistance) || settlerEnemyDistance<0 || !Double.isFinite(settlerLandDistance) || settlerLandDistance<0)throw new IllegalArgumentException("Неверные расстояния основания города поселенцем.");
-        plugin.getServer().getScheduler().runTaskTimer(plugin,this::expireTownRequests,20L,20L);
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)try{civ.storage().transaction(db->{FoundationEscrowStore.install(db);return null;});}
+        catch(SQLException failure){throw new IllegalStateException("Cannot initialize foundation escrow",failure);}
+        plugin.getServer().getScheduler().runTaskTimer(plugin,()->{expireTownRequests();recoverEscrows();},20L,20L);
     }
 
     public void updateSettings(ModernCivCraftSettings settings) {
@@ -90,8 +98,9 @@ public final class FoundationItemListener implements Listener {
             event.setCancelled(true);
             return;
         }
-        if (pending.containsKey(player.getUniqueId())) {
+        if (hasPending(player.getUniqueId())) {
             PendingFoundation current = pending.get(player.getUniqueId());
+            if(current==null){player.sendMessage(net.kyori.adventure.text.Component.text("Предыдущее основание ожидает восстановления. Новое основание пока недоступно."));return;}
             player.sendMessage(component(current != null && current.awaitingPreview
                     ? "foundation.pending-preview"
                     : "foundation.pending-input",
@@ -118,15 +127,15 @@ public final class FoundationItemListener implements Listener {
 
         if (kind==FoundationKind.CAMP) {
             event.setCancelled(true);
-            ItemStack consumed = consumeOneHand(player,event.getHand());
-            pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.CAMP, placeLocation, consumed));
+            var foundation=reserveFoundation(player,event.getHand(),FoundationKind.CAMP,placeLocation);if(foundation==null)return;
+            pending.put(player.getUniqueId(),foundation);
             player.sendMessage(component("foundation.enter-camp-name", "&eВведите название лагеря. От 5 до 16 символов."));
             return;
         }
         if (kind==FoundationKind.CIVILIZATION) {
             event.setCancelled(true);
-            ItemStack consumed = consumeOneHand(player,event.getHand());
-            pending.put(player.getUniqueId(), new PendingFoundation(FoundationKind.CIVILIZATION, placeLocation, consumed));
+            var foundation=reserveFoundation(player,event.getHand(),FoundationKind.CIVILIZATION,placeLocation);if(foundation==null)return;
+            pending.put(player.getUniqueId(),foundation);
             player.sendMessage(component("foundation.enter-civ-name", "&eВведите название цивилизации. От 5 до 16 символов."));
             return;
         }
@@ -144,8 +153,7 @@ public final class FoundationItemListener implements Listener {
                 catch(IllegalArgumentException refused){player.sendMessage(net.kyori.adventure.text.Component.text(refused.getMessage()));return;}
                 catch(SQLException failure){plugin.getLogger().warning("Settler membership check failed: "+failure.getMessage());player.sendMessage(net.kyori.adventure.text.Component.text("Не удалось проверить жителя для основания города."));return;}
             }
-            ItemStack consumed = consumeOneHand(player,event.getHand());
-            var foundation=new PendingFoundation(FoundationKind.TOWN,placeLocation,consumed);
+            var foundation=reserveFoundation(player,event.getHand(),FoundationKind.TOWN,placeLocation);if(foundation==null)return;
             foundation.nativeSettler=settler;foundation.sourceTown=sourceTown;foundation.sourceCiv=owningCiv;
             pending.put(player.getUniqueId(),foundation);
             player.sendMessage(component("foundation.enter-town-name", "&eВведите название города. От 5 до 16 символов."));
@@ -157,6 +165,18 @@ public final class FoundationItemListener implements Listener {
         if(FoundationItemFactory.matches(plugin,item,FoundationItemFactory.Kind.CIVILIZATION) || matches(item,settings.civFlagMmoItemId(),settings.civFlagMmoItemType()))return FoundationKind.CIVILIZATION;
         if(FoundationItemFactory.matches(plugin,item,FoundationItemFactory.Kind.TOWN) || matches(item,settings.settlerMmoItemId(),settings.settlerMmoItemType()))return FoundationKind.TOWN;
         return null;
+    }
+
+    private PendingFoundation reserveFoundation(Player player,EquipmentSlot hand,FoundationKind kind,Location location) {
+        var held=player.getInventory().getItem(hand);if(held==null || held.getType().isAir())return null;
+        var consumed=held.clone();consumed.setAmount(1);
+        var data=new PendingFoundation(kind,location,consumed);
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            data.escrow=UUID.randomUUID().toString();
+            try{civ.goodieTransfers().reserveFoundation(player,hand,held.clone(),kind.name(),data.escrow);}
+            catch(SQLException|RuntimeException failure){warnRecovery(failure);player.sendMessage(net.kyori.adventure.text.Component.text(failure instanceof IllegalArgumentException?failure.getMessage():"Не удалось завершить резерв основания. Записанная операция будет восстановлена сервером."));return null;}
+        }else consumeOneHand(player,hand);
+        return data;
     }
 
     @EventHandler
@@ -201,9 +221,13 @@ public final class FoundationItemListener implements Listener {
             return;
         }
         try {
+            if(data.creationStarted){pending.remove(player.getUniqueId());player.sendMessage(net.kyori.adventure.text.Component.text("Создание поселения ожидает восстановления. Зарезервированный предмет сохранён сервером."));return;}
             if(input.equalsIgnoreCase("cancel")) {
                 structures.cancelPreview(player,true);restoreAndRemovePending(player,data);
-                player.sendMessage(component("foundation.cancelled","&eОснование отменено. Предмет возвращен."));return;
+                player.sendMessage(component("foundation.cancelled","&eОснование отменено. Предмет будет возвращён после сохранения операции."));return;
+            }
+            if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && !civ.storage().query(db->FoundationEscrowStore.reservationSaved(db,data.escrow))) {
+                player.sendMessage(net.kyori.adventure.text.Component.text("Предмет основания ещё сохраняется. Повторите ответ через секунду."));return;
             }
             if(data.awaitingApproval){player.sendMessage(net.kyori.adventure.text.Component.text("Ожидается согласие главы цивилизации. Для отмены напишите cancel."));return;}
             if (data.awaitingPreview) {
@@ -244,7 +268,7 @@ public final class FoundationItemListener implements Listener {
         if (!normalized.equals("yes")) {
             structures.cancelPreview(player, false);
             restoreAndRemovePending(player, data);
-            player.sendMessage(component("foundation.cancelled", "&eОснование отменено. Предмет возвращен."));
+            player.sendMessage(component("foundation.cancelled", "&eОснование отменено. Предмет будет возвращён после сохранения операции."));
             return;
         }
         structures.cancelPreview(player, true);
@@ -275,7 +299,7 @@ public final class FoundationItemListener implements Listener {
             var entry=pending.entrySet().stream().filter(e->e.getValue().awaitingApproval && java.util.Objects.equals(e.getValue().sourceCiv,resident.civId()) && e.getValue().approvalExpires>System.currentTimeMillis()).findFirst().orElseThrow(()->new IllegalArgumentException("Нет ожидающего запроса основания города."));
             var founder=plugin.getServer().getPlayer(entry.getKey());var data=entry.getValue();
             if(founder==null)throw new IllegalArgumentException("Основатель вышел с сервера.");
-            if(!accepted){restoreAndRemovePending(founder,data);founder.sendMessage(net.kyori.adventure.text.Component.text("Глава цивилизации отклонил основание города. Предмет возвращён."));leader.sendMessage("Запрос основания отклонён.");return true;}
+            if(!accepted){restoreAndRemovePending(founder,data);founder.sendMessage(net.kyori.adventure.text.Component.text("Глава цивилизации отклонил основание города. Предмет будет возвращён после сохранения операции."));leader.sendMessage("Запрос основания отклонён.");return true;}
             data.awaitingApproval=false;
             try{confirmFoundation(founder,data);leader.sendMessage("Основание города одобрено.");}
             catch(Exception failure){rollbackCreatedObjects(founder,data);structures.cancelPreview(founder,true);restoreAndRemovePending(founder,data);plugin.getLogger().warning("Approved settler foundation failed: "+failure.getMessage());founder.sendMessage(net.kyori.adventure.text.Component.text(failure instanceof IllegalArgumentException?failure.getMessage():"Не удалось завершить основание города. Подробности находятся в журнале сервера."));leader.sendMessage("Основание не завершено; основатель получил причину отказа.");}
@@ -288,7 +312,70 @@ public final class FoundationItemListener implements Listener {
         long now=System.currentTimeMillis();
         for(var entry:pending.entrySet())if(entry.getValue().awaitingApproval && entry.getValue().approvalExpires<=now) {
             var player=plugin.getServer().getPlayer(entry.getKey());if(player==null)continue;
-            restoreAndRemovePending(player,entry.getValue());player.sendMessage(net.kyori.adventure.text.Component.text("Глава цивилизации не ответил на запрос основания. Предмет возвращён."));
+            restoreAndRemovePending(player,entry.getValue());player.sendMessage(net.kyori.adventure.text.Component.text("Глава цивилизации не ответил на запрос основания. Предмет будет возвращён после сохранения операции."));
+        }
+    }
+
+    private void warnRecovery(Exception failure) {
+        long now=System.currentTimeMillis();if(now-lastRecoveryWarning<30000)return;lastRecoveryWarning=now;
+        plugin.getLogger().severe("Foundation escrow recovery retained: "+failure.getMessage());
+    }
+    private void recoverEscrows() {
+        if(!(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ))return;
+        try {
+            for(var escrow:civ.storage().query(FoundationEscrowStore::active)) {
+                if(pending.values().stream().anyMatch(data->escrow.id().equals(data.escrow)))continue;
+                if(escrow.state().equals("CREATING")){warnRecovery(new IllegalStateException("Foundation creation awaits reconciliation: "+escrow.id()));continue;}
+                if(escrow.state().equals("RESERVING") || escrow.state().equals("RESERVED"))civ.storage().transaction(db->{FoundationEscrowStore.cancel(db,escrow.id(),false);return null;});
+                var current=civ.storage().query(db->FoundationEscrowStore.find(db,escrow.id()));
+                if(!current.state().equals("CANCEL_REQUESTED"))continue;
+                var player=plugin.getServer().getPlayer(current.player());if(player==null || player.isDead())continue;
+                try{civ.goodieTransfers().refundFoundation(player,current.id());}
+                catch(IllegalArgumentException waiting){/* The reserve/other player journal must finish first. */}
+            }
+        }catch(SQLException|RuntimeException failure){warnRecovery(failure);}
+    }
+
+    @FunctionalInterface private interface CreationWork<T>{T run()throws Exception;}
+    private <T> T creationWrite(PendingFoundation data,CreationWork<T> work)throws Exception {
+        data.creationWriteInFlight=true;
+        T value=work.run();data.creationWriteInFlight=false;return value;
+    }
+    private void completeReservation(PendingFoundation data)throws SQLException {
+        // A failed completion acknowledgement must not roll back an already created settlement.
+        data.success=true;
+        if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)civ.storage().transaction(db->{FoundationEscrowStore.committed(db,data.escrow);return null;});
+    }
+    private void validateBeforeCreation(Player player,PendingFoundation data,Location origin)throws SQLException {
+        var resident=game.resident(player);
+        switch(data.kind) {
+            case CAMP -> {
+                if(resident.civId()!=null)throw new IllegalArgumentException("Игрок в цивилизации не может основать лагерь.");
+                if(resident.campId()!=null)throw new IllegalArgumentException("У вас уже есть лагерь.");
+            }
+            case CIVILIZATION -> {
+                if(resident.campId()!=null)throw new IllegalArgumentException("Игрок в лагере не может основать цивилизацию.");
+                if(resident.civId()!=null)throw new IllegalArgumentException("Вы уже состоите в цивилизации.");
+            }
+            case TOWN -> {
+                if(resident.civId()==null)throw new IllegalArgumentException("Сначала создайте или вступите в цивилизацию.");
+                if(!data.nativeSettler && resident.townId()!=null)throw new IllegalArgumentException("У вас уже есть город.");
+            }
+        }
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            if(data.kind==FoundationKind.CAMP && civ.storage().findCampByOwner(player.getUniqueId()).isPresent())throw new IllegalArgumentException("У вас уже есть лагерь.");
+            if(data.nativeSettler)civ.storage().query(db->{
+                if(SettlerTownStore.sourceTown(db,player.getUniqueId(),data.sourceCiv)!=data.sourceTown)throw new IllegalArgumentException("Вы сменили город во время основания.");
+                SettlerTownStore.requireLocation(db,data.sourceCiv,data.location,settlerFriendlyDistance,settlerEnemyDistance,settlerLandDistance,false,System.currentTimeMillis());return null;
+            });
+            if(data.kind==FoundationKind.TOWN && !data.nativeSettler) {
+                if(civ.storage().hasTownNear(origin,settings.minTownDistance()))throw new IllegalArgumentException("Слишком близко к другому городу.");
+                if(civ.economy().balance(player)<settings.townCost())throw new IllegalArgumentException("Недостаточно монет для административного основания города.");
+            }
+            String table=switch(data.kind){case CAMP->"camps";case TOWN->"towns";case CIVILIZATION->"civilizations";};
+            String name=switch(data.kind){case CAMP->data.campName;case TOWN->data.townName;case CIVILIZATION->data.civName;};
+            civ.storage().query(db->{try(var s=db.prepareStatement("SELECT 1 FROM "+table+" WHERE name=? COLLATE NOCASE")){s.setString(1,name);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Название поселения уже занято.");}}return null;});
+            if(data.kind==FoundationKind.CIVILIZATION)civ.storage().query(db->{try(var s=db.prepareStatement("SELECT 1 FROM towns WHERE name=? COLLATE NOCASE")){s.setString(1,data.capitalName);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Название столицы уже занято.");}}return null;});
         }
     }
 
@@ -346,12 +433,18 @@ public final class FoundationItemListener implements Listener {
 
     private void confirmFoundation(Player player, PendingFoundation data) throws Exception {
         Location origin = data.previewOrigin == null ? data.location : data.previewOrigin;
+        validateBeforeCreation(player,data,origin);
+        if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            civ.goodieTransfers().requireUnlocked(player.getUniqueId());
+            civ.storage().transaction(db->{FoundationEscrowStore.beginCreation(db,data.escrow);return null;});
+            data.creationStarted=true;
+        }
         switch (data.kind) {
             case CAMP -> {
-                CampRecord camp = game.createCampFromFoundationAt(player, data.campName, origin);
+                CampRecord camp = creationWrite(data,()->game.createCampFromFoundationAt(player,data.campName,origin));
                 data.createdCamp = camp;
-                structures.buildCampStructureAtOrigin(player, origin);
-                data.success = true;
+                data.createdBuild=structures.buildCampStructureAtOrigin(player, origin).id();
+                completeReservation(data);
                 tabPrefixes.update(player);
                 pending.remove(player.getUniqueId());
                 player.sendMessage(component("foundation.camp-created", "&aЛагерь {name} основан.", "name", camp.name()));
@@ -360,23 +453,22 @@ public final class FoundationItemListener implements Listener {
                 var civ=plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern?modern:null;
                 TownRecord town;
                 if(data.nativeSettler) {
-                    long id=civ.storage().transaction(db->{SettlerTownStore.requireLocation(db,data.sourceCiv,data.location,settlerFriendlyDistance,settlerEnemyDistance,settlerLandDistance,false,System.currentTimeMillis());return SettlerTownStore.create(db,player.getUniqueId(),data.sourceCiv,data.sourceTown,data.townName,origin,civ.storage().townBaseHammers(settings.townHammersPerHour()),System.currentTimeMillis());});
-                    town=civ.storage().findTown(id).orElseThrow();
-                }else town=game.createTownAt(player,data.townName,origin);
+                    town=creationWrite(data,()->{long id=civ.storage().transaction(db->{SettlerTownStore.requireLocation(db,data.sourceCiv,data.location,settlerFriendlyDistance,settlerEnemyDistance,settlerLandDistance,false,System.currentTimeMillis());return SettlerTownStore.create(db,player.getUniqueId(),data.sourceCiv,data.sourceTown,data.townName,origin,civ.storage().townBaseHammers(settings.townHammersPerHour()),System.currentTimeMillis());});return civ.storage().findTown(id).orElseThrow();});
+                }else town=creationWrite(data,()->game.createTownAt(player,data.townName,origin));
                 data.createdTown = town;
                 data.createdBuild=(data.nativeSettler?structures.buildSettlerTownHallAtOrigin(player,town,origin):structures.buildTownHallStructureAtOrigin(player,town,origin)).id();
-                if(data.nativeSettler)civ.storage().transaction(db->{SettlerTownStore.complete(db,player.getUniqueId(),town.id(),data.sourceCiv,data.sourceTown,data.location,System.currentTimeMillis());return null;});
-                data.success = true;
+                if(data.nativeSettler)creationWrite(data,()->civ.storage().transaction(db->{SettlerTownStore.complete(db,player.getUniqueId(),town.id(),data.sourceCiv,data.sourceTown,data.location,System.currentTimeMillis());return null;}));
+                completeReservation(data);
                 pending.remove(player.getUniqueId());
                 player.sendMessage(component("foundation.town-created", "&aГород {name} основан. Строительство ратуши начато.", "name", town.name()));
             }
             case CIVILIZATION -> {
-                CivRecord civ = game.createCivilizationFromFoundation(player, data.civName, data.civTag);
+                CivRecord civ = creationWrite(data,()->game.createCivilizationFromFoundation(player,data.civName,data.civTag));
                 data.createdCiv = civ;
-                TownRecord capital = game.createCapitalAt(player, data.capitalName, origin);
+                TownRecord capital = creationWrite(data,()->game.createCapitalAt(player,data.capitalName,origin));
                 data.createdTown = capital;
-                structures.buildCapitalStructureAtOrigin(player, capital, origin);
-                data.success = true;
+                data.createdBuild=structures.buildCapitalStructureAtOrigin(player, capital, origin).id();
+                completeReservation(data);
                 pending.remove(player.getUniqueId());
                 player.sendMessage(component("foundation.civ-created", "&aЦивилизация {name} [{tag}] основана. Столица: {capital}. Строительство капитолия начато.", "name", civ.name(), "tag", civ.tag(), "capital", capital.name()));
             }
@@ -407,6 +499,12 @@ public final class FoundationItemListener implements Listener {
         if (data == null || data.success || data.consumedItem == null || data.consumedItem.getType().isAir()) {
             return;
         }
+        if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            if(data.creationStarted && !data.creationRolledBack){warnRecovery(new IllegalStateException("Foundation creation is unresolved: "+data.escrow));return;}
+            try{civ.storage().transaction(db->{FoundationEscrowStore.cancel(db,data.escrow,data.creationRolledBack);return null;});}
+            catch(SQLException failure){warnRecovery(failure);}
+            return;
+        }
         HashMap<Integer, ItemStack> overflow = player.getInventory().addItem(data.consumedItem.clone());
         for (ItemStack item : overflow.values()) {
             player.getWorld().dropItemNaturally(player.getLocation(), item);
@@ -418,31 +516,37 @@ public final class FoundationItemListener implements Listener {
         if (data == null || data.success) {
             return;
         }
+        if(data.creationWriteInFlight){if(data.createdBuild!=null)structures.stopFoundationBuild(data.createdBuild);warnRecovery(new IllegalStateException("Foundation creation write needs reconciliation: "+data.escrow));return;}
+        boolean cleaned=true;
         if(data.createdBuild!=null){structures.stopFoundationBuild(data.createdBuild);data.createdBuild=null;}
         if (data.createdTown != null) {
             try {
             game.rollbackCreatedTown(player, data.createdTown,data.kind==FoundationKind.CIVILIZATION || data.nativeSettler?0:settings.townCost());
-            } catch (SQLException exception) {
+            data.createdTown = null;
+            } catch (SQLException | RuntimeException exception) {
+                cleaned=false;
                 plugin.getLogger().warning("Unable to rollback town " + data.createdTown.id() + ": " + exception.getMessage());
             }
-            data.createdTown = null;
         }
-        if (data.createdCiv != null) {
+        if (data.createdCiv != null && data.createdTown==null) {
             try {
             game.rollbackCreatedCivilization(player, data.createdCiv,0);
-            } catch (SQLException exception) {
+            data.createdCiv = null;
+            } catch (SQLException | RuntimeException exception) {
+                cleaned=false;
                 plugin.getLogger().warning("Unable to rollback civilization " + data.createdCiv.id() + ": " + exception.getMessage());
             }
-            data.createdCiv = null;
         }
         if (data.createdCamp != null) {
             try {
             game.rollbackCreatedCamp(player, data.createdCamp,0);
-            } catch (SQLException exception) {
+            data.createdCamp = null;
+            } catch (SQLException | RuntimeException exception) {
+                cleaned=false;
                 plugin.getLogger().warning("Unable to rollback camp " + data.createdCamp.id() + ": " + exception.getMessage());
             }
-            data.createdCamp = null;
         }
+        data.creationRolledBack=cleaned;
     }
 
     private boolean matches(ItemStack item, String expectedId, String expectedType) {
@@ -519,6 +623,8 @@ public final class FoundationItemListener implements Listener {
         private CivRecord createdCiv;
         private TownRecord createdTown;
         private boolean success;
+        private String escrow;
+        private boolean creationStarted,creationRolledBack,creationWriteInFlight;
 
         private PendingFoundation(FoundationKind kind, Location location, ItemStack consumedItem) {
             this.kind = kind;

@@ -159,6 +159,7 @@ public final class GoodieChestStore {
         var intent=read(db,id);var invalid=invalidated(db,intent);
         com.avrgaming.civcraft.modern.campnpc.quest.QuestSubmissionStore.complete(db,id);
         com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.complete(db,id);
+        com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore.transferComplete(db,id);
         for(var move:intent.moves())if(!invalid.contains(move.before().token())){var after=BonusGoodieStore.move(db,move.before(),move.kind(),move.holder(),null);if(move.drop()!=null)GoodieDepartureStore.queueGround(db,intent.player(),after,move.drop());}
         try(var s=db.prepareStatement("DELETE FROM goodie_chest_cursor_checkpoints WHERE player_uuid=?")){s.setString(1,intent.player().toString());s.executeUpdate();}
         if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))try(var s=db.prepareStatement("INSERT INTO goodie_chest_cursor_checkpoints VALUES(?,?,?,?,?)")){s.setString(1,intent.player().toString());s.setString(2,id);s.setString(3,intent.cursorToken());s.setLong(4,intent.cursorRevision());s.setBytes(5,intent.cursor());s.executeUpdate();}

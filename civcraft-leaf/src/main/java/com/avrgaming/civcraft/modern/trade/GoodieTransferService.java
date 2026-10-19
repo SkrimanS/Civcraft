@@ -57,6 +57,8 @@ public final class GoodieTransferService implements Listener {
         @Override public List<ItemStack> drops(){return drops.stream().map(ItemStack::clone).toList();}
     }
     public String changeUnitInventory(Player player,java.util.function.BiFunction<ItemStack[],ItemStack,InventoryChange> change)throws SQLException{return chests.changeUnitInventory(player,change);}
+    public void reserveFoundation(Player player,EquipmentSlot hand,ItemStack expected,String kind,String escrow)throws SQLException{chests.reserveFoundation(player,hand,expected,kind,escrow);}
+    public void refundFoundation(Player player,String escrow)throws SQLException{chests.refundFoundation(player,escrow);}
     public String submitCampQuestItems(Player player,ItemStack[] inventory,long camp,String quest,int before,int removed,int target)throws SQLException{return chests.submitCampQuestItems(player,inventory,camp,quest,before,removed,target);}
     public String prepareCampQuestReward(Player player,long camp,String quest,List<ItemStack> items,List<com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.Effect> effects,List<String> commands)throws SQLException{return chests.prepareCampQuestReward(player,camp,quest,items,effects,commands);}
     public void shutdown(){chests.shutdown();}

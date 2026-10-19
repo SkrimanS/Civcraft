@@ -2195,6 +2195,12 @@ updates:
   after: 'Исследование {name} начато. Нужно колб: {beakers}'
 - file: lang/ru.yml
   path:
+  - foundation
+  - cancelled
+  before: '&eОснование отменено. Предмет возвращен.'
+  after: '&eОснование отменено. Предмет будет возвращён после сохранения операции.'
+- file: lang/ru.yml
+  path:
   - camp-npc
   - reload
   before: '&aCamp NPC menus перезагружены.'

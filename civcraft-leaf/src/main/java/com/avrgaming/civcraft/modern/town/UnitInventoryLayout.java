@@ -8,6 +8,15 @@ import org.bukkit.inventory.ItemStack;
 public final class UnitInventoryLayout {
     private UnitInventoryLayout() {}
     public static boolean empty(ItemStack item){return item==null || item.getType().isAir() || item.getAmount()<=0;}
+    public static List<ItemStack> keepOneUnit(ItemStack[] inventory,java.util.function.Predicate<ItemStack> unit) {
+        var drops=new ArrayList<ItemStack>();boolean kept=false;
+        for(int i=0;i<inventory.length;i++)if(unit.test(inventory[i])) {
+            var item=inventory[i];int remove=kept?item.getAmount():Math.max(0,item.getAmount()-1);
+            if(!kept){kept=true;inventory[i]=item.clone();inventory[i].setAmount(1);}else inventory[i]=null;
+            while(remove>0){var drop=item.clone();int count=Math.min(remove,item.getMaxStackSize());drop.setAmount(count);drops.add(drop);remove-=count;}
+        }
+        return drops;
+    }
     public static List<ItemStack> reposition(ItemStack[] inventory,ItemStack target) {
         return reposition(inventory,target,false);
     }
