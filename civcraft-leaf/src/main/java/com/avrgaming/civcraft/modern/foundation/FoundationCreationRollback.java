@@ -116,6 +116,8 @@ public final class FoundationCreationRollback {
         try(var s=db.prepareStatement("SELECT 1 FROM residents WHERE uuid=? AND camp_id IS ? AND civ_id IS ? AND town_id IS ?")){s.setString(1,p.player().toString());s.setObject(2,camp);s.setObject(3,civ);s.setObject(4,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Incomplete foundation membership changed");}}
         boolean townChanged=!Objects.equals(town,p.beforeTown());
         if(townChanged)requireUnchangedTaxState(db,p);
+        FoundationCreationProtection.permit(db,id,"ROLLBACK");
+        try {
         // Avoid membership cleanup triggers when the native settler never moved.
         if(!Objects.equals(camp,p.beforeCamp()) || !Objects.equals(civ,p.beforeCiv()) || !Objects.equals(town,p.beforeTown())) {
             try(var s=db.prepareStatement("UPDATE residents SET camp_id=?,civ_id=?,town_id=?,updated_at=? WHERE uuid=?")){s.setObject(1,p.beforeCamp());s.setObject(2,p.beforeCiv());s.setObject(3,p.beforeTown());s.setLong(4,System.currentTimeMillis());s.setString(5,p.player().toString());if(s.executeUpdate()!=1)throw new SQLException("Foundation founder missing");}
@@ -125,6 +127,7 @@ public final class FoundationCreationRollback {
         delete(db,"towns",p.town());delete(db,"civilizations",p.civ());delete(db,"camps",p.camp());
         try(var s=db.prepareStatement("INSERT INTO foundation_creation_rollbacks VALUES(?,?)")){s.setString(1,id);s.setLong(2,System.currentTimeMillis());s.executeUpdate();}
         FoundationEscrowStore.cancel(db,id,true);
+        }finally{FoundationCreationProtection.release(db,id);}
     }
     private static void delete(Connection db,String table,Long id)throws SQLException {
         if(id==null)return;try(var s=db.prepareStatement("DELETE FROM "+quote(table)+" WHERE id=?")){s.setLong(1,id);if(s.executeUpdate()!=1)throw new SQLException("Foundation asset vanished during compensation");}

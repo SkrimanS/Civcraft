@@ -92,6 +92,8 @@ public final class FoundationCreationStore {
     public static void commitReady(Connection db,String id,boolean livePaidResult)throws SQLException {
         transaction(db);var p=find(db,id);if(p==null)throw new SQLException("Missing foundation creation plan");
         if(p.state().equals("COMMITTED"))return;
+        FoundationCreationProtection.permit(db,id,"COMMIT");
+        try {
         if(!p.state().equals("CREATING") || !p.ready() || p.build()==null)throw new SQLException("Foundation structure is not fully registered");
         if(p.fee()>0 && !livePaidResult)throw new SQLException("Paid foundation awaits payment reconciliation");
         try(var s=db.prepareStatement("SELECT 1 FROM structure_builds WHERE id=? AND builder_uuid=? AND town_id IS ? AND structure_id=? AND direction=? AND world=? AND x=? AND y=? AND z=? AND status IN ('QUEUED','BUILDING','COMPLETE')")) {
@@ -116,6 +118,7 @@ public final class FoundationCreationStore {
             }
         }
         FoundationEscrowStore.committed(db,id);
+        }finally{FoundationCreationProtection.release(db,id);}
     }
     public static void cancelEmpty(Connection db,String id)throws SQLException {
         transaction(db);var p=find(db,id);

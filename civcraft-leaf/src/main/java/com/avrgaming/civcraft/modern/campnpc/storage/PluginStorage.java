@@ -65,7 +65,7 @@ public final class PluginStorage {
     public Connection connect() throws SQLException {
         Connection connection=DriverManager.getConnection("jdbc:sqlite:" + databasePath.toAbsolutePath());
         try(Statement statement=connection.createStatement()) {
-            statement.execute("PRAGMA busy_timeout=5000");statement.execute("PRAGMA foreign_keys=ON");
+            statement.execute("PRAGMA busy_timeout=5000");statement.execute("PRAGMA foreign_keys=ON");statement.execute("PRAGMA recursive_triggers=ON");
         } catch(SQLException failure){connection.close();throw failure;}
         return connection;
     }

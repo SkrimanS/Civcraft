@@ -15,8 +15,8 @@ public final class TownLimitsStore {
         try(var s=db.createStatement();var r=s.executeQuery("""
             SELECT t.id,t.civ_id,t.mayor_uuid,t.world,t.x,t.z,sc.world,sc.chunk_x,sc.chunk_z
             FROM towns t LEFT JOIN structure_builds sb ON sb.town_id=t.id AND sb.structure_id IN ('s_capitol','s_townhall') AND sb.status IN ('QUEUED','BUILDING','COMPLETE')
-            LEFT JOIN structure_chunks sc ON sc.build_id=sb.id ORDER BY t.id
-            """)) {
+            LEFT JOIN structure_chunks sc ON sc.build_id=sb.id
+            """+" WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id")+" ORDER BY t.id")) {
             while(r.next())seeds.add(new Seed(r.getString(7)==null?r.getString(4):r.getString(7),r.getString(7)==null?Math.floorDiv(r.getInt(5),16):r.getInt(8),r.getString(7)==null?Math.floorDiv(r.getInt(6),16):r.getInt(9),r.getLong(1),r.getLong(2),r.getString(3)));
         }
         try(var insert=db.prepareStatement("INSERT OR IGNORE INTO town_claims(world,chunk_x,chunk_z,town_id,civ_id,claimed_by_uuid,claimed_at,can_unclaim) VALUES(?,?,?,?,?,?,?,0)");

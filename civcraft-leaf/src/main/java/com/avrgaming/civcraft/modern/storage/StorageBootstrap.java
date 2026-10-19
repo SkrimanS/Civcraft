@@ -135,6 +135,7 @@ public final class StorageBootstrap implements AutoCloseable {
             this.connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile);
             this.connection.setAutoCommit(true);
             applySqlitePragmas(connection);
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.suspendForBootstrap(connection);
             createBootstrapSchema();
             migrateBootstrapSchema();
             com.avrgaming.civcraft.modern.build.BuildingActivityStore.install(connection);
@@ -180,6 +181,7 @@ public final class StorageBootstrap implements AutoCloseable {
     private void applySqlitePragmas(Connection target) throws SQLException {
         try (Statement statement = target.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
+            statement.execute("PRAGMA recursive_triggers = ON");
             statement.execute("PRAGMA busy_timeout = 5000");
             statement.execute("PRAGMA journal_mode = WAL");
             statement.execute("PRAGMA synchronous = NORMAL");
@@ -876,6 +878,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized CampRecord createCamp(UUID owner, String name, Location location, double cost, int hitpoints, int firepointsHours) throws SQLException {
         connection.setAutoCommit(false);
         try {
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.register(connection,owner);
             withdrawResident(owner, cost);
             long now = System.currentTimeMillis();
             long campId;
@@ -909,6 +912,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.executeUpdate();
             }
             com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCamp(connection,campId,owner,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.registered(connection,owner);
             connection.commit();
             return findCampByOwner(owner).orElseThrow();
         } catch (SQLException exception) {
@@ -926,6 +930,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized CivRecord createCivilization(UUID leader, String name, String tag, double cost, String government) throws SQLException {
         connection.setAutoCommit(false);
         try {
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.register(connection,leader);
             withdrawResident(leader, cost);
             long now = System.currentTimeMillis();
             long civId;
@@ -945,6 +950,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.executeUpdate();
             }
             com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCivilization(connection,civId,leader,name,tag);
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.registered(connection,leader);
             connection.commit();
             return findCiv(civId).orElseThrow();
         } catch (SQLException exception) {
@@ -958,6 +964,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized TownRecord createTown(UUID mayor, long civId, String name, Location location, double cost, double hammersPerHour) throws SQLException {
         connection.setAutoCommit(false);
         try {
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.register(connection,mayor);
             withdrawResident(mayor, cost);
             long now = System.currentTimeMillis();
             long townId;
@@ -984,6 +991,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.executeUpdate();
             }
             com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureTown(connection,townId,mayor,civId,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.registered(connection,mayor);
             connection.commit();
             return findTown(townId).orElseThrow();
         } catch (SQLException exception) {
@@ -1066,10 +1074,13 @@ public final class StorageBootstrap implements AutoCloseable {
 
     public synchronized long recordPreparedStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt, Collection<StructureChunkCoord> chunks) throws SQLException {
         return transaction(db -> {
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.register(db,builder);
+            try {
             long id=recordStructureBuild(builder,townId,type,template,direction,origin,templatePath,queuedBlocks,structureId,displayName,cost,maxHitpoints,totalHammers,hammersPerHour,productionHammersPerHour,beakersPerHour,moneyPerHour,happiness,startedAt,finishAt);
             recordStructureChunks(id,townId,chunks);
             com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.buildReady(db,id);
             return id;
+            }finally{com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.registered(db,builder);}
         });
     }
 
@@ -1856,7 +1867,7 @@ public final class StorageBootstrap implements AutoCloseable {
         try (PreparedStatement statement = connection.prepareStatement("""
                 SELECT id, hammers_per_hour, beakers_per_hour, money_per_hour,
                        base_happiness, income_remainder FROM towns
-                """);
+                """+" WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"towns","towns.id"));
              ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 towns.add(new IncomeBase(

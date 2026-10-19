@@ -46,7 +46,7 @@ public final class CampLonghouseService implements Listener {
     public void runSifters() {
         if(paused)return;
         try {
-            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE breaker_upgrade=1 AND firepoints_hours>=0 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
+            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE breaker_upgrade=1 AND firepoints_hours>=0 AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"camps","camps.id")+" ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
             for(long id:ids){if(paused)break;try{sift(id);}catch(Exception failure){warn(failure);}}
         }catch(Exception failure){warn(failure);}
     }

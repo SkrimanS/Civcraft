@@ -57,7 +57,7 @@ public final class TaxStore {
             SELECT r.uuid,t.id,t.civ_id,r.coins,r.debt,t.flat_tax,t.property_tax_rate,c.income_tax_rate
             FROM residents r JOIN towns t ON t.id=r.town_id JOIN civilizations c ON c.id=t.civ_id
             WHERE r.uuid<>t.mayor_uuid AND NOT EXISTS(SELECT 1 FROM town_assistants a WHERE a.town_id=t.id AND a.player_uuid=r.uuid)
-            """)) {
+            """+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id")+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.residentVisible(db,"r.uuid"))) {
             while(r.next())bills.add(new Bill(r.getString(1),r.getLong(2),r.getLong(3),r.getLong(4),r.getLong(5),r.getLong(6),r.getDouble(7),r.getDouble(8)));
         }
         for(var bill:bills) {
@@ -103,7 +103,7 @@ public final class TaxStore {
             s.setString(1,day);s.setLong(2,now);if(s.executeUpdate()==0)return List.of();
         }
         var notices=new ArrayList<Notice>();
-        try(var s=db.createStatement();var r=s.executeQuery("SELECT uuid,town_id,debt,days_til_evict FROM residents WHERE town_id IS NOT NULL AND days_til_evict>0")) {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT uuid,town_id,debt,days_til_evict FROM residents WHERE town_id IS NOT NULL AND days_til_evict>0 AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","residents.town_id")+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.residentVisible(db,"residents.uuid"))) {
             while(r.next())notices.add(new Notice(UUID.fromString(r.getString(1)),r.getLong(2),r.getLong(3),r.getInt(4)-1,r.getInt(4)==1));
         }
         for(var notice:notices) {

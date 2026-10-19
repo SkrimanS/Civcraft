@@ -47,7 +47,7 @@ public final class UpkeepService {
                 COALESCE(c.capital_town_id,(SELECT MIN(first.id) FROM towns first WHERE first.civ_id=c.id)),
                 EXISTS(SELECT 1 FROM administrative_civilizations a WHERE a.civ_id=c.id)
                 FROM towns t JOIN civilizations c ON c.id=t.civ_id
-                """)) {
+                """+" WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id"))) {
             while(rows.next())towns.add(new Town(rows.getLong(1),rows.getLong(2),rows.getInt(3),rows.getString(4),rows.getLong(5),rows.getBoolean(6)));
         }
         for(var town:towns) {

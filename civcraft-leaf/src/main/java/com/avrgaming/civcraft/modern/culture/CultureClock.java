@@ -22,7 +22,7 @@ public final class CultureClock {
     }
     public void minute() {
         try{storage.transaction(db->{
-            var ids=new LinkedHashMap<Long,Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT t.id,t.civ_id FROM towns t WHERE NOT EXISTS(SELECT 1 FROM civ_research cr WHERE cr.civ_id=t.civ_id)")){while(r.next())ids.put(r.getLong(1),r.getLong(2));}
+            var ids=new LinkedHashMap<Long,Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT t.id,t.civ_id FROM towns t WHERE NOT EXISTS(SELECT 1 FROM civ_research cr WHERE cr.civ_id=t.civ_id) AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id"))){while(r.next())ids.put(r.getLong(1),r.getLong(2));}
             var scientific=new HashSet<Long>();
             for(var entry:ids.entrySet()) {
                 long id=entry.getKey(),civ=entry.getValue();
@@ -44,7 +44,7 @@ public final class CultureClock {
                     SELECT t.id,c.government,COALESCE(cs.unused_beakers,0) FROM towns t JOIN civilizations c ON c.id=t.civ_id
                     LEFT JOIN culture_science cs ON cs.town_id=t.id WHERE EXISTS(SELECT 1 FROM structure_builds sb
                     WHERE sb.town_id=t.id AND sb.structure_id IN ('s_townhall','s_capitol') AND sb.status IN ('QUEUED','BUILDING','COMPLETE'))
-                    """)){while(r.next())bases.add(new Base(r.getLong(1),r.getString(2),r.getDouble(3)));}
+                    """+" AND "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id"))){while(r.next())bases.add(new Base(r.getLong(1),r.getString(2),r.getDouble(3)));}
                 var plans=new ArrayList<CultureClockStore.Production>();
                 for(var base:bases) {
                     double raw=storage.staticTownCulture(base.town());

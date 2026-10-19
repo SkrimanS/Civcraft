@@ -611,6 +611,7 @@ public final class CampService {
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + settings.sqlitePath(plugin.getDataFolder().toPath()));
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
+            statement.execute("PRAGMA recursive_triggers = ON");
             statement.execute("PRAGMA busy_timeout = 5000");
         }
         return connection;
@@ -787,7 +788,7 @@ public final class CampService {
 
     private List<CampInfo> camps() throws SQLException {
         List<CampInfo> camps = new ArrayList<>();
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps")) {
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT * FROM camps WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(connection,"camps","camps.id"))) {
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
                     camps.add(mapCampInfo(rs));

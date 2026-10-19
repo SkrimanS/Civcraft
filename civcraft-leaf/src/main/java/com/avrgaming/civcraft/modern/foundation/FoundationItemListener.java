@@ -69,7 +69,7 @@ public final class FoundationItemListener implements Listener {
         settlerEnemyDistance=towns.getDouble("town.min_town_distance_enemy",settlerFriendlyDistance);
         settlerLandDistance=civs.getDouble("civ.min_distance",15);
         if(!Double.isFinite(settlerFriendlyDistance) || settlerFriendlyDistance<0 || !Double.isFinite(settlerEnemyDistance) || settlerEnemyDistance<0 || !Double.isFinite(settlerLandDistance) || settlerLandDistance<0)throw new IllegalArgumentException("Неверные расстояния основания города поселенцем.");
-        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)try{civ.storage().transaction(db->{FoundationEscrowStore.install(db);return null;});}
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)try{civ.storage().transaction(db->{FoundationEscrowStore.install(db);FoundationCreationProtection.install(db);return null;});}
         catch(SQLException failure){throw new IllegalStateException("Cannot initialize foundation escrow",failure);}
         recoverEscrows();
         plugin.getServer().getScheduler().runTaskTimer(plugin,()->{expireTownRequests();recoverEscrows();},20L,20L);

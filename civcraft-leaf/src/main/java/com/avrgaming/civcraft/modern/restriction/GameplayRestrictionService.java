@@ -441,6 +441,7 @@ public final class GameplayRestrictionService implements Listener {
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + settings.sqlitePath(plugin.getDataFolder().toPath()));
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = ON");
+            statement.execute("PRAGMA recursive_triggers = ON");
             statement.execute("PRAGMA busy_timeout = 5000");
         }
         return connection;

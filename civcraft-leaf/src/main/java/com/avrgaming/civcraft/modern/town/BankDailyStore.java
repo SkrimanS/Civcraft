@@ -25,7 +25,7 @@ public final class BankDailyStore {
                 SELECT a.town_id,a.principal,t.coins,a.interest_rate,
                 EXISTS(SELECT 1 FROM structure_builds sb WHERE sb.town_id=t.id AND sb.structure_id='s_bank' AND sb.status='COMPLETE')
                 FROM bank_interest_accounts a JOIN towns t ON t.id=a.town_id
-                """)) {
+                """+" WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","t.id"))) {
             while(rows.next())accounts.add(new Account(rows.getLong(1),rows.getLong(2),rows.getLong(3),rows.getDouble(4),rows.getBoolean(5)));
         }
         Map<Long,Long> payments=new LinkedHashMap<>();

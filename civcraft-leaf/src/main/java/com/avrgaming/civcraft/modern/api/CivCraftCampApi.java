@@ -650,6 +650,7 @@ public final class CivCraftCampApi {
         Connection connection = DriverManager.getConnection("jdbc:sqlite:" + databaseFile);
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA busy_timeout = 5000");
+            statement.execute("PRAGMA recursive_triggers = ON");
         }
         return connection;
     }

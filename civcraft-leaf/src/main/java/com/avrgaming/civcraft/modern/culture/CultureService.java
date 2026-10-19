@@ -39,7 +39,7 @@ public final class CultureService {
     }
     public void tick() {
         try {
-            var towns=storage.query(db->{var list=new ArrayList<CultureRegions.Town>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,z,accumulated_culture FROM towns ORDER BY id")) {
+            var towns=storage.query(db->{var list=new ArrayList<CultureRegions.Town>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,z,accumulated_culture FROM towns WHERE "+com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.visible(db,"towns","towns.id")+" ORDER BY id")) {
                 while(r.next()){long value=r.getLong(5),id=r.getLong(1);int x=Math.floorDiv(r.getInt(3),16),z=Math.floorDiv(r.getInt(4),16);
                     try(var hall=db.prepareStatement("""
                         SELECT MIN(sc.chunk_x)+(MAX(sc.chunk_x)-MIN(sc.chunk_x)+1)/2,

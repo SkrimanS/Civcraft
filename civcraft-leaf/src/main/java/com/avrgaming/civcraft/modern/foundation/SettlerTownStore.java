@@ -52,10 +52,13 @@ public final class SettlerTownStore {
         if(db.getAutoCommit())throw new SQLException("Settler town creation requires a transaction");
         if(sourceTown(db,founder,civ)!=previousTown)throw new IllegalArgumentException("Основатель сменил город. Повторите основание.");
         try(var s=db.prepareStatement("SELECT 1 FROM towns WHERE name=? COLLATE NOCASE")){s.setString(1,name);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Город с таким названием уже существует.");}}
+        FoundationCreationProtection.register(db,founder);
+        try {
         try(var s=db.prepareStatement("INSERT INTO towns(name,civ_id,mayor_uuid,world,x,y,z,hammers_per_hour,created_at) VALUES(?,?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
             s.setString(1,name);s.setLong(2,civ);s.setString(3,founder.toString());s.setString(4,origin.getWorld().getName());s.setInt(5,origin.getBlockX());s.setInt(6,origin.getBlockY());s.setInt(7,origin.getBlockZ());s.setDouble(8,hammers);s.setLong(9,now);s.executeUpdate();
             try(var r=s.getGeneratedKeys()){if(!r.next())throw new SQLException("Missing new settler town id");long id=r.getLong(1);FoundationCreationStore.captureTown(db,id,founder,civ,name,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ());return id;}
         }
+        }finally{FoundationCreationProtection.registered(db,founder);}
     }
     public static void complete(Connection db,UUID founder,long town,long civ,long previousTown,Location center,long now)throws SQLException {
         complete(db,founder,town,civ,previousTown,center.getWorld().getName(),center.getBlockX()>>4,center.getBlockZ()>>4,now);

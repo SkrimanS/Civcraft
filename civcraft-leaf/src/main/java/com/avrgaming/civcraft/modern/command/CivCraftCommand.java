@@ -86,6 +86,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         }
 
         try {
+            if(sender instanceof Player player && !effectiveArgs[0].equalsIgnoreCase("civadmin") && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin modern)
+                modern.storage().query(db->{com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.requirePlayerAvailable(db,player.getUniqueId());return null;});
             switch (effectiveArgs[0].toLowerCase(Locale.ROOT)) {
                 case "camp" -> {
                     Player player = requirePlayer(sender);
