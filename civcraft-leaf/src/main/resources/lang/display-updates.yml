@@ -2175,6 +2175,13 @@ updates:
 - file: lang/ru.yml
   path:
   - commands
+  - town
+  - none
+  before: У вас нет города. Используйте /town create <название>.
+  after: Вы не состоите в городе. Для вступления нужно приглашение; новый город основывается поселенцем с согласия главы цивилизации.
+- file: lang/ru.yml
+  path:
+  - commands
   - build
   - legacy-moved
   before: Legacy .def сборка перенесена в /civadmin build <file>.

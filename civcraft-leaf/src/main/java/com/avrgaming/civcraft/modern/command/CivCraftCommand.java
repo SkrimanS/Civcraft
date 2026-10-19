@@ -297,10 +297,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                     + String.join(", ", memberships.townMembers(player)));
             return;
         }
-        if (args.length >= 3 && args[1].equalsIgnoreCase("create")) {
-            TownRecord town = game.createTown(player, joinName(args, 2));
-            success(player, msg("commands.town.created", "Город {name} основан. Мэр: {mayor}, молотки: {hammers}/час, колбы: {beakers}/час, счастье: {happiness} ({state}).", "name", town.name(), "mayor", player.getName(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "happiness", town.happiness(), "state", town.happinessState()));
-            return;
+        if (args.length >= 2 && args[1].equalsIgnoreCase("create")) {
+            throw new IllegalArgumentException("Город основывается поселенцем. Возьмите юнита в руку и нажмите ПКМ, затем запросите согласие главы цивилизации.");
         }
         if (args.length >= 3 && args[1].equalsIgnoreCase("deposit")) {
             TownRecord town = game.depositTown(player, parseAmount(args[2]));
@@ -330,7 +328,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         ResidentProfile resident = game.resident(player);
         game.town(resident).ifPresentOrElse(
                 town -> send(player, msg("commands.town.info", "&6Город: &e{name} &7уровень={level}, казна={coins}, молотки={hammers}/час, колбы={beakers}/час, доход={money}/час, счастье={happiness}, недовольство={unhappiness}, доля={percentage}% ({state}, ×{multiplier})", "name", town.name(), "level", town.level(), "coins", town.coins(), "hammers", formatNumber(town.hammersPerHour()), "beakers", formatNumber(town.beakersPerHour()), "money", formatNumber(town.moneyPerHour()), "happiness", formatNumber(town.happiness()), "unhappiness",formatNumber(town.unhappiness()),"percentage",formatNumber(town.happinessPercentage()*100),"state", town.happinessState(), "multiplier", formatNumber(town.productionMultiplier()))),
-                () -> error(player, msg("commands.town.none", "У вас нет города. Используйте /town create <название>."))
+                () -> error(player, msg("commands.town.none", "Вы не состоите в городе. Для вступления нужно приглашение; новый город основывается поселенцем с согласия главы цивилизации."))
         );
         if(resident.townId()!=null) {
             plugin.governments().occupationInfo(resident.townId()).ifPresent(text->send(player,"&e"+text));
@@ -777,7 +775,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             return List.of("help", "create", "info", "gov", "dip", "advisor", "set", "upkeep", "revolution", "victory", "vote", "votes", "top5", "members", "invite", "join", "leave", "kick", "setleader", "deposit", "withdraw");
         }
         if (List.of("town", "t").contains(primary) && args.length == 1) {
-            return List.of("help", "create", "info", "upgrade", "reset", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
+            return List.of("help", "info", "upgrade", "reset", "set", "upkeep", "members", "invite", "join", "leave", "kick", "setmayor", "claim", "unclaim", "claims", "deposit", "withdraw");
         }
         if (primary.equals("civadmin")) {
             if (!sender.hasPermission("civcraft.admin")) {

@@ -5,7 +5,7 @@ import json
 
 root=Path('tools/legacy-reference')
 tree=json.loads((root/'original-tree.json').read_text(encoding='utf-8'))['tree']
-names={'CustomItemManager.java','DelayMoveInventoryItem.java','PlayerListener.java'}
+names={'CustomItemManager.java','DelayMoveInventoryItem.java','PlayerListener.java','InteractiveTownName.java','InteractiveConfirmTownCreation.java','FoundTownSync.java','TownNewRequest.java','CivLeaderQuestionTask.java'}
 for entry in tree:
     path=entry['path']
     if not path.endswith('.java') or '/src/' not in path:continue

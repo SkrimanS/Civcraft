@@ -62,6 +62,8 @@ public final class LegacyStructureService {
 
     public BuildQueue.DestructionSnapshot snapshotForSabotage(long build){if(recoveringTerrain.contains(build))throw new IllegalArgumentException("Территория стройки восстанавливается. Дождитесь возобновления строительства.");return buildQueue.snapshotForDestruction(build);}
     public void stopSabotagedBuild(long build){buildQueue.cancelBuild(build);}
+    /** Only used by the same-tick foundation rollback before its queue can place blocks. */
+    public void stopFoundationBuild(long build){buildQueue.cancelBuild(build);}
     /** Wait for preview cleanup and any older recovery before a camp restores its journal. */
     public boolean stopBuildForCampRestore(long build) {
         buildQueue.cancelBuild(build);
@@ -512,6 +514,11 @@ public final class LegacyStructureService {
     public QueuedLegacyBuild buildTownHallStructureAtOrigin(Player player, TownRecord town, Location origin) throws IOException, SQLException {
         StructureDefinition definition = definition(settings.townHallStructureId());
         return buildDefinedStructureAtOrigin(player, town, definition, settings.legacyDefaultDirection(), origin, 0.0, false);
+    }
+
+    public QueuedLegacyBuild buildSettlerTownHallAtOrigin(Player player,TownRecord town,Location origin)throws IOException,SQLException {
+        StructureDefinition definition=definition(settings.townHallStructureId());
+        return buildDefinedStructureAtOrigin(player,town,definition,settings.legacyDefaultDirection(),origin,definition.hammerCost(),false);
     }
 
     public QueuedLegacyBuild buildCapitalStructure(Player player, TownRecord town, Location location) throws IOException, SQLException {

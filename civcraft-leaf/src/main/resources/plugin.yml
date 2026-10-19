@@ -19,6 +19,14 @@ softdepend:
   - FancyNpcs
   - ItemsAdder
 commands:
+  accept:
+    description: Одобрить ожидающий запрос основания города своей цивилизации.
+    usage: /<command>
+    permission: civcraft.use
+  deny:
+    description: Отклонить ожидающий запрос основания города своей цивилизации.
+    usage: /<command>
+    permission: civcraft.use
   spy:
     description: Шпионаж, книги миссий и состояние раскрытия.
     usage: /<command> [list|equip|start <ID>|confirm yes|status|cancel]
@@ -44,7 +52,7 @@ commands:
   town:
     aliases: [t]
     description: Город, жители, участки, мэр и казна.
-    usage: /<command> [help|create|info|members|invite <ник>|join|leave|kick <ник>|setmayor <ник>|claim|unclaim|claims|deposit|withdraw]
+    usage: /<command> [help|info|members|invite <ник>|join|leave|kick <ник>|setmayor <ник>|claim|unclaim|claims|deposit|withdraw]
     permission: civcraft.use
   build:
     aliases: [b]

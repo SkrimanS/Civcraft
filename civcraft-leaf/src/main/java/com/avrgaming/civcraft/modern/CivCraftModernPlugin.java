@@ -55,6 +55,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private SettlementMembershipService memberships;
     private CivCraftPlaceholderExpansion placeholderExpansion;
     private FoundationItemListener foundationItems;
+    public FoundationItemListener foundations(){return foundationItems;}
     private com.avrgaming.civcraft.modern.war.WarCampItemService warCampItems;
     private com.avrgaming.civcraft.modern.war.SiegeCannonService siegeCannons;
     private com.avrgaming.civcraft.modern.road.RoadService roads;
@@ -312,6 +313,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ProtectedBlockListener(this, storage, lang), this);
         new com.avrgaming.civcraft.modern.build.LegacySignMigration(this,storage);
         this.foundationItems = new FoundationItemListener(this, game, legacyStructures, tabPrefixes, settings, lang);
+        java.util.Objects.requireNonNull(getCommand("accept")).setExecutor((sender,command,label,args)->foundationItems.respondTownRequest(sender,true));
+        java.util.Objects.requireNonNull(getCommand("deny")).setExecutor((sender,command,label,args)->foundationItems.respondTownRequest(sender,false));
         getServer().getPluginManager().registerEvents(foundationItems, this);
         getServer().getPluginManager().registerEvents(new StructurePreviewChatListener(this, legacyStructures, lang), this);
         getServer().getPluginManager().registerEvents(new CampListener(this, campService), this);
