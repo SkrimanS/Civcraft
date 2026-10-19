@@ -30,6 +30,7 @@ public final class SiegeCannonImpact {
                 var b=world.getBlockAt(center.getBlockX()+x,by,center.getBlockZ()+z);
                 if(b.getType()==Material.BEDROCK || b.getLocation().distanceSquared(center)>catalog.radius()*catalog.radius())continue;
                 if(SiegeWorldStore.locked(db,world.getName(),b.getX(),b.getY(),b.getZ()))throw new IllegalArgumentException("В зоне попадания ещё сохраняются изменения мира.");
+                if(com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,world.getName(),b.getX(),b.getY(),b.getZ()))throw new IllegalArgumentException("В зоне попадания ещё сохраняется дорога.");
                 if(production.contains(new SiegeWorldStore.Position(b.getX(),b.getY(),b.getZ())))throw new IllegalArgumentException("В зоне попадания ещё сохраняется рост или посадка растений.");
                 var target=SiegeCannonImpactStore.target(db,world.getName(),b.getX(),b.getY(),b.getZ(),plugin.settings().campStructureId());
                 if(target!=null && target.type()!=null && destroyable.contains(target.type()))target=null;

@@ -294,7 +294,7 @@ public final class LegacyStructureService {
     public void restoreCompletedChestMarkers() {
         record Completed(long id,String world,int x,int y,int z,String path) {}
         final List<Completed> builds;
-        try{builds=storage.query(db->{var list=new ArrayList<Completed>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE'")){while(r.next())list.add(new Completed(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return list;});}
+        try{builds=storage.query(db->{var list=new ArrayList<Completed>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id,world,x,y,z,template_path FROM structure_builds WHERE status='COMPLETE' AND COALESCE(structure_id,'')<>'ti_road'")){while(r.next())list.add(new Completed(r.getLong(1),r.getString(2),r.getInt(3),r.getInt(4),r.getInt(5),r.getString(6)));}return list;});}
         catch(SQLException failure){plugin.getLogger().warning("Unable to inspect structural chests: "+failure.getMessage());return;}
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin,()->{
             for(var build:builds)try {
@@ -562,7 +562,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin, template);
         validateChunkSolidSupport(origin, template, chunks);
-        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ());
+        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ(),town==null?null:town.civId());
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -646,7 +646,7 @@ public final class LegacyStructureService {
         }
         List<StructureChunkCoord> chunks = BuildQueue.chunksFor(origin.getWorld().getName(), origin.getBlockX(), origin.getBlockZ(), template.sizeX(), template.sizeZ());
         validateChunkSolidSupport(origin, template.sizeY(), chunks);
-        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ());
+        rejectExistingTileEntities(origin, template.sizeY(), chunks,structureId,template.sizeX(),template.sizeZ(),town==null?null:town.civId());
         if (storage.hasStructureChunkOverlap(chunks)) {
             throw new IllegalArgumentException("Нельзя поставить постройку: один из чанков уже занят другой постройкой.");
         }
@@ -802,8 +802,9 @@ public final class LegacyStructureService {
      * Later versions can allow them once an NBT-aware journal exists.
      */
     private void rejectExistingTileEntities(Location origin, int sizeY,
-                                            List<StructureChunkCoord> chunks,String type,int width,int depth)throws SQLException {
+                                            List<StructureChunkCoord> chunks,String type,int width,int depth,Long civ)throws SQLException {
         storage.query(db->{com.avrgaming.civcraft.modern.war.SiegeWorldStore.requireAreaFree(db,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),width,sizeY,depth);return null;});
+        storage.query(db->{com.avrgaming.civcraft.modern.road.RoadStore.requireAreaFree(db,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),width,sizeY,depth,civ);return null;});
         if (!plugin.getConfig().getBoolean("structures.protect-existing-tile-entities", true)) {
             return;
         }

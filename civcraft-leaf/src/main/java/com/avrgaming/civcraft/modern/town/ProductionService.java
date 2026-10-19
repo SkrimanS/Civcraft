@@ -310,7 +310,7 @@ public final class ProductionService implements Listener {
     private void interrupt(String phase,long build){if((build==Long.getLong("civcraft.test.production.build",-1) && phase.equals(System.getProperty("civcraft.test.production.interruption"))) || (build==Long.getLong("civcraft.test.fishery.build",-1) && phase.equals(System.getProperty("civcraft.test.fishery.interruption")))){paused=true;throw new IllegalStateException("Injected production interruption at "+phase);}}
     private boolean locked(Block b){
         if(locked.contains(new Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ())))return true;
-        try{return storage.query(db->com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db) && (com.avrgaming.civcraft.modern.war.SiegeWorldStore.locked(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ()) || com.avrgaming.civcraft.modern.war.SiegeWorldStore.retainedContainer(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ(),System.currentTimeMillis())));}
+        try{return storage.query(db->com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ()) || com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db) && (com.avrgaming.civcraft.modern.war.SiegeWorldStore.locked(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ()) || com.avrgaming.civcraft.modern.war.SiegeWorldStore.retainedContainer(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ(),System.currentTimeMillis())));}
         catch(SQLException failure){warn("Cannot validate siege world lock",failure);return true;}
     }
     private boolean locked(Inventory inventory){return locked(inventory.getHolder());}

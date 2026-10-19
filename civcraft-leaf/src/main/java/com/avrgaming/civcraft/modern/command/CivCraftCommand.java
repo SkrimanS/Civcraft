@@ -336,6 +336,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleBuild(Player player, String[] args) throws IOException, SQLException {
+        if(plugin.roads()!=null && plugin.roads().command(player,args))return;
         if(args.length>=2&&List.of("validatenearest","validate").contains(args[1].toLowerCase(Locale.ROOT))){plugin.hallValidation().request(player);return;}
         if(args.length>=2 && (args[1].equalsIgnoreCase("repairnearest") || args[1].equalsIgnoreCase("repair"))) {
             plugin.buildingRepair().command(player,args.length>=3 && args[2].equalsIgnoreCase("yes"));return;
@@ -605,6 +606,8 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
     }
 
     private void helpBuild(Player player) {
+        send(player,"&e/b ti_road&7 — дорога между двумя маркерами; /b undo — отменить последнюю дорогу с возвратом стоимости");
+        send(player,"&e/b demolishroad <ID>&7 — убрать дорогу без возврата монет");
         send(player,"&e/b repairnearest [yes]&7 - ремонт ближайшего разрушенного здания за 50% стоимости");
         send(player,"&e/b validatenearest&7 - проверка опоры ближайшего здания своего города");
         for (String line : lang.list("commands.help.build", List.of(
@@ -763,7 +766,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
         }
         if (List.of("build", "b").contains(primary) && args.length == 1) {
-            return List.of("list", "cancel", "demolish", "repairnearest", "repair", "validatenearest", "validate", "info", "time", "s_townhall", "s_capitol");
+            return List.of("list", "cancel", "demolish", "demolishroad", "undo", "ti_road", "repairnearest", "repair", "validatenearest", "validate", "info", "time", "s_townhall", "s_capitol");
         }
         if (List.of("research", "tech").contains(primary) && args.length == 1) {
             return List.of("list", "start", "status", "rate");

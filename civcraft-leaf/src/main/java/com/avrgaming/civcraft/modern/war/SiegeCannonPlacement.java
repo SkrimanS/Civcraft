@@ -32,6 +32,7 @@ public final class SiegeCannonPlacement {
         SiegeCannonRules.terrain(origin.y(),total/(template.width()*(double)template.depth()));
         // Check the whole volume, including the places where the template writes air.
         storage.query(db->{
+            com.avrgaming.civcraft.modern.road.RoadStore.requireAreaFree(db,world.getName(),origin.x(),origin.y(),origin.z(),template.width(),template.height(),template.depth(),null);
             var production=SiegeWorldStore.productionLocks(db,world.getName());
             for(int x=0;x<template.width();x++)for(int y=0;y<template.height();y++)for(int z=0;z<template.depth();z++){
                 var b=world.getBlockAt(origin.x()+x,origin.y()+y,origin.z()+z);

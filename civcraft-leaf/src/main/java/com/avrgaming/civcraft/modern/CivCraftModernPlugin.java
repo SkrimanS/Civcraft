@@ -56,6 +56,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private FoundationItemListener foundationItems;
     private com.avrgaming.civcraft.modern.war.WarCampItemService warCampItems;
     private com.avrgaming.civcraft.modern.war.SiegeCannonService siegeCannons;
+    private com.avrgaming.civcraft.modern.road.RoadService roads;
+    public com.avrgaming.civcraft.modern.road.RoadService roads(){return roads;}
     public boolean isWarCampPending(java.util.UUID player){return warCampItems!=null&&warCampItems.hasPending(player);}
     public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
     private TabPrefixService tabPrefixes;
@@ -278,6 +280,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,buildingActivity::tick,20L,20L);
             new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
             new com.avrgaming.civcraft.modern.town.UnitInventoryService(this,storage);
+            roads=new com.avrgaming.civcraft.modern.road.RoadService(this,storage);
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
@@ -327,6 +330,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if(roads!=null)roads.close();
         if(siegeCannons!=null)siegeCannons.close();
         if(arrowTowers!=null)arrowTowers.close();
         if (foundationItems != null) {
