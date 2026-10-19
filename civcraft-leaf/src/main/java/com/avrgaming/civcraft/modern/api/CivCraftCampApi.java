@@ -297,7 +297,7 @@ public final class CivCraftCampApi {
                 UPDATE camps
                 SET control_hp = MAX(1, control_hp + ?),
                     control_max_hp = MAX(1, control_max_hp + ?)
-                WHERE id = ?
+                WHERE id = ? AND control_hp > 0
                 """)) {
             statement.setInt(1, amount);
             statement.setInt(2, amount);

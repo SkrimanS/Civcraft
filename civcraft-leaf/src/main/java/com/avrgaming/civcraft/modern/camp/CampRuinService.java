@@ -71,17 +71,19 @@ public final class CampRuinService implements Listener {
         if(paused)return;
         for(var existing:storage.query(CampRuinStore::pending))if(existing.camp()==camp){finish(existing);return;}
         var build=storage.query(db->{CampLonghouseStore.requireUnlocked(db,camp);try(var s=db.prepareStatement("""
-                SELECT c.owner_uuid,b.id FROM camps c JOIN structure_builds b ON b.world=c.world AND b.x=c.x AND b.y=c.y AND b.z=c.z
+                SELECT c.owner_uuid,b.id,c.control_hp,c.control_block_world,c.control_block_x,c.control_block_y,c.control_block_z FROM camps c JOIN structure_builds b ON b.world=c.world AND b.x=c.x AND b.y=c.y AND b.z=c.z
                 WHERE c.id=? AND b.structure_id=? AND b.status='COMPLETE' ORDER BY b.id DESC LIMIT 1
-                """)) {s.setLong(1,camp);s.setString(2,structureId);try(var r=s.executeQuery()){return r.next()?new Build(r.getLong(2),UUID.fromString(r.getString(1))):null;}}});
+                """)) {s.setLong(1,camp);s.setString(2,structureId);try(var r=s.executeQuery()){return r.next()?new Build(r.getLong(2),UUID.fromString(r.getString(1)),r.getInt(3),r.getString(4)==null?null:new Position(r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7))):null;}}});
         if(build==null)throw new SQLException("Completed camp structure is unavailable for ruin planning");
         var positions=storage.query(db->{var out=new LinkedHashSet<Position>();try(var s=db.prepareStatement("SELECT world,x,y,z FROM protected_blocks WHERE build_id=? ORDER BY world,x,y,z")){s.setLong(1,build.id());try(var r=s.executeQuery()){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}}
             try(var s=db.prepareStatement("SELECT world,x,y,z,command FROM camp_template_markers WHERE camp_id=? AND command IN ('/growth','/fire')")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next()){var p=new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4));if(r.getString(5).equals("/fire"))out.remove(p);else{out.add(p);out.add(new Position(p.world(),p.x(),p.y()+1,p.z()));}}}}return out;});
         var special=storage.query(db->{var out=new HashSet<Position>();try(var s=db.prepareStatement("SELECT world,x,y,z FROM structure_chests WHERE build_id=?")){s.setLong(1,build.id());try(var r=s.executeQuery()){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}}return out;});
         var cells=new ArrayList<CampRuinStore.Cell>();
         for(var p:positions) {
-            var block=block(p);var result=CampRuinRules.roll(block.getType(),special.contains(p) || block.getState() instanceof Sign,random);
-            cells.add(new CampRuinStore.Cell(p,block.getBlockData().getAsString(),result.replacement()==null?null:result.replacement().createBlockData().getAsString(),result.effect()));
+            var block=block(p);boolean destroyedControl=build.hp()<=0 && p.equals(build.control());
+            var result=CampRuinRules.roll(destroyedControl?Material.AIR:block.getType(),special.contains(p) || block.getState() instanceof Sign,random);
+            var replacement=result.replacement()==null && destroyedControl?Material.AIR:result.replacement();
+            cells.add(new CampRuinStore.Cell(p,block.getBlockData().getAsString(),replacement==null?null:replacement.createBlockData().getAsString(),result.effect()));
         }
         var members=storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.prepareStatement("SELECT uuid FROM camp_members WHERE camp_id=?")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(UUID.fromString(r.getString(1)));}}return out;});
         var pending=new CampRuinStore.Pending(camp,build.id(),build.leader(),title,cells,members);
@@ -167,6 +169,6 @@ public final class CampRuinService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonExtendEvent e){if(e.getBlocks().stream().anyMatch(b->locked(b) || locked(b.getRelative(e.getDirection()))))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonRetractEvent e){if(e.getBlocks().stream().anyMatch(b->locked(b) || locked(b.getRelative(e.getDirection()))))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void effectDamage(EntityDamageByEntityEvent e){if(e.getDamager() instanceof Firework f && f.getPersistentDataContainer().has(effectKey,PersistentDataType.BYTE))e.setCancelled(true);}
-    private record Build(long id,UUID leader) {}
+    private record Build(long id,UUID leader,int hp,Position control) {}
     private record RestoreBuild(long id,UUID leader,String status,boolean journal,boolean ready) {}
 }

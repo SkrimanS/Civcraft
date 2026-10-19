@@ -24,6 +24,10 @@ public final class BuildingDamageService implements Listener {
         try {
             if(!storage.isProtectedBlock(block.getWorld().getName(),block.getX(),block.getY(),block.getZ()))return;
             long now=System.currentTimeMillis();if(!storage.query(db->WarClockStore.active(db,now)))return;
+            // Camps follow their own daily raid window, including during a civilization war.
+            boolean camp=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND b.structure_id=?")) {
+                s.setString(1,block.getWorld().getName());s.setInt(2,block.getX());s.setInt(3,block.getY());s.setInt(4,block.getZ());s.setString(5,plugin.settings().campStructureId());try(var r=s.executeQuery()){return r.next();}
+            }});if(camp)return;
             event.setCancelled(true);var material=block.getType();String name=material.name();
             int damage=com.avrgaming.civcraft.modern.wonder.GreatLibraryEnchantments.structureDamage(event.getPlayer().getInventory().getItemInMainHand(),1);
             var control=storage.query(db->ControlPointStore.point(db,block.getWorld().getName(),block.getX(),block.getY(),block.getZ()));

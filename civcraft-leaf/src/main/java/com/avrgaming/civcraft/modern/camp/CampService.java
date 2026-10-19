@@ -55,8 +55,6 @@ public final class CampService {
     private static final String ROLE_MEMBER = "MEMBER";
     private static final long TP_COOLDOWN_MILLIS = 30L * 60L * 1000L;
 
-    private static final long CONTROL_ATTACK_DELAY_MILLIS = 24L * 60L * 60L * 1000L;
-    private static final int CONTROL_MAX_HP = 50;
     private static final String CONTROL_HOLOGRAM_PREFIX = "§cКонтрольный блок: ";
 
     private final JavaPlugin plugin;
@@ -73,6 +71,7 @@ public final class CampService {
     private final CampTemplateService templates;
     private final CampFireService fire;
     private final CampRuinService ruins;
+    private final long raidLengthMillis;
 
     public CampService(JavaPlugin plugin, CivCraftGameService game, CivCraftEconomyService economy, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -81,7 +80,12 @@ public final class CampService {
         this.settings = settings;
         reloadMessages();
         initializeStorage();
+        int raidHours=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml")).getInt("camp.raid_length",2);
+        if(raidHours<1 || raidHours>24)throw new IllegalArgumentException("Invalid daily camp raid duration");
+        raidLengthMillis=raidHours*3600000L;
         try {
+            int base=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/war.yml")).getInt("war.control_block_hitpoints_camp",100);
+            try(Connection connection=connect()){connection.setAutoCommit(false);try{CampRaidStore.install(connection,base);connection.commit();}catch(SQLException | RuntimeException failure){connection.rollback();throw failure;}}
             templates = new CampTemplateService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,settings.campStructureId());
             longhouse = new CampLonghouseService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin);
             fire = new CampFireService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,templates);
@@ -192,7 +196,7 @@ public final class CampService {
         player.sendMessage(msg("camp.info.members", "§7Участники: §e{members}", "{members}", normal.isEmpty() ? message("camp.common.none", "-") : String.join(", ", normal)));
         player.sendMessage(msg("camp.info.level", "§7Уровень большого дома: §e{level}§7, питание: §e{experience}/{next}", "{level}", String.valueOf(camp.level()), "{experience}", String.valueOf(camp.experience()), "{next}", String.valueOf(nextLevelXp(camp.level()))));
         player.sendMessage(msg("camp.info.bread", "§7Хлеб в час: §e{bread}§7, жителей: §e{members}", "{bread}", String.valueOf(breadRequired(camp.level(), membersCount)), "{members}", String.valueOf(membersCount)));
-        player.sendMessage(msg("camp.info.control", "§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(CONTROL_MAX_HP), "{raid}", raidStatus(camp)));
+        player.sendMessage(msg("camp.info.control", "§7Контрольный блок: §e{hp}/{max_hp} HP§7, рейд: §e{raid}", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(camp.controlMaximum()), "{raid}", raidStatus(camp)));
         player.sendMessage("§7За каждый успешный час питания жетон лидерства появляется в сундуке большого дома.");
         player.sendMessage("§7Большой дом: " + (longhouseEnabled(camp.id()) ? "§aкуплен" : "§cне куплен"));
         player.sendMessage("§7Костёр: §e"+Math.max(0,fire.points(camp.id()))+"/"+fire.maximum()+" ч.§7, угля за час: §e"+fire.coalPerPoint());
@@ -809,7 +813,8 @@ public final class CampService {
                 location(rs, "breaker_input"),
                 location(rs, "breaker_output"),
                 location(rs, "control_block"),
-                rs.getInt("control_hp")
+                rs.getInt("control_hp"),
+                rs.getInt("control_max_hp")
         );
     }
 
@@ -969,8 +974,8 @@ public final class CampService {
         }
     }
 
-    private boolean isControlAttackReady(CampInfo camp) {
-        return controlAttackTimeLeft(camp) <= 0L;
+    private boolean isControlAttackReady(CampInfo camp)throws SQLException {
+        return raidWindow(camp).open();
     }
 
     public boolean isCampMemberAt(UUID playerUuid, String world, int chunkX, int chunkZ) {
@@ -1018,19 +1023,24 @@ public final class CampService {
                 player.sendMessage(msg("camp.control.locked", "Контрольный блок лагеря будет доступен для атаки через {time}.", "{time}", formatDuration(controlAttackTimeLeft(camp))));
                 return true;
             }
-            int newHp = Math.max(0, camp.controlHp() - 1);
-            try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("UPDATE camps SET control_hp = ? WHERE id = ?")) {
-                statement.setInt(1, newHp);
-                statement.setLong(2, camp.id());
-                statement.executeUpdate();
+            int newHp;
+            try (Connection connection = connect()) {
+                connection.setAutoCommit(false);
+                try{newHp=CampRaidStore.hit(connection,camp.id(),raidLengthMillis,System.currentTimeMillis()).health();connection.commit();}
+                catch(SQLException | RuntimeException failure){connection.rollback();throw failure;}
             }
             CampInfo updated = campInfo(camp.id()).orElse(camp);
             updateControlHologram(updated);
             if (newHp <= 0) {
+                block.getWorld().playSound(block.getLocation(),org.bukkit.Sound.BLOCK_ANVIL_BREAK,1,.5f);
+                block.getWorld().playSound(block.getLocation(),org.bukkit.Sound.ENTITY_GENERIC_EXPLODE,1,1);
                 destroyCamp(camp.id(), true);
                 player.sendMessage(message("camp.control.destroyed", "Контрольный блок лагеря разрушен."));
             } else {
-                player.sendMessage(msg("camp.control.hit", "Контрольный блок лагеря: {hp}/{max_hp} HP.", "{hp}", String.valueOf(newHp), "{max_hp}", String.valueOf(CONTROL_MAX_HP)));
+                block.getWorld().playSound(block.getLocation(),org.bukkit.Sound.BLOCK_ANVIL_USE,.2f,1);
+                block.getWorld().spawnParticle(org.bukkit.Particle.FLAME,block.getLocation().add(.5,.5,.5),4,.2,.2,.2,0);
+                for(var member:members(camp.id())){var online=Bukkit.getPlayer(member.uuid());if(online!=null)online.sendMessage("§eКонтрольный блок лагеря атакован!");}
+                player.sendMessage(msg("camp.control.hit", "Контрольный блок лагеря: {hp}/{max_hp} HP.", "{hp}", String.valueOf(newHp), "{max_hp}", String.valueOf(camp.controlMaximum())));
             }
             return true;
         } catch (IllegalArgumentException pending) {
@@ -1110,13 +1120,15 @@ public final class CampService {
         }
     }
 
-    private long controlAttackTimeLeft(CampInfo camp) {
-        return Math.max(0L, CONTROL_ATTACK_DELAY_MILLIS - (System.currentTimeMillis() - camp.createdAt()));
+    private CampRaidRules.Window raidWindow(CampInfo camp)throws SQLException {
+        try(Connection connection=connect()){return CampRaidStore.window(connection,camp.id(),raidLengthMillis,System.currentTimeMillis());}
     }
-
-    private String raidStatus(CampInfo camp) {
-        long left = controlAttackTimeLeft(camp);
-        return left <= 0L ? message("camp.raid.available", "доступен") : msg("camp.raid.left", "через {time}", "{time}", formatDuration(left));
+    private long controlAttackTimeLeft(CampInfo camp)throws SQLException {
+        var window=raidWindow(camp);return window.open()?0:Math.max(1,window.start()-System.currentTimeMillis());
+    }
+    private String raidStatus(CampInfo camp)throws SQLException {
+        var window=raidWindow(camp);long now=System.currentTimeMillis();
+        return window.open()?message("camp.raid.available","доступен")+", ещё "+formatDuration(Math.max(0,window.end()-now)):msg("camp.raid.left", "через {time}", "{time}", formatDuration(Math.max(1,window.start()-now)));
     }
 
     private String formatDuration(long millis) {
@@ -1139,7 +1151,7 @@ public final class CampService {
             return;
         }
         Location holoLocation = control.clone().add(0.5, 1.35, 0.5);
-        String line = msg("camp.control.hologram", "§cКонтрольный блок: {hp}/{max_hp} HP", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(CONTROL_MAX_HP));
+        String line = msg("camp.control.hologram", "§cКонтрольный блок: {hp}/{max_hp} HP", "{hp}", String.valueOf(camp.controlHp()), "{max_hp}", String.valueOf(camp.controlMaximum()));
         if (updateDecentHologram(camp.id(), holoLocation, line)) {
             removeNearbyArmorStandHolograms(holoLocation);
             return;
@@ -1344,7 +1356,7 @@ public final class CampService {
 
     private record Workstations(Location food, Location breakerInput, Location breakerOutput, Location controlBlock) {}
 
-    private record CampInfo(long id, String name, UUID leaderUuid, String world, int x, int y, int z, int level, int experience, int leadershipPoints, boolean farmUpgrade, boolean breakerUpgrade, long createdAt, Location foodChestLocation, Location breakerInputLocation, Location breakerOutputLocation, Location controlBlockLocation, int controlHp) {
+    private record CampInfo(long id, String name, UUID leaderUuid, String world, int x, int y, int z, int level, int experience, int leadershipPoints, boolean farmUpgrade, boolean breakerUpgrade, long createdAt, Location foodChestLocation, Location breakerInputLocation, Location breakerOutputLocation, Location controlBlockLocation, int controlHp,int controlMaximum) {
         boolean hasAllWorkstations() {
             return foodChestLocation != null && breakerInputLocation != null && breakerOutputLocation != null && controlBlockLocation != null;
         }
