@@ -40,6 +40,7 @@ public final class SiegeWorldStore {
         var jobs=new ArrayList<Job>();try(var s=db.createStatement();var r=s.executeQuery("SELECT * FROM siege_world_jobs WHERE state='PREPARED' ORDER BY rowid")){while(r.next())jobs.add(new Job(r.getString("id"),r.getLong("war_start"),r.getString("world"),r.getString("kind"),r.getString("state")));}return jobs;
     }
     public static void done(Connection db,String id)throws SQLException{
+        LegacyExplosionStore.worldDone(db,id);
         transaction(db);try(var s=db.prepareStatement("UPDATE siege_world_jobs SET state='DONE' WHERE id=? AND state='PREPARED'")){s.setString(1,id);if(s.executeUpdate()!=1)throw new SQLException("Siege world job changed");}
     }
     public static boolean tradeComplete(Connection db,String id)throws SQLException{
@@ -85,7 +86,7 @@ public final class SiegeWorldStore {
     /** Cancel unfinished effects, then restore the first snapshot, never a later cannon's rubble. */
     public static void expire(Connection db,long now)throws SQLException{
         transaction(db);record Region(long war,String world){}var regions=new ArrayList<Region>();
-        try(var s=db.prepareStatement("SELECT DISTINCT t.war_start,t.world FROM (SELECT war_start,world FROM siege_original_terrain UNION SELECT war_start,world FROM siege_cannons) t JOIN war_sessions w ON w.start_at=t.war_start WHERE w.state<>'ACTIVE' OR w.end_at<=?")){s.setLong(1,now);try(var r=s.executeQuery()){while(r.next())regions.add(new Region(r.getLong(1),r.getString(2)));}}
+        try(var s=db.prepareStatement("SELECT DISTINCT t.war_start,t.world FROM (SELECT war_start,world FROM siege_original_terrain UNION SELECT war_start,world FROM siege_cannons UNION SELECT war_start,world FROM siege_world_jobs WHERE kind<>'RESTORE') t JOIN war_sessions w ON w.start_at=t.war_start WHERE w.state<>'ACTIVE' OR w.end_at<=?")){s.setLong(1,now);try(var r=s.executeQuery()){while(r.next())regions.add(new Region(r.getLong(1),r.getString(2)));}}
         for(var region:regions){String id="restore:"+region.war()+":"+region.world();if(job(db,id)!=null)continue;
             try(var s=db.prepareStatement("UPDATE siege_world_jobs SET state='CANCELLED' WHERE war_start=? AND world=? AND state='PREPARED'")){s.setLong(1,region.war());s.setString(2,region.world());s.executeUpdate();}
             try(var s=db.prepareStatement("UPDATE siege_cannons SET state='EXPIRED' WHERE war_start=? AND world=?")){s.setLong(1,region.war());s.setString(2,region.world());s.executeUpdate();}

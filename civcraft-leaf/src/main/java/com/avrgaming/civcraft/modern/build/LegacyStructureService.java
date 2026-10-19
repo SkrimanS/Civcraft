@@ -57,7 +57,10 @@ public final class LegacyStructureService {
         storage.setStructureDefinitions(definitions);
         storage.setHammerCosts(new HammerCosts(new java.io.File(plugin.getDataFolder(),"civcraft/data")));
         this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick(), storage::persistStructureSnapshot);
-        this.buildQueue.setBuildPermit(id -> !storage.query(db -> com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,id)));
+        this.buildQueue.setBuildPermit(id -> storage.query(db -> {
+            if(com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,id))return false;
+            try(var statement=db.prepareStatement("SELECT 1 FROM structure_builds WHERE id=? AND status IN ('QUEUED','BUILDING')")){statement.setLong(1,id);try(var rows=statement.executeQuery()){return rows.next();}}
+        }));
         warmupTemplateCacheAsync();
     }
 

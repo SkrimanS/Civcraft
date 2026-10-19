@@ -474,6 +474,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
                 send(sender, "&7Показаны первые 15 записей. Остальные доступны в журнале сервера и SQLite.");
             }
             var foundations=plugin.storage().query(com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore::active);
+            var explosions=plugin.storage().query(db->com.avrgaming.civcraft.modern.war.LegacyExplosionStore.installed(db)?com.avrgaming.civcraft.modern.war.LegacyExplosionStore.pending(db):List.<com.avrgaming.civcraft.modern.war.LegacyExplosionStore.Request>of());
+            send(sender,"&6Военных взрывов, ожидающих планирования: &e"+explosions.size());
+            for(var explosion:explosions.stream().limit(10).toList())send(sender,"&7"+explosion.id()+" — "+explosion.world()+": "+explosion.x()+", "+explosion.y()+", "+explosion.z());
             send(sender,"&6Незавершённых оснований/возвратов: &e"+foundations.size());
             for(var foundation:foundations.stream().limit(15).toList()) {
                 String player=plugin.storage().findResident(foundation.player()).map(ResidentProfile::name).orElse(foundation.player().toString());
