@@ -29,6 +29,7 @@ public final class ProtectedBlockListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         try {
+            if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.camps()!=null && civ.camps().canEditGarden(event.getPlayer(),block))return;
             if (storage.isProtectedBlock(block.getWorld().getName(), block.getX(), block.getY(), block.getZ())) {
                 event.setCancelled(true);
                 event.getPlayer().sendMessage(lang.component("protected-block.break", "&cЭтот блок является структурным блоком CivCraft-постройки."));

@@ -117,7 +117,7 @@ public final class CampListener implements Listener {
             return;
         }
         Block block = event.getClickedBlock();
-        if (block.getType() == Material.FARMLAND && camps.isCampStructureChunk(block.getWorld().getName(), block.getChunk().getX(), block.getChunk().getZ())) {
+        if (block.getType() == Material.FARMLAND && camps.isGardenSoil(block)) {
             event.setCancelled(true);
         }
     }
@@ -125,7 +125,7 @@ public final class CampListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onFarmlandDry(BlockFadeEvent event) {
         Block block = event.getBlock();
-        if (block.getType() == Material.FARMLAND && camps.isCampStructureChunk(block.getWorld().getName(), block.getChunk().getX(), block.getChunk().getZ())) {
+        if (block.getType() == Material.FARMLAND && camps.isGardenSoil(block)) {
             event.setCancelled(true);
         }
     }
@@ -133,7 +133,7 @@ public final class CampListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onCropGrow(BlockGrowEvent event) {
         Block block = event.getBlock();
-        if (camps.isCampStructureChunk(block.getWorld().getName(), block.getChunk().getX(), block.getChunk().getZ())) {
+        if (camps.isCampStructureChunk(block.getWorld().getName(), block.getChunk().getX(), block.getChunk().getZ()) && !camps.isGardenGrowthAllowed(block)) {
             event.setCancelled(true);
         }
     }

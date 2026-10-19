@@ -59,6 +59,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
     private TabPrefixService tabPrefixes;
     private CampService campService;
+    public CampService camps() { return campService; }
     private CivCraftCampApi campApi;
     private CampNpcMenusService campNpcMenus;
     private Lang lang;

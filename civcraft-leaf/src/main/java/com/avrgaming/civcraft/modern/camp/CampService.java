@@ -33,7 +33,6 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import java.time.Duration;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -43,11 +42,9 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
-import org.bukkit.block.data.Ageable;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -57,7 +54,7 @@ public final class CampService {
     private static final String ROLE_ELDER = "ELDER";
     private static final String ROLE_MEMBER = "MEMBER";
     private static final long TP_COOLDOWN_MILLIS = 30L * 60L * 1000L;
-    private static final long PLANT_GROW_MILLIS = 30L * 60L * 1000L;
+
     private static final long CONTROL_ATTACK_DELAY_MILLIS = 24L * 60L * 60L * 1000L;
     private static final int CONTROL_MAX_HP = 50;
     private static final String CONTROL_HOLOGRAM_PREFIX = "§cКонтрольный блок: ";
@@ -69,10 +66,11 @@ public final class CampService {
     private final Map<UUID, PendingInvite> invites = new ConcurrentHashMap<>();
     private final Map<UUID, Long> teleportCooldowns = new ConcurrentHashMap<>();
     private final Map<UUID, Long> disbandConfirmations = new ConcurrentHashMap<>();
-    private final Map<String, Long> cropStartTimes = new ConcurrentHashMap<>();
+
     private volatile YamlConfiguration messages;
     private final Random random = new Random();
     private final CampLonghouseService longhouse;
+    private final CampTemplateService templates;
 
     public CampService(JavaPlugin plugin, CivCraftGameService game, CivCraftEconomyService economy, ModernCivCraftSettings settings) {
         this.plugin = plugin;
@@ -82,6 +80,7 @@ public final class CampService {
         reloadMessages();
         initializeStorage();
         try {
+            templates = new CampTemplateService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin,settings.campStructureId());
             longhouse = new CampLonghouseService((com.avrgaming.civcraft.modern.CivCraftModernPlugin) plugin);
         } catch (SQLException | IOException exception) {
             throw new IllegalStateException("Unable to initialize native camp longhouse", exception);
@@ -97,7 +96,7 @@ public final class CampService {
         plugin.getServer().getScheduler().runTask(plugin, this::setupMissingWorkstations);
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::setupMissingWorkstations, 20L, 20L);
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickBreaker, 20L * 20L, 20L * 20L);
-        plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickFarmGrowth, 20L * 60L, 20L * 60L);
+
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickCampProduction, 20L * 60L * 60L, 20L * 60L * 60L);
     }
 
@@ -329,6 +328,7 @@ public final class CampService {
             throw new IllegalArgumentException(message("camp.error.invalid-upgrade", "Улучшение должно быть farm, breaker или longhouse."));
         }
         buyUpgrade(player, self.campId(), clean);
+        templates.refresh();
         player.sendMessage(msg("camp.upgrade.success", "Улучшение {upgrade} куплено.", "{upgrade}", clean));
     }
 
@@ -356,52 +356,16 @@ public final class CampService {
 
     private void tickBreaker() { longhouse.runSifters(); }
 
-    private void tickFarmGrowth() {
-        long now = System.currentTimeMillis();
-        try {
-            for (CampInfo camp : camps()) {
-                if (!camp.farmUpgrade()) {
-                    continue;
-                }
-                for (StructureChunk chunk : campChunks(camp.id())) {
-                    World world = Bukkit.getWorld(chunk.world());
-                    if (world == null) {
-                        continue;
-                    }
-                    Chunk bukkitChunk = world.getChunkAt(chunk.chunkX(), chunk.chunkZ());
-                    for (int x = 0; x < 16; x++) {
-                        for (int z = 0; z < 16; z++) {
-                            for (int y = Math.max(1, world.getMinHeight()); y < Math.min(world.getMaxHeight(), 151); y++) {
-                                Block block = bukkitChunk.getBlock(x, y, z);
-                                if (!(block.getBlockData() instanceof Ageable ageable)) {
-                                    continue;
-                                }
-                                Block soil = block.getRelative(BlockFace.DOWN);
-                                if (soil.getType() != Material.FARMLAND || !isCampStructureChunk(world.getName(), block.getChunk().getX(), block.getChunk().getZ())) {
-                                    continue;
-                                }
-                                String key = blockKey(block);
-                                long planted = cropStartTimes.computeIfAbsent(key, ignored -> now);
-                                if (now - planted >= PLANT_GROW_MILLIS && ageable.getAge() < ageable.getMaximumAge()) {
-                                    ageable.setAge(ageable.getMaximumAge());
-                                    block.setBlockData(ageable, false);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Camp farm tick failed: " + exception.getMessage());
-        }
-    }
+    public boolean isGardenGrowthAllowed(Block block) { return templates.allowsGrowth(block); }
+    public boolean isGardenSoil(Block block) { return templates.soil(block); }
+    public boolean canEditGarden(Player player,Block block) { return templates.editable(player,block); }
 
     private void setupMissingWorkstations() {
         try {
             for (CampInfo camp : camps()) {
                 boolean needsWorkstations = !camp.hasAllWorkstations();
-                boolean needsNpcMarker = !hasCampNpcMarker(camp.id());
-                if (needsWorkstations || needsNpcMarker) {
+                boolean needsNpcMarker = !hasCampNpcMarker(camp.id()) && !templates.indexed(camp.id());
+                if (!templates.indexed(camp.id()) && (needsWorkstations || needsNpcMarker)) {
                     Workstations found = scanAndReplaceWorkstations(camp);
                     if (needsWorkstations) {
                         updateWorkstations(camp.id(), found.food(), found.breakerInput(), found.breakerOutput(), found.controlBlock());
@@ -1428,10 +1392,6 @@ public final class CampService {
                 plugin.getLogger().warning("Unable to remove DecentHolograms camp hologram: " + exception.getMessage());
             }
         }
-    }
-
-    private String blockKey(Block block) {
-        return block.getWorld().getName() + ":" + block.getX() + ":" + block.getY() + ":" + block.getZ();
     }
 
     private String yesNo(boolean value) {

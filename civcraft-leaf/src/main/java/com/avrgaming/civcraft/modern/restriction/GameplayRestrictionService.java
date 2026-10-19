@@ -399,34 +399,9 @@ public final class GameplayRestrictionService implements Listener {
     }
 
     private boolean isUpgradedCampFarmChunk(Block block) {
-        if (!restrictions.getBoolean("plants.allow-upgraded-camp-farm", true)) {
-            return false;
-        }
-        World world = block.getWorld();
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
-                SELECT 1
-                FROM structure_chunks sc
-                JOIN structure_builds sb ON sb.id = sc.build_id
-                JOIN camps c ON c.owner_uuid = sb.builder_uuid OR (c.world = sb.world AND c.x = sb.x AND c.y = sb.y AND c.z = sb.z)
-                WHERE sc.world = ?
-                  AND sc.chunk_x = ?
-                  AND sc.chunk_z = ?
-                  AND sb.status <> 'DEMOLISHED'
-                  AND sb.structure_id = ?
-                  AND c.farm_upgrade <> 0
-                LIMIT 1
-                """)) {
-            statement.setString(1, world.getName());
-            statement.setInt(2, block.getChunk().getX());
-            statement.setInt(3, block.getChunk().getZ());
-            statement.setString(4, settings.campStructureId());
-            try (ResultSet rs = statement.executeQuery()) {
-                return rs.next();
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Unable to check upgraded camp farm chunk: " + exception.getMessage());
-            return false;
-        }
+        return restrictions.getBoolean("plants.allow-upgraded-camp-farm",true)
+            && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
+            && civ.camps()!=null && civ.camps().isGardenGrowthAllowed(block);
     }
 
     private boolean isInStructureChunk(Block block, Collection<String> structureIds) {

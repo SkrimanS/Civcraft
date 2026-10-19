@@ -15,15 +15,19 @@ public final class LegacyDefTemplateLoader {
     private static final int MAX_AXIS = 256;
     private static final int MAX_BLOCKS = 2_000_000;
     public List<LegacyBlock> readChestMarkers(Path path)throws IOException {
+        return readCommandMarkers(path,java.util.Set.of("/chest")).stream().filter(b->ChestMarker.parse(b.signLines()).isPresent()).toList();
+    }
+    /** Only sign commands are retained; ordinary blocks never need to be allocated. */
+    public List<LegacyBlock> readCommandMarkers(Path path,java.util.Set<String> commands)throws IOException {
         try(var reader=Files.newBufferedReader(path)) {
             String header=reader.readLine();if(header==null)throw new IOException("Empty template");
             String[] shape=header.split(";",-1);if(shape.length!=3)throw new IOException("Invalid template header");
             int x,y,z;try{x=Integer.parseInt(shape[0].trim());y=Integer.parseInt(shape[1].trim());z=Integer.parseInt(shape[2].trim());}catch(NumberFormatException invalid){throw new IOException("Invalid template size",invalid);}
             if(x<1 || y<1 || z<1 || x>MAX_AXIS || y>MAX_AXIS || z>MAX_AXIS || (long)x*y*z>MAX_BLOCKS)throw new IOException("Unsupported template size");
             var markers=new ArrayList<LegacyBlock>();String line;
-            while((line=reader.readLine())!=null)if(line.toLowerCase(java.util.Locale.ROOT).contains("/chest")) {
-                var block=parseBlock(line);if(block.x()<0 || block.x()>=x || block.y()<0 || block.y()>=y || block.z()<0 || block.z()>=z)throw new IOException("Chest marker outside template");
-                if(ChestMarker.parse(block.signLines()).isPresent())markers.add(block);
+            while((line=reader.readLine())!=null)if(line.contains(",/")) {
+                var block=parseBlock(line);if(block.x()<0 || block.x()>=x || block.y()<0 || block.y()>=y || block.z()<0 || block.z()>=z)throw new IOException("Command marker outside template");
+                if((block.legacyId()==63 || block.legacyId()==68) && !block.signLines().isEmpty() && commands.contains(block.signLines().getFirst().trim().toLowerCase(java.util.Locale.ROOT)))markers.add(block);
             }
             return List.copyOf(markers);
         }
