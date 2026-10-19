@@ -28,6 +28,12 @@ public final class BuildingDamageStore {
         }
     }
     public static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now)throws SQLException {
+        return hit(db,id,actor,world,x,y,z,amount,now,false);
+    }
+    public static Health cannonHit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now)throws SQLException {
+        return hit(db,id,actor,world,x,y,z,amount,now,true);
+    }
+    private static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now,boolean cannon)throws SQLException {
         if(id==null || id.isBlank() || amount<1)throw new IllegalArgumentException("Invalid structure damage");
         try(var s=db.prepareStatement("SELECT build_id FROM building_damage_hits WHERE id=?")) {
             s.setString(1,id);try(var r=s.executeQuery()){if(r.next())return health(db,r.getLong(1));}
@@ -49,7 +55,7 @@ public final class BuildingDamageStore {
         }
         if(DiplomacyStore.status(db,civ,defender)!=DiplomacyStore.Status.WAR)throw new IllegalArgumentException("Ваша цивилизация не воюет с владельцем здания.");
         if(!status.equals("COMPLETE"))throw new IllegalArgumentException("Здание не готово к атаке или уже разрушено.");
-        if(type==null || type.equals("s_capitol") || type.equals("s_townhall") || type.startsWith("w_"))throw new IllegalArgumentException("Для этого здания требуются отдельные военные правила.");
+        if(type==null || type.equals("s_capitol") || type.equals("s_townhall") || !cannon && type.startsWith("w_"))throw new IllegalArgumentException("Для этого здания требуются отдельные военные правила.");
         var before=health(db,build);if(before.maximum()<1 || before.hitpoints()==0)throw new IllegalArgumentException("Это здание неуязвимо или уже разрушено.");
         int remaining=Math.max(0,before.hitpoints()-amount);String phase=remaining==0?"DESTROY_PENDING":"DAMAGED";
         try(var s=db.prepareStatement("INSERT INTO building_combat_health VALUES(?,?,?,?) ON CONFLICT(build_id) DO UPDATE SET hitpoints=excluded.hitpoints,maximum=excluded.maximum,phase=excluded.phase")) {

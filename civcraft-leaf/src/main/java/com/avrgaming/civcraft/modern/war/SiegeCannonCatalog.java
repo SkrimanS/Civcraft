@@ -5,6 +5,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 /** Deployable cannon settings; deliberately independent of cannon_tower. */
 public record SiegeCannonCatalog(String template,int tnt,int cooldownSeconds,int health,double radius,double playerDamage,int structureDamage,double maximumRange,int controlDamage) {
+    public static java.util.Set<String> destroyable(File structures){
+        var result=new java.util.HashSet<String>();for(var entry:YamlConfiguration.loadConfiguration(structures).getMapList("structures"))if(Boolean.parseBoolean(String.valueOf(entry.get("destroyable"))))result.add(String.valueOf(entry.get("id")));return java.util.Set.copyOf(result);
+    }
     public SiegeCannonCatalog {
         if(template==null || !template.matches("[a-zA-Z0-9_-]+") || tnt<1 || cooldownSeconds<0 || health<1 || !Double.isFinite(radius) || radius<0 || radius>64 || !Double.isFinite(playerDamage) || playerDamage<0 || structureDamage<0 || !Double.isFinite(maximumRange) || maximumRange<=0 || controlDamage<0)
             throw new IllegalArgumentException("Invalid deployable cannon configuration");

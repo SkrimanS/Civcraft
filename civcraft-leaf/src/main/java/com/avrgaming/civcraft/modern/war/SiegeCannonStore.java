@@ -40,7 +40,7 @@ public final class SiegeCannonStore {
     }
     /** Call only after the placement worker has saved world and consumed-item snapshots. */
     public static void activate(Connection db,String id)throws SQLException {
-        transaction(db);try(var s=db.prepareStatement("UPDATE siege_cannons SET state='ACTIVE' WHERE id=? AND state='PREPARED'")){s.setString(1,id);if(s.executeUpdate()!=1)throw new SQLException("Cannon placement is not prepared");}
+        transaction(db);try(var s=db.prepareStatement("UPDATE siege_cannons SET state='ACTIVE' WHERE id=? AND state='PREPARED' AND EXISTS(SELECT 1 FROM war_sessions w WHERE w.start_at=siege_cannons.war_start AND w.state='ACTIVE' AND w.end_at>?)")){s.setString(1,id);s.setLong(2,System.currentTimeMillis());if(s.executeUpdate()!=1)throw new SQLException("Cannon placement is not prepared or its war has ended");}
     }
     private static void idle(Connection db,String id)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM siege_cannon_loads WHERE cannon_id=? AND state='PREPARED'")){s.setString(1,id);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Заряд пушки ещё сохраняется.");}}
@@ -51,6 +51,7 @@ public final class SiegeCannonStore {
         if(!Objects.equals(civilization(db,actor),civilization(db,cannon.draft().owner())))throw new IllegalArgumentException("Управлять пушкой может только цивилизация её владельца.");
         idle(db,id);return cannon;
     }
+    public static Cannon authorize(Connection db,String id,UUID actor,long now)throws SQLException{return use(db,id,actor,now);}
     public static Cannon adjust(Connection db,String id,UUID actor,boolean yaw,boolean right,long now)throws SQLException {
         transaction(db);var c=use(db,id,actor,now);int value=yaw?SiegeCannonRules.yaw(c.yaw(),right):SiegeCannonRules.pitch(c.pitch(),right);
         try(var s=db.prepareStatement("UPDATE siege_cannons SET "+(yaw?"yaw":"pitch")+"=? WHERE id=?")){s.setInt(1,value);s.setString(2,id);s.executeUpdate();}return cannon(db,id);
@@ -76,10 +77,28 @@ public final class SiegeCannonStore {
     public static int hit(Connection db,String id,String hit,UUID actor,long now)throws SQLException {
         transaction(db);try(var s=db.prepareStatement("SELECT after_hp FROM siege_cannon_hits WHERE id=? AND cannon_id=? AND actor=?")){s.setString(1,hit);s.setString(2,id);s.setString(3,actor.toString());try(var r=s.executeQuery()){if(r.next())return r.getInt(1);}}
         var c=cannon(db,id);idle(db,id);if(!c.state().equals("ACTIVE") || c.health()<=0)throw new IllegalArgumentException("Пушка уже уничтожена.");
+        if(currentWar(db,now)!=c.draft().war())throw new IllegalArgumentException("Боевой период этой пушки завершён.");
         var attacker=civilization(db,actor);var owner=civilization(db,c.draft().owner());
         try(var s=db.prepareStatement("SELECT town_id FROM residents WHERE uuid=?")){s.setString(1,actor.toString());try(var r=s.executeQuery()){if(!r.next() || r.getObject(1)==null)throw new IllegalArgumentException("Для атаки пушки нужно состоять в городе.");}}
         if(attacker==null || owner==null || attacker.equals(owner) || DiplomacyStore.status(db,attacker,owner)!=DiplomacyStore.Status.WAR)throw new IllegalArgumentException("Можно повреждать только пушку вражеской цивилизации.");
         int health=c.health()-1;try(var s=db.prepareStatement("UPDATE siege_cannons SET health=?,state=? WHERE id=?")){s.setInt(1,health);s.setString(2,health==0?"DESTROY_PENDING":"ACTIVE");s.setString(3,id);s.executeUpdate();}
         try(var s=db.prepareStatement("INSERT INTO siege_cannon_hits VALUES(?,?,?,?,?,?)")){s.setString(1,hit);s.setString(2,id);s.setString(3,actor.toString());s.setInt(4,c.health());s.setInt(5,health);s.setLong(6,now);s.executeUpdate();}return health;
+    }
+    public static List<Cannon> cannons(Connection db)throws SQLException{
+        var ids=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM siege_cannons WHERE state IN ('PREPARED','ACTIVE','DESTROY_PENDING')")){while(r.next())ids.add(r.getString(1));}
+        var result=new ArrayList<Cannon>();for(var id:ids)result.add(cannon(db,id));return result;
+    }
+    public static void finishLoads(Connection db)throws SQLException{
+        var ids=new ArrayList<String>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM siege_cannon_loads WHERE state='PREPARED'")){while(r.next())ids.add(r.getString(1));}for(var id:ids)finishLoad(db,id);
+    }
+    public static List<Shot> shots(Connection db)throws SQLException{
+        var result=new ArrayList<Shot>();try(var s=db.createStatement();var r=s.executeQuery("SELECT * FROM siege_cannon_shots WHERE state IN ('QUEUED','FLYING','IMPACT_PENDING') ORDER BY created_at,id")){
+            while(r.next())result.add(new Shot(r.getString("id"),r.getString("cannon_id"),UUID.fromString(r.getString("actor")),r.getString("world"),new SiegeCannonRules.Vector(r.getDouble("x"),r.getDouble("y"),r.getDouble("z")),new SiegeCannonRules.Vector(r.getDouble("dx"),r.getDouble("dy"),r.getDouble("dz")),r.getString("state")));
+        }return result;
+    }
+    public static void advance(Connection db,Shot shot,SiegeCannonRules.Step step,boolean impact)throws SQLException{
+        transaction(db);try(var s=db.prepareStatement("UPDATE siege_cannon_shots SET x=?,y=?,z=?,dx=?,dy=?,dz=?,state=? WHERE id=? AND state IN ('QUEUED','FLYING')")){
+            s.setDouble(1,step.position().x());s.setDouble(2,step.position().y());s.setDouble(3,step.position().z());s.setDouble(4,step.direction().x());s.setDouble(5,step.direction().y());s.setDouble(6,step.direction().z());s.setString(7,impact?"IMPACT_PENDING":"FLYING");s.setString(8,shot.id());if(s.executeUpdate()!=1)throw new SQLException("Cannon flight state changed");
+        }
     }
 }

@@ -803,6 +803,7 @@ public final class LegacyStructureService {
      */
     private void rejectExistingTileEntities(Location origin, int sizeY,
                                             List<StructureChunkCoord> chunks,String type,int width,int depth)throws SQLException {
+        storage.query(db->{com.avrgaming.civcraft.modern.war.SiegeWorldStore.requireAreaFree(db,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),width,sizeY,depth);return null;});
         if (!plugin.getConfig().getBoolean("structures.protect-existing-tile-entities", true)) {
             return;
         }

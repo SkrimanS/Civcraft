@@ -60,6 +60,7 @@ public final class WarCampPlacement {
         storage.query(db->{verifyRegion(db,actor,world,origin,width,height,depth);return null;});
     }
     public static void verifyRegion(Connection db,UUID actor,String world,WarCampPlacementRules.Origin origin,int width,int height,int depth)throws SQLException {
+        SiegeWorldStore.requireAreaFree(db,world,origin.x(),origin.y(),origin.z(),width,height,depth);
         int maxX=Math.addExact(origin.x(),width-1),maxY=Math.addExact(origin.y(),height-1),maxZ=Math.addExact(origin.z(),depth-1);
         try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x BETWEEN ? AND ? AND p.y BETWEEN ? AND ? AND p.z BETWEEN ? AND ? AND b.status NOT IN ('DEMOLISHED','CANCELLED','WAR_DESTROYED') LIMIT 1")) {
             s.setString(1,world);s.setInt(2,origin.x());s.setInt(3,maxX);s.setInt(4,origin.y());s.setInt(5,maxY);s.setInt(6,origin.z());s.setInt(7,maxZ);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Защищённое здание мешает военному лагерю.");}

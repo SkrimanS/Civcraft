@@ -308,7 +308,11 @@ public final class ProductionService implements Listener {
         for(var cell:growth){var p=cell.position();locked.remove(new Position(p.world(),p.x(),p.y(),p.z()));locked.remove(new Position(p.world(),p.x(),p.y()-1,p.z()));}
     }
     private void interrupt(String phase,long build){if((build==Long.getLong("civcraft.test.production.build",-1) && phase.equals(System.getProperty("civcraft.test.production.interruption"))) || (build==Long.getLong("civcraft.test.fishery.build",-1) && phase.equals(System.getProperty("civcraft.test.fishery.interruption")))){paused=true;throw new IllegalStateException("Injected production interruption at "+phase);}}
-    private boolean locked(Block b){return locked.contains(new Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()));}
+    private boolean locked(Block b){
+        if(locked.contains(new Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ())))return true;
+        try{return storage.query(db->com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db) && (com.avrgaming.civcraft.modern.war.SiegeWorldStore.locked(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ()) || com.avrgaming.civcraft.modern.war.SiegeWorldStore.retainedContainer(db,b.getWorld().getName(),b.getX(),b.getY(),b.getZ(),System.currentTimeMillis())));}
+        catch(SQLException failure){warn("Cannot validate siege world lock",failure);return true;}
+    }
     private boolean locked(Inventory inventory){return locked(inventory.getHolder());}
     private boolean locked(InventoryHolder holder){if(holder instanceof Chest c)return locked(c.getBlock());if(holder instanceof DoubleChest c)return locked(c.getLeftSide()) || locked(c.getRightSide());return false;}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void open(InventoryOpenEvent e){if(locked(e.getInventory()))e.setCancelled(true);}
