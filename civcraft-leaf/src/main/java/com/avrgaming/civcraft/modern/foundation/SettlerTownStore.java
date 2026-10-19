@@ -54,17 +54,20 @@ public final class SettlerTownStore {
         try(var s=db.prepareStatement("SELECT 1 FROM towns WHERE name=? COLLATE NOCASE")){s.setString(1,name);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Город с таким названием уже существует.");}}
         try(var s=db.prepareStatement("INSERT INTO towns(name,civ_id,mayor_uuid,world,x,y,z,hammers_per_hour,created_at) VALUES(?,?,?,?,?,?,?,?,?)",Statement.RETURN_GENERATED_KEYS)) {
             s.setString(1,name);s.setLong(2,civ);s.setString(3,founder.toString());s.setString(4,origin.getWorld().getName());s.setInt(5,origin.getBlockX());s.setInt(6,origin.getBlockY());s.setInt(7,origin.getBlockZ());s.setDouble(8,hammers);s.setLong(9,now);s.executeUpdate();
-            try(var r=s.getGeneratedKeys()){if(!r.next())throw new SQLException("Missing new settler town id");return r.getLong(1);}
+            try(var r=s.getGeneratedKeys()){if(!r.next())throw new SQLException("Missing new settler town id");long id=r.getLong(1);FoundationCreationStore.captureTown(db,id,founder,civ,name,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ());return id;}
         }
     }
     public static void complete(Connection db,UUID founder,long town,long civ,long previousTown,Location center,long now)throws SQLException {
+        complete(db,founder,town,civ,previousTown,center.getWorld().getName(),center.getBlockX()>>4,center.getBlockZ()>>4,now);
+    }
+    public static void complete(Connection db,UUID founder,long town,long civ,long previousTown,String world,int chunkX,int chunkZ,long now)throws SQLException {
         if(db.getAutoCommit())throw new SQLException("Settler membership completion requires a transaction");
         if(sourceTown(db,founder,civ)!=previousTown)throw new IllegalArgumentException("Основатель сменил город. Повторите основание.");
         try(var s=db.prepareStatement("SELECT 1 FROM towns t JOIN structure_builds b ON b.town_id=t.id WHERE t.id=? AND t.civ_id=? AND t.mayor_uuid=? AND b.structure_id='s_townhall' AND b.status IN ('QUEUED','BUILDING','COMPLETE')")) {
             s.setLong(1,town);s.setLong(2,civ);s.setString(3,founder.toString());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Ратуша нового города не подготовлена.");}
         }
         try(var s=db.prepareStatement("INSERT INTO town_claims(world,chunk_x,chunk_z,town_id,civ_id,claimed_by_uuid,claimed_at) VALUES(?,?,?,?,?,?,?)")) {
-            s.setString(1,center.getWorld().getName());s.setInt(2,center.getBlockX()>>4);s.setInt(3,center.getBlockZ()>>4);s.setLong(4,town);s.setLong(5,civ);s.setString(6,founder.toString());s.setLong(7,now);s.executeUpdate();
+            s.setString(1,world);s.setInt(2,chunkX);s.setInt(3,chunkZ);s.setLong(4,town);s.setLong(5,civ);s.setString(6,founder.toString());s.setLong(7,now);s.executeUpdate();
         }
         try(var s=db.prepareStatement("UPDATE residents SET town_id=?,updated_at=? WHERE uuid=? AND civ_id=? AND town_id=?")) {
             s.setLong(1,town);s.setLong(2,now);s.setString(3,founder.toString());s.setLong(4,civ);s.setLong(5,previousTown);if(s.executeUpdate()!=1)throw new IllegalArgumentException("Житель сменил поселение во время основания.");

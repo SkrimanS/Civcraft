@@ -57,6 +57,7 @@ public final class LegacyStructureService {
         storage.setStructureDefinitions(definitions);
         storage.setHammerCosts(new HammerCosts(new java.io.File(plugin.getDataFolder(),"civcraft/data")));
         this.buildQueue = new BuildQueue(plugin, settings.maxStructureBlocksPerTick(), storage::persistStructureSnapshot);
+        this.buildQueue.setBuildPermit(id -> !storage.query(db -> com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,id)));
         warmupTemplateCacheAsync();
     }
 
@@ -328,6 +329,7 @@ public final class LegacyStructureService {
     }
 
     private void resumeInterruptedBuild(StorageBootstrap.InterruptedBuild build) throws IOException, SQLException {
+        if(build.snapshotReady() && storage.query(db -> com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,build.id())))throw new SQLException("Uncommitted foundation unexpectedly has a world snapshot: "+build.id());
         World world = plugin.getServer().getWorld(build.world());
         if (world == null) {
             throw new IOException("World not loaded: " + build.world());
@@ -598,7 +600,7 @@ public final class LegacyStructureService {
         long buildId = 0L;
         boolean structureRecorded = false;
         try {
-            buildId = storage.recordStructureBuild(
+            buildId = storage.recordPreparedStructureBuild(
                     player.getUniqueId(),
                     town == null ? null : town.id(),
                     type,
@@ -618,11 +620,11 @@ public final class LegacyStructureService {
                     moneyPerHour,
                     happinessDelta,
                     startedAt,
-                    finishAt
+                    finishAt,
+                    chunks
             );
             structureRecorded = true;
             claimTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ(),buildId);
-            storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
             buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
             int queuedBlocks = buildQueue.pasteChunked(finalBuildId, origin, template, settings.legacyIncludeAir(), durationMillis, showPreview, true, (placements, backups) -> persistProtectedBlocksAsync(finalBuildId, placements, backups));
@@ -630,6 +632,8 @@ public final class LegacyStructureService {
             return new QueuedLegacyBuild(buildId, templatePath, queuedBlocks, template.sizeX(), template.sizeY(), template.sizeZ(), townId, totalHammers, hammersPerHour, durationMillis);
         } catch (SQLException | RuntimeException exception) {
             if (structureRecorded) {
+                final long failedBuild=buildId;
+                if(storage.query(db -> com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,failedBuild)))throw exception;
                 try {
                     storage.deleteStructureBuild(buildId);
                 } catch (SQLException cleanupException) {
@@ -682,7 +686,7 @@ public final class LegacyStructureService {
         long buildId = 0L;
         boolean structureRecorded = false;
         try {
-            buildId = storage.recordStructureBuild(
+            buildId = storage.recordPreparedStructureBuild(
                     player.getUniqueId(),
                     town == null ? null : town.id(),
                     type,
@@ -702,11 +706,11 @@ public final class LegacyStructureService {
                     moneyPerHour,
                     happinessDelta,
                     startedAt,
-                    finishAt
+                    finishAt,
+                    chunks
             );
             structureRecorded = true;
             claimTradeDeposit(structureId,origin,template.sizeX(),template.sizeY(),template.sizeZ(),buildId);
-            storage.recordStructureChunks(buildId, town == null ? null : town.id(), chunks);
             final long finalBuildId = buildId;
             buildQueue.synchronizeClock(finalBuildId,startedAt,finishAt);
             int queuedBlocks = buildQueue.pasteSchematic(finalBuildId, origin, template, settings.legacyIncludeAir(), durationMillis, showPreview, true, (placements, backups) -> persistProtectedBlocksAsync(finalBuildId, placements, backups));
@@ -714,6 +718,8 @@ public final class LegacyStructureService {
             return new QueuedLegacyBuild(buildId, templatePath, queuedBlocks, template.sizeX(), template.sizeY(), template.sizeZ(), townId, totalHammers, hammersPerHour, durationMillis);
         } catch (SQLException | RuntimeException exception) {
             if (structureRecorded) {
+                final long failedBuild=buildId;
+                if(storage.query(db -> com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.held(db,failedBuild)))throw exception;
                 try {
                     storage.deleteStructureBuild(buildId);
                 } catch (SQLException cleanupException) {
@@ -1353,7 +1359,7 @@ public final class LegacyStructureService {
         }
     }
 
-    private String normalizeRotationDirection(String direction) {
+    public String normalizeRotationDirection(String direction) {
         String value = direction == null || direction.isBlank() ? "0" : direction.trim();
         if (!List.of("0", "90", "180", "270").contains(value)) {
             value = switch (normalize(value)) {

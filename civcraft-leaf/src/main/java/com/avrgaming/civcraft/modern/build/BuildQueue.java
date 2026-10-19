@@ -54,6 +54,15 @@ public final class BuildQueue {
     public interface SnapshotWriter {
         void persist(long buildId, List<BlockBackup> originals, boolean complete) throws SQLException;
     }
+    @FunctionalInterface public interface BuildPermit {boolean mayRun(long buildId)throws SQLException;}
+    private BuildPermit buildPermit=id -> true;
+    private long lastPermitWarning;
+    public void setBuildPermit(BuildPermit permit){this.buildPermit=java.util.Objects.requireNonNull(permit);}
+    private boolean permitted(long id) {
+        if(id<=0)return true;
+        try{return buildPermit.mayRun(id);}
+        catch(SQLException failure){long now=System.currentTimeMillis();if(now-lastPermitWarning>30000){lastPermitWarning=now;plugin.getLogger().severe("Build permission unavailable: "+failure.getMessage());}return false;}
+    }
     private int maxBlocksPerTick;
 
     public BuildQueue(JavaPlugin plugin, int maxBlocksPerTick) {
@@ -258,6 +267,7 @@ public final class BuildQueue {
                         cancel();
                         return;
                     }
+                    if(!permitted(buildId))return;
                     int tickBudget = buildDurationMillis <= 0L ? Integer.MAX_VALUE / 4 : Math.max(1, maxBlocksPerTick);
                     tickBudget = loadChunksFast(tickBudget);
                     if (chunkLoadCursor < prepared.chunks.size()) {
@@ -550,6 +560,7 @@ public final class BuildQueue {
                         cancel();
                         return;
                     }
+                    if(!permitted(buildId))return;
                     int tickBudget = buildDurationMillis <= 0L ? Integer.MAX_VALUE / 4 : Math.max(1, maxBlocksPerTick);
                     tickBudget = loadChunksFast(tickBudget);
                     if (chunkLoadCursor < prepared.chunks.size()) {

@@ -20,6 +20,7 @@ public final class FoundationEscrowStore {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS foundation_escrows(id TEXT PRIMARY KEY,player_uuid TEXT NOT NULL,kind TEXT NOT NULL CHECK(kind IN ('CAMP','CIVILIZATION','TOWN')),state TEXT NOT NULL CHECK(state IN ('RESERVING','RESERVED','CREATING','COMMITTED','CANCEL_REQUESTED','REFUNDING','REFUNDED')),item BLOB NOT NULL,reserve_transfer TEXT NOT NULL REFERENCES goodie_chest_transfers(id),refund_transfer TEXT REFERENCES goodie_chest_transfers(id),created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)");
             s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS one_open_foundation_escrow ON foundation_escrows(player_uuid) WHERE state NOT IN ('COMMITTED','REFUNDED')");
         }
+        FoundationCreationStore.install(db);
     }
     private static void requireTransfer(Connection db,String transfer,UUID player)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM goodie_chest_transfers WHERE id=? AND player_uuid=? AND status='PREPARED'")){s.setString(1,transfer);s.setString(2,player.toString());try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Foundation escrow requires its player's prepared inventory transfer");}}
@@ -47,6 +48,9 @@ public final class FoundationEscrowStore {
     public static boolean reservationSaved(Connection db,String id)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM foundation_escrows e JOIN goodie_chest_transfers t ON t.id=e.reserve_transfer WHERE e.id=? AND t.status='COMPLETE'")){s.setString(1,id);try(var r=s.executeQuery()){return r.next();}}
     }
+    public static void beginCreation(Connection db,String id,FoundationCreationStore.Draft draft)throws SQLException {
+        transaction(db);FoundationCreationStore.prepare(db,id,draft);beginCreation(db,id);
+    }
     public static void beginCreation(Connection db,String id)throws SQLException {
         transaction(db);
         if(!reservationSaved(db,id))throw new IllegalArgumentException("Предмет основания ещё сохраняется. Повторите подтверждение позже.");
@@ -56,7 +60,7 @@ public final class FoundationEscrowStore {
         transaction(db);try(var s=db.prepareStatement("UPDATE foundation_escrows SET state='COMMITTED',item=X'',updated_at=? WHERE id=? AND state='CREATING'")){s.setLong(1,System.currentTimeMillis());s.setString(2,id);if(s.executeUpdate()!=1)throw new SQLException("Foundation escrow is not creating");}
     }
     public static void cancel(Connection db,String id,boolean creationRolledBack)throws SQLException {
-        transaction(db);String allowed=creationRolledBack?"'RESERVING','RESERVED','CREATING'":"'RESERVING','RESERVED'";
+        transaction(db);if(creationRolledBack && FoundationCreationStore.hasCreatedRecords(db,id))throw new SQLException("Created foundation assets must be reconciled before refund");String allowed=creationRolledBack?"'RESERVING','RESERVED','CREATING'":"'RESERVING','RESERVED'";
         try(var s=db.prepareStatement("UPDATE foundation_escrows SET state='CANCEL_REQUESTED',updated_at=? WHERE id=? AND state IN ("+allowed+")")){s.setLong(1,System.currentTimeMillis());s.setString(2,id);s.executeUpdate();}
     }
     public static void refund(Connection db,String id,UUID player,String transfer)throws SQLException {

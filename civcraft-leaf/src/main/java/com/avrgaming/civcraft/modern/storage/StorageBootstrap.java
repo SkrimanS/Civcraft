@@ -894,6 +894,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(9, now);
                 statement.executeUpdate();
                 campId = generatedId(statement);
+                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCamp(connection,campId,owner,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET camp_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, campId);
@@ -936,6 +937,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(5, now);
                 statement.executeUpdate();
                 civId = generatedId(statement);
+                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureCivilization(connection,civId,leader,name,tag);
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET civ_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, civId);
@@ -974,6 +976,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.setLong(9, now);
                 statement.executeUpdate();
                 townId = generatedId(statement);
+                com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureTown(connection,townId,mayor,civId,name,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ());
             }
             try (PreparedStatement statement = connection.prepareStatement("UPDATE residents SET town_id = ?, updated_at = ? WHERE uuid = ?")) {
                 statement.setLong(1, townId);
@@ -1061,6 +1064,15 @@ public final class StorageBootstrap implements AutoCloseable {
         }
     }
 
+    public synchronized long recordPreparedStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt, Collection<StructureChunkCoord> chunks) throws SQLException {
+        return transaction(db -> {
+            long id=recordStructureBuild(builder,townId,type,template,direction,origin,templatePath,queuedBlocks,structureId,displayName,cost,maxHitpoints,totalHammers,hammersPerHour,productionHammersPerHour,beakersPerHour,moneyPerHour,happiness,startedAt,finishAt);
+            recordStructureChunks(id,townId,chunks);
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.buildReady(db,id);
+            return id;
+        });
+    }
+
     public synchronized long recordStructureBuild(UUID builder, Long townId, String type, String template, String direction, Location origin, String templatePath, int queuedBlocks, String structureId, String displayName, double cost, int maxHitpoints, double totalHammers, double hammersPerHour, double productionHammersPerHour, double beakersPerHour, double moneyPerHour, int happiness, long startedAt, long finishAt) throws SQLException {
         double baseHammers=totalHammers;
         if(townId!=null)totalHammers=buildHammerCost(townId,structureId,baseHammers);
@@ -1100,6 +1112,7 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.setDouble(25,baseHammers);
             statement.executeUpdate();
             long buildId=generatedId(statement);
+            com.avrgaming.civcraft.modern.foundation.FoundationCreationStore.captureBuild(connection,buildId,builder,townId,structureId,direction,origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ());
             com.avrgaming.civcraft.modern.war.TowerHealthStore.initialize(connection,buildId);
             return buildId;
         }

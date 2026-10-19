@@ -71,6 +71,7 @@ public final class FoundationItemListener implements Listener {
         if(!Double.isFinite(settlerFriendlyDistance) || settlerFriendlyDistance<0 || !Double.isFinite(settlerEnemyDistance) || settlerEnemyDistance<0 || !Double.isFinite(settlerLandDistance) || settlerLandDistance<0)throw new IllegalArgumentException("Неверные расстояния основания города поселенцем.");
         if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)try{civ.storage().transaction(db->{FoundationEscrowStore.install(db);return null;});}
         catch(SQLException failure){throw new IllegalStateException("Cannot initialize foundation escrow",failure);}
+        recoverEscrows();
         plugin.getServer().getScheduler().runTaskTimer(plugin,()->{expireTownRequests();recoverEscrows();},20L,20L);
     }
 
@@ -324,14 +325,23 @@ public final class FoundationItemListener implements Listener {
         if(!(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ))return;
         try {
             for(var escrow:civ.storage().query(FoundationEscrowStore::active)) {
+              try {
                 if(pending.values().stream().anyMatch(data->escrow.id().equals(data.escrow)))continue;
-                if(escrow.state().equals("CREATING")){warnRecovery(new IllegalStateException("Foundation creation awaits reconciliation: "+escrow.id()));continue;}
+                if(escrow.state().equals("CREATING")) {
+                    var plan=civ.storage().query(db->FoundationCreationStore.find(db,escrow.id()));
+                    if(plan!=null && plan.ready() && plan.fee()==0) {
+                        civ.storage().transaction(db->{FoundationCreationStore.commitReady(db,escrow.id(),false);return null;});
+                    }else if(plan!=null && plan.fee()==0 && !civ.storage().query(db->FoundationCreationStore.hasCreatedRecords(db,escrow.id()))) {
+                        civ.storage().transaction(db->{FoundationCreationStore.cancelEmpty(db,escrow.id());return null;});
+                    }else {warnRecovery(new IllegalStateException("Foundation creation awaits reconciliation: "+escrow.id()));continue;}
+                }
                 if(escrow.state().equals("RESERVING") || escrow.state().equals("RESERVED"))civ.storage().transaction(db->{FoundationEscrowStore.cancel(db,escrow.id(),false);return null;});
                 var current=civ.storage().query(db->FoundationEscrowStore.find(db,escrow.id()));
                 if(!current.state().equals("CANCEL_REQUESTED"))continue;
                 var player=plugin.getServer().getPlayer(current.player());if(player==null || player.isDead())continue;
                 try{civ.goodieTransfers().refundFoundation(player,current.id());}
                 catch(IllegalArgumentException waiting){/* The reserve/other player journal must finish first. */}
+              }catch(SQLException|RuntimeException failure){warnRecovery(failure);}
             }
         }catch(SQLException|RuntimeException failure){warnRecovery(failure);}
     }
@@ -342,9 +352,12 @@ public final class FoundationItemListener implements Listener {
         T value=work.run();data.creationWriteInFlight=false;return value;
     }
     private void completeReservation(PendingFoundation data)throws SQLException {
-        // A failed completion acknowledgement must not roll back an already created settlement.
+        if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            data.creationWriteInFlight=true;
+            civ.storage().transaction(db->{FoundationCreationStore.commitReady(db,data.escrow,true);return null;});
+            data.creationWriteInFlight=false;
+        }
         data.success=true;
-        if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ)civ.storage().transaction(db->{FoundationEscrowStore.committed(db,data.escrow);return null;});
     }
     private void validateBeforeCreation(Player player,PendingFoundation data,Location origin)throws SQLException {
         var resident=game.resident(player);
@@ -436,7 +449,14 @@ public final class FoundationItemListener implements Listener {
         validateBeforeCreation(player,data,origin);
         if(data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
             civ.goodieTransfers().requireUnlocked(player.getUniqueId());
-            civ.storage().transaction(db->{FoundationEscrowStore.beginCreation(db,data.escrow);return null;});
+            var draft=new FoundationCreationStore.Draft(data.nativeSettler,
+                    switch(data.kind){case CAMP->data.campName;case TOWN->data.townName;case CIVILIZATION->data.civName;},
+                    data.kind==FoundationKind.CIVILIZATION?data.capitalName:data.kind==FoundationKind.TOWN?data.townName:"",
+                    data.civTag,
+                    switch(data.kind){case CAMP->settings.campStructureId();case TOWN->settings.townHallStructureId();case CIVILIZATION->settings.capitolStructureId();},
+                    structures.normalizeRotationDirection(settings.legacyDefaultDirection()),origin.getWorld().getName(),origin.getBlockX(),origin.getBlockY(),origin.getBlockZ(),
+                    data.location.getBlockX(),data.location.getBlockY(),data.location.getBlockZ(),data.kind==FoundationKind.TOWN && !data.nativeSettler?settings.townCost():0);
+            civ.storage().transaction(db->{FoundationEscrowStore.beginCreation(db,data.escrow,draft);return null;});
             data.creationStarted=true;
         }
         switch (data.kind) {
@@ -457,7 +477,7 @@ public final class FoundationItemListener implements Listener {
                 }else town=creationWrite(data,()->game.createTownAt(player,data.townName,origin));
                 data.createdTown = town;
                 data.createdBuild=(data.nativeSettler?structures.buildSettlerTownHallAtOrigin(player,town,origin):structures.buildTownHallStructureAtOrigin(player,town,origin)).id();
-                if(data.nativeSettler)creationWrite(data,()->civ.storage().transaction(db->{SettlerTownStore.complete(db,player.getUniqueId(),town.id(),data.sourceCiv,data.sourceTown,data.location,System.currentTimeMillis());return null;}));
+                if(data.nativeSettler && data.escrow==null)creationWrite(data,()->civ.storage().transaction(db->{SettlerTownStore.complete(db,player.getUniqueId(),town.id(),data.sourceCiv,data.sourceTown,data.location,System.currentTimeMillis());return null;}));
                 completeReservation(data);
                 pending.remove(player.getUniqueId());
                 player.sendMessage(component("foundation.town-created", "&aГород {name} основан. Строительство ратуши начато.", "name", town.name()));
@@ -515,6 +535,11 @@ public final class FoundationItemListener implements Listener {
     private void rollbackCreatedObjects(Player player, PendingFoundation data) {
         if (data == null || data.success) {
             return;
+        }
+        if(data.creationStarted && data.escrow!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ) {
+            // SQL bindings are authoritative, including writes whose acknowledgement was lost.
+            try{var plan=civ.storage().query(db->FoundationCreationStore.find(db,data.escrow));if(plan!=null){if(plan.state().equals("COMMITTED"))data.success=true;return;}}
+            catch(SQLException failure){warnRecovery(failure);return;}
         }
         if(data.creationWriteInFlight){if(data.createdBuild!=null)structures.stopFoundationBuild(data.createdBuild);warnRecovery(new IllegalStateException("Foundation creation write needs reconciliation: "+data.escrow));return;}
         boolean cleaned=true;
