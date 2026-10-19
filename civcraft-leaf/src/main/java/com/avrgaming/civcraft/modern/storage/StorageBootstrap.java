@@ -349,6 +349,7 @@ public final class StorageBootstrap implements AutoCloseable {
                         y INTEGER NOT NULL,
                         z INTEGER NOT NULL,
                         block_data TEXT NOT NULL,
+                        block_nbt TEXT,
                         PRIMARY KEY(build_id, world, x, y, z),
                         FOREIGN KEY(build_id) REFERENCES structure_builds(id) ON DELETE CASCADE
                     )
@@ -430,6 +431,7 @@ public final class StorageBootstrap implements AutoCloseable {
                         y INTEGER NOT NULL,
                         z INTEGER NOT NULL,
                         block_data TEXT NOT NULL,
+                        block_nbt TEXT,
                         PRIMARY KEY(build_id, world, x, y, z),
                         FOREIGN KEY(build_id) REFERENCES structure_builds(id) ON DELETE CASCADE
                     )
@@ -438,6 +440,7 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_structure_builds_town ON structure_builds(town_id)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_structure_block_backups_build ON structure_block_backups(build_id)");
         }
+        addColumnIfMissing("structure_block_backups", "block_nbt", "TEXT");
     }
 
     private void addColumnIfMissing(String table, String column, String definition) throws SQLException {
@@ -1424,8 +1427,8 @@ public final class StorageBootstrap implements AutoCloseable {
             writeConnection.setAutoCommit(false);
             try (
                     PreparedStatement backupInsert = writeConnection.prepareStatement("""
-                            INSERT OR IGNORE INTO structure_block_backups(build_id, world, x, y, z, block_data)
-                            VALUES(?, ?, ?, ?, ?, ?)
+                            INSERT OR IGNORE INTO structure_block_backups(build_id, world, x, y, z, block_data, block_nbt)
+                            VALUES(?, ?, ?, ?, ?, ?, ?)
                             """);
                     PreparedStatement insert = writeConnection.prepareStatement("""
                             INSERT OR REPLACE INTO protected_blocks(world, x, y, z, build_id, material)
@@ -1454,6 +1457,7 @@ public final class StorageBootstrap implements AutoCloseable {
                     backupInsert.setInt(4, backup.y());
                     backupInsert.setInt(5, backup.z());
                     backupInsert.setString(6, backup.blockData());
+                    backupInsert.setString(7, backup.blockNbt());
                     backupInsert.addBatch();
                     pendingBackups++;
                     if (pendingBackups >= batchSize) {
@@ -1515,8 +1519,8 @@ public final class StorageBootstrap implements AutoCloseable {
                 }
             }
             try (PreparedStatement insert = connection.prepareStatement("""
-                    INSERT OR IGNORE INTO structure_block_backups(build_id, world, x, y, z, block_data)
-                    VALUES(?, ?, ?, ?, ?, ?)
+                    INSERT OR IGNORE INTO structure_block_backups(build_id, world, x, y, z, block_data, block_nbt)
+                    VALUES(?, ?, ?, ?, ?, ?, ?)
                     """)) {
                 for (BlockBackup block : originals) {
                     insert.setLong(1, buildId);
@@ -1525,6 +1529,7 @@ public final class StorageBootstrap implements AutoCloseable {
                     insert.setInt(4, block.y());
                     insert.setInt(5, block.z());
                     insert.setString(6, block.blockData());
+                    insert.setString(7, block.blockNbt());
                     insert.addBatch();
                 }
                 insert.executeBatch();
@@ -1583,7 +1588,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized List<BlockBackup> loadStructureBlockBackups(long buildId) throws SQLException {
         List<BlockBackup> backups = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement("""
-                SELECT world, x, y, z, block_data
+                SELECT world, x, y, z, block_data, block_nbt
                 FROM structure_block_backups
                 WHERE build_id = ?
                 ORDER BY y DESC
@@ -1591,7 +1596,7 @@ public final class StorageBootstrap implements AutoCloseable {
             statement.setLong(1, buildId);
             try (ResultSet rs = statement.executeQuery()) {
                 while (rs.next()) {
-                    backups.add(new BlockBackup(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z"), rs.getString("block_data")));
+                    backups.add(new BlockBackup(rs.getString("world"), rs.getInt("x"), rs.getInt("y"), rs.getInt("z"), rs.getString("block_data"), rs.getString("block_nbt")));
                 }
             }
         }

@@ -447,6 +447,7 @@ public final class LegacyStructureService {
                     try {
                         org.bukkit.block.Block current = backupWorld.getBlockAt(
                                 backup.x(), backup.y(), backup.z());
+                        if (backup.matches(current)) { cursor++; continue; }
                         if (current.getState() instanceof org.bukkit.block.Container container
                                 && !container.getSnapshotInventory().isEmpty()) {
                             plugin.getLogger().severe("Paused restoration of structure #" + buildId
@@ -456,17 +457,25 @@ public final class LegacyStructureService {
                             cancel();
                             return;
                         }
-                        current.setBlockData(Bukkit.createBlockData(backup.blockData()), false);
-                    } catch (IllegalArgumentException exception) {
+                        backup.restore(current);
+                    } catch (RuntimeException exception) {
                         plugin.getLogger().severe("Aborting terrain recovery #" + buildId
-                                + ": invalid saved block data at " + backup.x() + ","
-                                + backup.y() + "," + backup.z());
+                                + ": block snapshot could not be restored at " + backup.x() + ","
+                                + backup.y() + "," + backup.z() + ": " + exception.getMessage());
                         cancel();
                         return;
                     }
                     cursor++;
                 }
                 if (cursor >= original.size()) {
+                    try {
+                        var worlds = new java.util.HashSet<World>();
+                        for (var backup : original) worlds.add(java.util.Objects.requireNonNull(Bukkit.getWorld(backup.world())));
+                        for (var world : worlds) world.save(true);
+                    } catch (RuntimeException failure) {
+                        plugin.getLogger().severe("Terrain recovery world save failed for #" + buildId + ": " + failure.getMessage());
+                        return;
+                    }
                     cancel();
                     recoveringTerrain.remove(buildId);
                     onComplete.run();
@@ -797,9 +806,8 @@ public final class LegacyStructureService {
     }
 
     /**
-     * BlockData cannot preserve chest inventories, sign NBT or spawner data.
-     * Reject those areas BEFORE taking building money or clearing chunks.
-     * Later versions can allow them once an NBT-aware journal exists.
+     * Keep the configured protection of existing block entities before taking money.
+     * The journal also records full NBT when an administrator disables this guard.
      */
     private void rejectExistingTileEntities(Location origin, int sizeY,
                                             List<StructureChunkCoord> chunks,String type,int width,int depth,Long civ)throws SQLException {
@@ -841,11 +849,7 @@ public final class LegacyStructureService {
             if (world == null) {
                 continue;
             }
-            try {
-                world.getBlockAt(backup.x(), backup.y(), backup.z()).setBlockData(Bukkit.createBlockData(backup.blockData()), false);
-            } catch (IllegalArgumentException ignored) {
-                world.getBlockAt(backup.x(), backup.y(), backup.z()).setType(Material.AIR, false);
-            }
+            backup.restore(world.getBlockAt(backup.x(), backup.y(), backup.z()));
         }
     }
 

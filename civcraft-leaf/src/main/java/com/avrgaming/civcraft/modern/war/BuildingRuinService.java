@@ -26,10 +26,10 @@ public final class BuildingRuinService implements Listener {
             s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}
         }return out;});
         var random=new Random();var result=new ArrayList<BuildingRuinStore.Change>();
-        var previews=new HashMap<Position,String>();for(var backup:storage.query(db->BuildingRuinStore.sabotagePreviews(db,build)))previews.put(new Position(backup.world(),backup.x(),backup.y(),backup.z()),backup.blockData());
+        var previews=new HashMap<Position,com.avrgaming.civcraft.modern.build.BlockBackup>();for(var backup:storage.query(db->BuildingRuinStore.sabotagePreviews(db,build)))previews.put(new Position(backup.world(),backup.x(),backup.y(),backup.z()),backup);
         for(var p:points) {
             var block=world(p.world()).getBlockAt(p.x(),p.y(),p.z());
-            if(previews.containsKey(p)){result.add(new BuildingRuinStore.Change(p.world(),p.x(),p.y(),p.z(),block.getBlockData().getAsString(),previews.get(p),false));continue;}
+            if(previews.containsKey(p)){var original=previews.get(p);result.add(new BuildingRuinStore.Change(p.world(),p.x(),p.y(),p.z(),block.getBlockData().getAsString(),original.blockData(),false,original.blockNbt()));continue;}
             // Preserve inventories and unknown block-entity NBT; normal chests/signs
             // were also explicitly preserved by the original destruction method.
             if(block.getType().isAir() || block.getState() instanceof TileState)continue;
@@ -57,6 +57,7 @@ public final class BuildingRuinService implements Listener {
                 var after=Bukkit.createBlockData(c.after());
                 if(block.getState() instanceof TileState && !block.getBlockData().matches(after))throw new IllegalStateException("A new block entity occupies a pending ruin block");
                 if(!block.getBlockData().matches(after))block.setBlockData(after,false);
+                if(c.afterNbt()!=null)BlockEntitySnapshot.restore(block.getState(),c.afterNbt());
                 if(c.burst())block.getWorld().spawnParticle(Particle.EXPLOSION,block.getLocation().add(.5,.5,.5),3,.2,.2,.2,0);
                 index++;
             }

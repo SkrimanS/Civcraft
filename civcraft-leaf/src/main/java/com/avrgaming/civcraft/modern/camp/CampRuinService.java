@@ -58,8 +58,8 @@ public final class CampRuinService implements Listener {
         if(build.ready())for(var original:originals) {
             var p=new Position(original.world(),original.x(),original.y(),original.z());var block=block(p);
             var target=Bukkit.createBlockData(original.blockData());
-            requireEmptyForRestore(block,target);
-            cells.add(new CampRuinStore.Cell(p,block.getBlockData().getAsString(),target.getAsString(),false));
+            requireEmptyForRestore(block,original);
+            cells.add(new CampRuinStore.Cell(p,block.getBlockData().getAsString(),target.getAsString(),false,original.blockNbt()));
         }
         var members=storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.prepareStatement("SELECT uuid FROM camp_members WHERE camp_id=?")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(UUID.fromString(r.getString(1)));}}return out;});
         var pending=new CampRuinStore.Pending(camp,build.id(),build.leader(),false,cells,members,true);
@@ -110,8 +110,12 @@ public final class CampRuinService implements Listener {
         for(var cell:p.cells())worlds.add(block(cell.position()).getWorld());
         for(var cell:p.cells())if(cell.after()!=null) {
             var block=block(cell.position());var after=Bukkit.createBlockData(cell.after());
+            if(p.restore()) {
+                var target=new com.avrgaming.civcraft.modern.build.BlockBackup(cell.position().world(),cell.position().x(),cell.position().y(),cell.position().z(),cell.after(),cell.afterNbt());
+                if(target.matches(block))continue;
+                requireEmptyForRestore(block,target);target.restore(block);continue;
+            }
             if(block.getBlockData().matches(after))continue;
-            if(p.restore())requireEmptyForRestore(block,after);
             var before=Bukkit.createBlockData(cell.before());
             if(!p.restore() && block.getState() instanceof Container && block.getType()!=before.getMaterial())throw new IllegalStateException("Unexpected container in pending camp ruin: "+cell.position());
             block.setBlockData(after,false);
@@ -129,8 +133,8 @@ public final class CampRuinService implements Listener {
         }
     }
     private static Block block(Position p){var world=Bukkit.getWorld(p.world());if(world==null)throw new IllegalStateException("Camp ruin world is unavailable: "+p.world());world.getChunkAt(p.x()>>4,p.z()>>4).load();return world.getBlockAt(p.x(),p.y(),p.z());}
-    private static void requireEmptyForRestore(Block block,org.bukkit.block.data.BlockData target) {
-        if(!block.getBlockData().matches(target) && block.getState() instanceof Container container && !container.getSnapshotInventory().isEmpty())
+    private static void requireEmptyForRestore(Block block,com.avrgaming.civcraft.modern.build.BlockBackup target) {
+        if(!target.matches(block) && block.getState() instanceof Container container && !container.getSnapshotInventory().isEmpty())
             throw new IllegalArgumentException("Заберите вещи из контейнера перед роспуском лагеря: "+block.getWorld().getName()+" "+block.getX()+", "+block.getY()+", "+block.getZ()+".");
     }
     private void effect(Position p) {

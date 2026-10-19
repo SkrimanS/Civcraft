@@ -40,7 +40,7 @@ public final class BuildQueue {
     public void forgetCompletedPlacements(long build){awaitingCompletion.remove(build);}
     private DestructionSnapshot destructionSnapshot(List<BlockPlacement> placements,Map<String,PreviewBlock> previews) {
         var originals=new ArrayList<BlockBackup>();
-        for(var preview:previews.values())if(preview.active && !preview.removed && preview.originalData!=null){var world=Bukkit.getWorld(preview.world);if(world!=null && world.getBlockAt(preview.x,preview.y,preview.z).getType()==Material.BEDROCK)originals.add(new BlockBackup(preview.world,preview.x,preview.y,preview.z,preview.originalData.getAsString()));}
+        for(var preview:previews.values())if(preview.active && !preview.removed && preview.originalData!=null){var world=Bukkit.getWorld(preview.world);if(world!=null && world.getBlockAt(preview.x,preview.y,preview.z).getType()==Material.BEDROCK)originals.add(new BlockBackup(preview.world,preview.x,preview.y,preview.z,preview.originalData.getAsString(),preview.originalNbt));}
         return new DestructionSnapshot(placements,originals);
     }
     private final SnapshotWriter snapshotWriter;
@@ -179,8 +179,7 @@ public final class BuildQueue {
             int xy = withinChunk % 256;
             int x = chunk.chunkX() * 16 + (xy / 16);
             int z = chunk.chunkZ() * 16 + (xy % 16);
-            snapshot.add(new BlockBackup(prepared.world, x, y, z,
-                    world.getBlockAt(x, y, z).getBlockData().getAsString()));
+            snapshot.add(BlockBackup.capture(world.getBlockAt(x, y, z)));
         }
         boolean completed = cursor[0] + remaining >= total;
         try {
@@ -337,6 +336,7 @@ public final class BuildQueue {
                 }
                 Block block = origin.getWorld().getBlockAt(preview.x, preview.y, preview.z);
                 preview.originalData = block.getBlockData().clone();
+                preview.originalNbt = com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.read(block.getState());
                 block.setType(Material.BEDROCK, false);
                 preview.active = true;
                 activePreviewByKey.put(preview.key(), preview);
@@ -357,7 +357,7 @@ public final class BuildQueue {
                 PreviewBlock preview = activePreviewByKey.remove(key);
                 Block existingBlock = origin.getWorld().getBlockAt(prepared.originX + legacyBlock.x(), prepared.originY + legacyBlock.y(), prepared.originZ + legacyBlock.z());
                 if (preview != null && preview.originalData != null) {
-                    rememberBackupData(prepared.world, prepared.originX + legacyBlock.x(), prepared.originY + legacyBlock.y(), prepared.originZ + legacyBlock.z(), preview.originalData);
+                    rememberBackupData(prepared.world, prepared.originX + legacyBlock.x(), prepared.originY + legacyBlock.y(), prepared.originZ + legacyBlock.z(), preview.originalData, preview.originalNbt);
                     preview.active = false;
                     preview.removed = true;
                 } else {
@@ -402,12 +402,12 @@ public final class BuildQueue {
         }
 
         private void rememberBackup(String worldName, int x, int y, int z, Block block) {
-            rememberBackupData(worldName, x, y, z, block.getBlockData());
+            rememberBackupData(worldName, x, y, z, block.getBlockData(), com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.read(block.getState()));
         }
 
-        private void rememberBackupData(String worldName, int x, int y, int z, BlockData blockData) {
+        private void rememberBackupData(String worldName, int x, int y, int z, BlockData blockData, String blockNbt) {
             String key = blockKey(worldName, x, y, z);
-            backupsByKey.computeIfAbsent(key, ignored -> new BlockBackup(worldName, x, y, z, blockData.getAsString()));
+            backupsByKey.computeIfAbsent(key, ignored -> new BlockBackup(worldName, x, y, z, blockData.getAsString(), blockNbt));
         }
 
         private void restoreBackups() {
@@ -416,11 +416,7 @@ public final class BuildQueue {
                 if (backupWorld == null) {
                     continue;
                 }
-                try {
-                    backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()).setBlockData(Bukkit.createBlockData(backup.blockData()), false);
-                } catch (IllegalArgumentException ignored) {
-                    backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()).setType(Material.AIR, false);
-                }
+                backup.restore(backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()));
             }
             backupsByKey.clear();
         }
@@ -488,6 +484,7 @@ public final class BuildQueue {
             Block block = world.getBlockAt(preview.x, preview.y, preview.z);
             if (block.getType() == Material.BEDROCK) {
                 block.setBlockData(preview.originalData, false);
+                com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.restore(block.getState(), preview.originalNbt);
             }
             preview.active = false;
         }
@@ -631,6 +628,7 @@ public final class BuildQueue {
                 }
                 Block block = origin.getWorld().getBlockAt(preview.x, preview.y, preview.z);
                 preview.originalData = block.getBlockData().clone();
+                preview.originalNbt = com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.read(block.getState());
                 block.setType(Material.BEDROCK, false);
                 preview.active = true;
                 activePreviewByKey.put(preview.key(), preview);
@@ -655,7 +653,7 @@ public final class BuildQueue {
                 PreviewBlock preview = activePreviewByKey.remove(key);
                 Block block = world.getBlockAt(x, y, z);
                 if (preview != null && preview.originalData != null) {
-                    rememberBackupData(world.getName(), x, y, z, preview.originalData);
+                    rememberBackupData(world.getName(), x, y, z, preview.originalData, preview.originalNbt);
                     preview.active = false;
                     preview.removed = true;
                 } else {
@@ -684,12 +682,12 @@ public final class BuildQueue {
         }
 
         private void rememberBackup(String worldName, int x, int y, int z, Block block) {
-            rememberBackupData(worldName, x, y, z, block.getBlockData());
+            rememberBackupData(worldName, x, y, z, block.getBlockData(), com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.read(block.getState()));
         }
 
-        private void rememberBackupData(String worldName, int x, int y, int z, BlockData blockData) {
+        private void rememberBackupData(String worldName, int x, int y, int z, BlockData blockData, String blockNbt) {
             String key = blockKey(worldName, x, y, z);
-            backupsByKey.computeIfAbsent(key, ignored -> new BlockBackup(worldName, x, y, z, blockData.getAsString()));
+            backupsByKey.computeIfAbsent(key, ignored -> new BlockBackup(worldName, x, y, z, blockData.getAsString(), blockNbt));
         }
 
         private void restoreBackups() {
@@ -698,11 +696,7 @@ public final class BuildQueue {
                 if (backupWorld == null) {
                     continue;
                 }
-                try {
-                    backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()).setBlockData(Bukkit.createBlockData(backup.blockData()), false);
-                } catch (IllegalArgumentException ignored) {
-                    backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()).setType(Material.AIR, false);
-                }
+                backup.restore(backupWorld.getBlockAt(backup.x(), backup.y(), backup.z()));
             }
             backupsByKey.clear();
         }
@@ -783,6 +777,7 @@ public final class BuildQueue {
             Block block = world.getBlockAt(preview.x, preview.y, preview.z);
             if (block.getType() == Material.BEDROCK) {
                 block.setBlockData(preview.originalData, false);
+                com.avrgaming.civcraft.modern.war.BlockEntitySnapshot.restore(block.getState(), preview.originalNbt);
             }
             preview.active = false;
         }
@@ -1002,6 +997,7 @@ public final class BuildQueue {
         private final int y;
         private final int z;
         private BlockData originalData;
+        private String originalNbt;
         private boolean active;
         private boolean removed;
 

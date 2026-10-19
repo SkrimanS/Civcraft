@@ -8,7 +8,9 @@ import java.util.*;
 /** Immutable random outcome survives until all world changes and camp removal are committed. */
 public final class CampRuinStore {
     private CampRuinStore() {}
-    public record Cell(Position position,String before,String after,boolean effect) {}
+    public record Cell(Position position,String before,String after,boolean effect,String afterNbt) {
+        public Cell(Position position,String before,String after,boolean effect){this(position,before,after,effect,null);}
+    }
     public record Pending(long camp,long build,UUID leader,boolean title,List<Cell> cells,List<UUID> members,boolean restore) {
         public Pending{cells=List.copyOf(cells);members=List.copyOf(members);}
         public Pending(long camp,long build,UUID leader,boolean title,List<Cell> cells,List<UUID> members){this(camp,build,leader,title,cells,members,false);}
@@ -19,6 +21,8 @@ public final class CampRuinStore {
             boolean mode=false;try(var r=s.executeQuery("PRAGMA table_info(camp_ruins)")){while(r.next())if(r.getString("name").equals("mode"))mode=true;}
             if(!mode)s.executeUpdate("ALTER TABLE camp_ruins ADD COLUMN mode TEXT NOT NULL DEFAULT 'RUIN'");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS camp_ruin_cells(camp_id INTEGER NOT NULL REFERENCES camp_ruins(camp_id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,before_state TEXT NOT NULL,after_state TEXT,effect INTEGER NOT NULL,PRIMARY KEY(camp_id,world,x,y,z))");
+            boolean nbt=false;try(var r=s.executeQuery("PRAGMA table_info(camp_ruin_cells)")){while(r.next())if(r.getString("name").equals("after_nbt"))nbt=true;}
+            if(!nbt)s.executeUpdate("ALTER TABLE camp_ruin_cells ADD COLUMN after_nbt TEXT");
             s.executeUpdate("CREATE INDEX IF NOT EXISTS camp_ruin_cell_position ON camp_ruin_cells(world,x,y,z)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS camp_ruin_members(camp_id INTEGER NOT NULL REFERENCES camp_ruins(camp_id) ON DELETE CASCADE,uuid TEXT NOT NULL,PRIMARY KEY(camp_id,uuid))");
             s.executeUpdate("CREATE TRIGGER IF NOT EXISTS camp_ruin_blocks_delete BEFORE DELETE ON camps WHEN EXISTS(SELECT 1 FROM camp_ruins WHERE camp_id=OLD.id AND status='PREPARED') BEGIN SELECT RAISE(ABORT,'Camp ruin is pending'); END");
@@ -39,8 +43,8 @@ public final class CampRuinStore {
         }
         if(p.restore())try(var s=db.prepareStatement("UPDATE structure_builds SET status='CAMP_RESTORE_PENDING' WHERE id=?")){s.setLong(1,p.build());s.executeUpdate();}
         try(var s=db.prepareStatement("INSERT INTO camp_ruins(camp_id,build_id,leader_uuid,show_title,created_at,mode) VALUES(?,?,?,?,?,?)")){s.setLong(1,p.camp());s.setLong(2,p.build());s.setString(3,p.leader().toString());s.setInt(4,p.title()?1:0);s.setLong(5,System.currentTimeMillis());s.setString(6,p.restore()?"RESTORE":"RUIN");s.executeUpdate();}
-        try(var s=db.prepareStatement("INSERT INTO camp_ruin_cells VALUES(?,?,?,?,?,?,?,?)")) {
-            var seen=new HashSet<Position>();for(var cell:p.cells()){var pos=cell.position();if(!seen.add(pos))throw new SQLException("Duplicate camp ruin cell");s.setLong(1,p.camp());s.setString(2,pos.world());s.setInt(3,pos.x());s.setInt(4,pos.y());s.setInt(5,pos.z());s.setString(6,cell.before());s.setString(7,cell.after());s.setInt(8,cell.effect()?1:0);s.addBatch();}s.executeBatch();
+        try(var s=db.prepareStatement("INSERT INTO camp_ruin_cells(camp_id,world,x,y,z,before_state,after_state,effect,after_nbt) VALUES(?,?,?,?,?,?,?,?,?)")) {
+            var seen=new HashSet<Position>();for(var cell:p.cells()){var pos=cell.position();if(!seen.add(pos))throw new SQLException("Duplicate camp ruin cell");s.setLong(1,p.camp());s.setString(2,pos.world());s.setInt(3,pos.x());s.setInt(4,pos.y());s.setInt(5,pos.z());s.setString(6,cell.before());s.setString(7,cell.after());s.setInt(8,cell.effect()?1:0);s.setString(9,cell.afterNbt());s.addBatch();}s.executeBatch();
         }
         try(var s=db.prepareStatement("INSERT INTO camp_ruin_members VALUES(?,?)")){for(var member:p.members()){s.setLong(1,p.camp());s.setString(2,member.toString());s.addBatch();}s.executeBatch();}
     }
@@ -50,7 +54,7 @@ public final class CampRuinStore {
         }return List.copyOf(out);
     }
     private static List<Cell> cells(Connection db,long camp)throws SQLException {
-        var out=new ArrayList<Cell>();try(var s=db.prepareStatement("SELECT * FROM camp_ruin_cells WHERE camp_id=? ORDER BY world,x,y,z")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(new Cell(new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")),r.getString("before_state"),r.getString("after_state"),r.getInt("effect")!=0));}}return out;
+        var out=new ArrayList<Cell>();try(var s=db.prepareStatement("SELECT * FROM camp_ruin_cells WHERE camp_id=? ORDER BY world,x,y,z")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(new Cell(new Position(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z")),r.getString("before_state"),r.getString("after_state"),r.getInt("effect")!=0,r.getString("after_nbt")));}}return out;
     }
     private static List<UUID> members(Connection db,long camp)throws SQLException {
         var out=new ArrayList<UUID>();try(var s=db.prepareStatement("SELECT uuid FROM camp_ruin_members WHERE camp_id=?")){s.setLong(1,camp);try(var r=s.executeQuery()){while(r.next())out.add(UUID.fromString(r.getString(1)));}}return out;

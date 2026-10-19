@@ -3,13 +3,19 @@ import java.sql.*;
 import java.util.*;
 public final class BuildingRuinStore {
     private BuildingRuinStore() {}
-    public record Change(String world,int x,int y,int z,String before,String after,boolean burst) {}
+    public record Change(String world,int x,int y,int z,String before,String after,boolean burst,String afterNbt) {
+        public Change(String world,int x,int y,int z,String before,String after,boolean burst){this(world,x,y,z,before,after,burst,null);}
+    }
     public static void install(Connection db)throws SQLException {
         try(var s=db.createStatement()) {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS building_ruin_jobs(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE,state TEXT NOT NULL CHECK(state IN ('PREPARED','COMPLETE')))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS building_ruin_blocks(build_id INTEGER NOT NULL REFERENCES building_ruin_jobs(build_id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,before_data TEXT NOT NULL,after_data TEXT NOT NULL,burst INTEGER NOT NULL,PRIMARY KEY(build_id,world,x,y,z))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS wonder_sabotage_targets(build_id INTEGER PRIMARY KEY REFERENCES structure_builds(id) ON DELETE CASCADE)");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS wonder_sabotage_previews(build_id INTEGER NOT NULL REFERENCES wonder_sabotage_targets(build_id) ON DELETE CASCADE,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(build_id,world,x,y,z))");
+            for(var table:List.of("wonder_sabotage_previews","building_ruin_blocks")) {
+                boolean found=false;try(var r=s.executeQuery("PRAGMA table_info("+table+")")){while(r.next())if(r.getString("name").equals("after_nbt"))found=true;}
+                if(!found)s.executeUpdate("ALTER TABLE "+table+" ADD COLUMN after_nbt TEXT");
+            }
         }
     }
     public static void sabotageWonder(Connection db,long build,com.avrgaming.civcraft.modern.build.BuildQueue.DestructionSnapshot snapshot)throws SQLException {
@@ -19,7 +25,7 @@ public final class BuildingRuinStore {
         var placements=new ArrayList<>(snapshot.placements());
         for(var preview:snapshot.previews()){
             placements.add(new com.avrgaming.civcraft.modern.build.BlockPlacement(preview.world(),preview.x(),preview.y(),preview.z(),"BEDROCK"));
-            try(var s=db.prepareStatement("INSERT INTO wonder_sabotage_previews VALUES(?,?,?,?,?,?)")){s.setLong(1,build);s.setString(2,preview.world());s.setInt(3,preview.x());s.setInt(4,preview.y());s.setInt(5,preview.z());s.setString(6,preview.blockData());s.executeUpdate();}
+            try(var s=db.prepareStatement("INSERT INTO wonder_sabotage_previews(build_id,world,x,y,z,data,after_nbt) VALUES(?,?,?,?,?,?,?)")){s.setLong(1,build);s.setString(2,preview.world());s.setInt(3,preview.x());s.setInt(4,preview.y());s.setInt(5,preview.z());s.setString(6,preview.blockData());s.setString(7,preview.blockNbt());s.executeUpdate();}
         }
         for(var placement:placements){
             try(var s=db.prepareStatement("SELECT 1 FROM structure_chunks WHERE build_id=? AND world=? AND chunk_x=? AND chunk_z=?")){s.setLong(1,build);s.setString(2,placement.world());s.setInt(3,placement.x()>>4);s.setInt(4,placement.z()>>4);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Sabotage block outside reserved build footprint");}}
@@ -30,7 +36,7 @@ public final class BuildingRuinStore {
         try(var s=db.prepareStatement("UPDATE structure_builds SET status='WAR_DESTROY_PENDING' WHERE id=? AND status IN ('QUEUED','BUILDING')")){s.setLong(1,build);if(s.executeUpdate()!=1)throw new SQLException("Wonder changed during sabotage");}
     }
     public static List<com.avrgaming.civcraft.modern.build.BlockBackup> sabotagePreviews(Connection db,long build)throws SQLException {
-        var result=new ArrayList<com.avrgaming.civcraft.modern.build.BlockBackup>();try(var s=db.prepareStatement("SELECT world,x,y,z,data FROM wonder_sabotage_previews WHERE build_id=?")){s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())result.add(new com.avrgaming.civcraft.modern.build.BlockBackup(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4),r.getString(5)));}}return result;
+        var result=new ArrayList<com.avrgaming.civcraft.modern.build.BlockBackup>();try(var s=db.prepareStatement("SELECT world,x,y,z,data,after_nbt FROM wonder_sabotage_previews WHERE build_id=?")){s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())result.add(new com.avrgaming.civcraft.modern.build.BlockBackup(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4),r.getString(5),r.getString(6)));}}return result;
     }
     public static Long next(Connection db)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT b.id FROM structure_builds b JOIN building_combat_health h ON h.build_id=b.id WHERE b.status='WAR_DESTROY_PENDING' AND h.hitpoints=0 AND h.phase='DESTROY_PENDING' ORDER BY b.id LIMIT 1")){return r.next()?r.getLong(1):null;}
@@ -49,7 +55,7 @@ public final class BuildingRuinStore {
         }
         var result=new ArrayList<Change>();
         try(var s=db.prepareStatement("SELECT * FROM building_ruin_blocks WHERE build_id=? ORDER BY world,x,y,z")) {
-            s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())result.add(new Change(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("before_data"),r.getString("after_data"),r.getBoolean("burst")));}
+            s.setLong(1,build);try(var r=s.executeQuery()){while(r.next())result.add(new Change(r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getString("before_data"),r.getString("after_data"),r.getBoolean("burst"),r.getString("after_nbt")));}
         }return List.copyOf(result);
     }
     public static void prepare(Connection db,long build,List<Change> changes)throws SQLException {
@@ -60,12 +66,12 @@ public final class BuildingRuinStore {
         }
         if(changes(db,build)!=null)throw new SQLException("Ruin plan already exists");
         try(var s=db.prepareStatement("INSERT INTO building_ruin_jobs VALUES(?,'PREPARED')")){s.setLong(1,build);s.executeUpdate();}
-        try(var s=db.prepareStatement("INSERT INTO building_ruin_blocks VALUES(?,?,?,?,?,?,?,?)")) {
+        try(var s=db.prepareStatement("INSERT INTO building_ruin_blocks(build_id,world,x,y,z,before_data,after_data,burst,after_nbt) VALUES(?,?,?,?,?,?,?,?,?)")) {
             for(var c:changes) {
                 try(var check=db.prepareStatement("SELECT 1 FROM protected_blocks WHERE build_id=? AND world=? AND x=? AND y=? AND z=?")) {
                     check.setLong(1,build);check.setString(2,c.world());check.setInt(3,c.x());check.setInt(4,c.y());check.setInt(5,c.z());try(var r=check.executeQuery()){if(!r.next())throw new SQLException("Ruin plan contains another building's block");}
                 }
-                s.setLong(1,build);s.setString(2,c.world());s.setInt(3,c.x());s.setInt(4,c.y());s.setInt(5,c.z());s.setString(6,c.before());s.setString(7,c.after());s.setBoolean(8,c.burst());s.addBatch();
+                s.setLong(1,build);s.setString(2,c.world());s.setInt(3,c.x());s.setInt(4,c.y());s.setInt(5,c.z());s.setString(6,c.before());s.setString(7,c.after());s.setBoolean(8,c.burst());s.setString(9,c.afterNbt());s.addBatch();
             }s.executeBatch();
         }
     }
