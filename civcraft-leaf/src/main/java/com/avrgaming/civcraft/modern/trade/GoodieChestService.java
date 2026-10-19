@@ -84,6 +84,10 @@ public final class GoodieChestService implements Listener {
             if(parts.isEmpty() && event.isShiftClick())return true;
             var before=new GoodieChestPlan(parts.isEmpty()?new ItemStack[0]:upper.getContents(),player.getInventory().getContents(),event.getCursor());
             var after=new GoodieChestPlan(before.top,before.player,before.cursor);after.click(event.getAction(),top,slot,hotbar);
+            if(!top && unit(before.cursor) && Set.of(InventoryAction.PLACE_ALL,InventoryAction.PLACE_ONE,InventoryAction.PLACE_SOME,InventoryAction.SWAP_WITH_CURSOR).contains(event.getAction()))
+                after.drops.addAll(com.avrgaming.civcraft.modern.town.UnitInventoryLayout.reposition(after.player,before.cursor));
+            else if(top && unit(event.getCurrentItem()) && Set.of(InventoryAction.HOTBAR_SWAP,InventoryAction.HOTBAR_MOVE_AND_READD).contains(event.getAction()))
+                after.drops.addAll(com.avrgaming.civcraft.modern.town.UnitInventoryLayout.reposition(after.player,event.getCurrentItem()));
             submit(player,parts,before,after);
         }catch(IllegalArgumentException failure){player.sendMessage(Component.text(failure.getMessage()));}catch(Exception failure){warn(failure);}
         return true;
@@ -119,6 +123,16 @@ public final class GoodieChestService implements Listener {
         submit(player,halves,before,after,(db,id)->{});
     }
     @FunctionalInterface private interface IntentSideEffect {void prepare(java.sql.Connection db,String id)throws SQLException;}
+    public String changeUnitInventory(Player player,java.util.function.BiFunction<ItemStack[],ItemStack,GoodieTransferService.InventoryChange> change)throws SQLException {
+        if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Unit inventory changes require the server thread");
+        ready(player);
+        var before=new GoodieChestPlan(new ItemStack[0],player.getInventory().getContents(),player.getItemOnCursor());
+        var result=Objects.requireNonNull(change.apply(GoodieChestPlan.copy(before.player),GoodieChestPlan.clone(before.cursor)));
+        if(result.inventory().length!=before.player.length)throw new IllegalArgumentException("Неверный снимок инвентаря юнита.");
+        var after=new GoodieChestPlan(new ItemStack[0],result.inventory(),result.cursor());after.drops.addAll(result.drops());
+        var at=player.getLocation().clone();
+        return submit(player,List.of(),before,after,(db,id)->PlainTransferGround.prepare(db,id,at,after.drops.stream().filter(item->!good(item)).toList()));
+    }
     public String submitCampQuestItems(Player player,ItemStack[] inventory,long camp,String quest,int beforeAmount,int removed,int target)throws SQLException {
         if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Quest inventory mutations require the server thread");
         ready(player);
@@ -197,11 +211,12 @@ public final class GoodieChestService implements Listener {
         worlds.addAll(plainGround.ensure(intent.id()));
         for(var world:worlds)world.save(true);interrupt("world-saved",intent);
         var inventory=ItemStack.deserializeItemsFromBytes(intent.inventory());var cursor=ItemStack.deserializeItemsFromBytes(intent.cursor());filter(inventory,invalid);filter(cursor,invalid);
+        ItemStack[] previous=player==null?null:player.getInventory().getContents();
         if(player!=null){player.getInventory().setContents(inventory);player.setItemOnCursor(cursor[0]);player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,intent.id());plainCursors.applied(player,intent.id());player.saveData();interrupt("player-saved",intent);}
         // Offline recovery publishes the durable player checkpoint instead of loading
         // playerdata outside Bukkit. NativeTradeService applies it on the next login.
         byte[] plain=!GoodieChestPlan.empty(cursor[0]) && !good(cursor[0])?ItemStack.serializeItemsAsBytes(cursor):null;
-        storage.transaction(db->{if(GoodieChestStore.complete(db,intent.id(),plain))TradeStore.saveCheckpoint(db,intent.player().toString(),intent.id(),ItemStack.serializeItemsAsBytes(inventory));return null;});if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))cursorOwners.add(intent.player());else cursorOwners.remove(intent.player());refreshLocks();if(player!=null){recoverPlainDelivery(player);player.updateInventory();}
+        storage.transaction(db->{if(GoodieChestStore.complete(db,intent.id(),plain))TradeStore.saveCheckpoint(db,intent.player().toString(),intent.id(),ItemStack.serializeItemsAsBytes(inventory));return null;});if(intent.cursorToken()!=null && !invalid.contains(intent.cursorToken()))cursorOwners.add(intent.player());else cursorOwners.remove(intent.player());refreshLocks();if(player!=null){recoverPlainDelivery(player);player.updateInventory();plugin.unitInventoryApplied(player,previous);}
     }
     private boolean unit(ItemStack item){String id=plugin.nativeItems().id(item);return "u_spy".equals(id)||"u_settler".equals(id);}
     private void validateUnits(Player player,ItemStack[] before,ItemStack[] after)throws SQLException {

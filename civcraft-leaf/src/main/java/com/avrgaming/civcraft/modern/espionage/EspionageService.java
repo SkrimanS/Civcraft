@@ -32,6 +32,7 @@ public final class EspionageService implements Listener,CommandExecutor {
     private final Map<UUID,Long> joined=new HashMap<>();
     private final Map<String,String> warnings=new HashMap<>();
     private final Set<UUID> seenSpy=new HashSet<>();
+    private final Set<UUID> resetBooks=new HashSet<>();
     private final Map<UUID,Long> equipWarnings=new HashMap<>();
     private int ticks;
     public EspionageService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
@@ -53,11 +54,15 @@ public final class EspionageService implements Listener,CommandExecutor {
     }
     private void requireSpy(Player player)throws SQLException {
         var resident=storage.findResident(player.getUniqueId()).orElseThrow();if(resident.townId()==null || resident.civId()==null)throw new IllegalArgumentException("Шпиону нужен город цивилизации.");
+        requireSpyUnit(player);
+    }
+    private void requireSpyUnit(Player player)throws SQLException {
+        var resident=storage.findResident(player.getUniqueId()).orElse(null);
         for(var item:player.getInventory().getContents())if("u_spy".equals(id(item))) {
             Long town=item.getItemMeta().getPersistentDataContainer().get(new NamespacedKey(plugin,"unit-town"),PersistentDataType.LONG);
             // UnitMaterial.validateUnitUse permits units without a surviving owning town.
             if(town==null)return;
-            var owner=storage.findTown(town).orElse(null);if(owner==null || owner.civId()==resident.civId())return;
+            var owner=storage.findTown(town).orElse(null);if(owner==null || resident!=null && resident.civId()!=null && owner.civId()==resident.civId())return;
         }throw new IllegalArgumentException("Нужен юнит шпиона, принадлежащий вашей цивилизации.");
     }
     private void war(Connection db)throws SQLException {
@@ -92,9 +97,21 @@ public final class EspionageService implements Listener,CommandExecutor {
         var item=new ItemStack(Material.WRITTEN_BOOK);var meta=(BookMeta)item.getItemMeta();meta.displayName(Component.text(mission.name()));meta.title(Component.text(mission.name()));meta.author(Component.text("Шпионская служба"));meta.pages(Component.text(mission.name()+"\nСтоимость: "+mission.cost()+"\nДлительность: "+mission.seconds()+" сек.\nДальность: "+mission.range()+"\nПКМ: начать подготовку миссии."));meta.setMaxStackSize(1);meta.getPersistentDataContainer().set(new NamespacedKey(plugin,"material-id"),PersistentDataType.STRING,mission.id());item.setItemMeta(meta);return item;
     }
     private void equip(Player player)throws SQLException {
-        ready(player);requireSpy(player);var inventory=snapshot(player);for(int i=0;i<inventory.length;i++)if(book(inventory[i]))inventory[i]=null;
-        for(var mission:catalog.selectable()){int slot=mission.slot();if(inventory[slot]!=null && !inventory[slot].getType().isAir()){int empty=-1;for(int i=9;i<36;i++)if(inventory[i]==null || inventory[i].getType().isAir()){empty=i;break;}if(empty<0)throw new IllegalArgumentException("Освободите место в основном инвентаре для книг миссий.");inventory[empty]=inventory[slot];}inventory[slot]=missionBook(mission);}
-        var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(inventory),0,0,null,0));plugin.trades().applyPrepared(player,receipt);player.sendMessage(Component.text("Книги миссий размещены на панели быстрого доступа."));
+        plugin.goodieTransfers().requireUnlocked(player.getUniqueId());plugin.trades().recover(player);requireSpyUnit(player);
+        boolean reset=resetBooks.contains(player.getUniqueId());
+        plugin.goodieTransfers().changeUnitInventory(player,(inventory,cursor)->{
+            if(reset){for(int i=0;i<inventory.length;i++)if(book(inventory[i]))inventory[i]=null;if(book(cursor))cursor=null;}
+            var drops=new ArrayList<ItemStack>();
+            for(var mission:catalog.selectable()) {
+                if(Arrays.stream(inventory).anyMatch(item->mission.id().equals(id(item))))continue;
+                int slot=mission.slot();if(slot>=inventory.length)throw new IllegalArgumentException("Слот книги миссии находится за пределами инвентаря: "+mission.id());
+                var displaced=inventory[slot];inventory[slot]=missionBook(mission);
+                drops.addAll(com.avrgaming.civcraft.modern.town.UnitInventoryLayout.returnToStorage(inventory,displaced));
+            }
+            return new GoodieTransferService.InventoryChange(inventory,cursor,drops);
+        });
+        resetBooks.remove(player.getUniqueId());
+        player.sendMessage(Component.text("Книги миссий размещены на панели быстрого доступа; не поместившиеся вещи возвращаются на землю."));
     }
     private void townMessage(long town,String message)throws SQLException {for(var player:Bukkit.getOnlinePlayers()){var resident=storage.findResident(player.getUniqueId()).orElse(null);if(resident!=null && resident.townId()!=null && resident.townId()==town)player.sendMessage(Component.text(message));}}
     private void abort(EspionageStore.Run run,String reason)throws SQLException {storage.transaction(db->{EspionageStore.finish(db,run.id(),"ABORTED",reason,System.currentTimeMillis());return null;});warnings.remove(run.id());var player=Bukkit.getPlayer(run.player());if(player!=null)player.sendMessage(Component.text(reason));}
@@ -163,26 +180,39 @@ public final class EspionageService implements Listener,CommandExecutor {
     private void refreshBooks(Player player)throws SQLException {
             boolean spy=Arrays.stream(player.getInventory().getContents()).anyMatch(item->"u_spy".equals(id(item)));
             if(spy){if(!seenSpy.contains(player.getUniqueId())) {
-                if(!player.getItemOnCursor().getType().isAir() || !Set.of(org.bukkit.event.inventory.InventoryType.CRAFTING,org.bukkit.event.inventory.InventoryType.CREATIVE,org.bukkit.event.inventory.InventoryType.PLAYER).contains(player.getOpenInventory().getTopInventory().getType()))return;
                 try{equip(player);seenSpy.add(player.getUniqueId());equipWarnings.remove(player.getUniqueId());}catch(IllegalArgumentException failure){long now=System.currentTimeMillis();if(now-equipWarnings.getOrDefault(player.getUniqueId(),0L)>=30000){equipWarnings.put(player.getUniqueId(),now);player.sendMessage(Component.text(failure.getMessage()+" Книги можно получить командой /spy equip."));}}
             }}
             else {
-                seenSpy.remove(player.getUniqueId());equipWarnings.remove(player.getUniqueId());if(Arrays.stream(player.getInventory().getContents()).noneMatch(this::book))return;
-                try{ready(player);}catch(IllegalArgumentException locked){return;}var inventory=snapshot(player);for(int i=0;i<inventory.length;i++)if(book(inventory[i]))inventory[i]=null;
-                var receipt=storage.transaction(db->TradeStore.prepare(db,UUID.randomUUID().toString(),player.getUniqueId().toString(),ItemStack.serializeItemsAsBytes(inventory),0,0,null,0));plugin.trades().applyPrepared(player,receipt);
+                seenSpy.remove(player.getUniqueId());equipWarnings.remove(player.getUniqueId());resetBooks.remove(player.getUniqueId());if(Arrays.stream(player.getInventory().getContents()).noneMatch(this::book) && !book(player.getItemOnCursor()))return;
+                try{plugin.goodieTransfers().changeUnitInventory(player,(inventory,cursor)->{
+                    if(Arrays.stream(inventory).anyMatch(item->"u_spy".equals(id(item))))return new GoodieTransferService.InventoryChange(inventory,cursor,List.of());
+                    for(int i=0;i<inventory.length;i++)if(book(inventory[i]))inventory[i]=null;
+                    return new GoodieTransferService.InventoryChange(inventory,book(cursor)?null:cursor,List.of());
+                });}catch(IllegalArgumentException locked){/* The pending inventory journal will retry on a later refresh. */}
             }
     }
-    private void inventoryChanged(Player player) {
+    public void inventoryChanged(Player player) {
+        seenSpy.remove(player.getUniqueId());resetBooks.add(player.getUniqueId());
         plugin.getServer().getScheduler().runTask(plugin,()->{if(!player.isOnline() || player.isDead())return;try{refreshBooks(player);}catch(SQLException|RuntimeException failure){plugin.getLogger().warning("Spy inventory refresh failed: "+failure.getMessage());}});
     }
     @EventHandler(priority=EventPriority.MONITOR)
-    public void closeInventory(org.bukkit.event.inventory.InventoryCloseEvent event){if(event.getPlayer() instanceof Player player)inventoryChanged(player);}
+    public void closeInventory(org.bukkit.event.inventory.InventoryCloseEvent event){if(event.getPlayer() instanceof Player player)plugin.getServer().getScheduler().runTask(plugin,()->{if(player.isOnline() && !player.isDead())try{refreshBooks(player);}catch(SQLException|RuntimeException failure){plugin.getLogger().warning("Spy inventory close refresh failed: "+failure.getMessage());}});}
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void unitClick(org.bukkit.event.inventory.InventoryClickEvent event) {
+        if(!(event.getWhoClicked() instanceof Player player))return;
+        int hotbar=event.getClick()==org.bukkit.event.inventory.ClickType.SWAP_OFFHAND?40:event.getHotbarButton();
+        boolean swaps=event.getAction()==org.bukkit.event.inventory.InventoryAction.HOTBAR_SWAP || event.getAction()==org.bukkit.event.inventory.InventoryAction.HOTBAR_MOVE_AND_READD;
+        if("u_spy".equals(id(event.getCurrentItem())) || "u_spy".equals(id(event.getCursor())) || swaps && hotbar>=0 && "u_spy".equals(id(player.getInventory().getItem(hotbar))))inventoryChanged(player);
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void unitDrag(org.bukkit.event.inventory.InventoryDragEvent event){if(event.getWhoClicked() instanceof Player player && "u_spy".equals(id(event.getOldCursor())))inventoryChanged(player);}
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
     public void unitDrop(org.bukkit.event.player.PlayerDropItemEvent event){if("u_spy".equals(id(event.getItemDrop().getItemStack())))inventoryChanged(event.getPlayer());}
     @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
     public void unitPickup(org.bukkit.event.entity.EntityPickupItemEvent event){if(event.getEntity() instanceof Player player && "u_spy".equals(id(event.getItem().getItemStack())))inventoryChanged(player);}
     @EventHandler(priority=EventPriority.HIGHEST) public void death(org.bukkit.event.entity.PlayerDeathEvent event) {
         if(event.getKeepInventory())return;
+        seenSpy.remove(event.getEntity().getUniqueId());equipWarnings.remove(event.getEntity().getUniqueId());resetBooks.remove(event.getEntity().getUniqueId());
         boolean spy=Arrays.stream(event.getEntity().getInventory().getContents()).anyMatch(item->"u_spy".equals(id(item)));event.getDrops().removeIf(item->book(item)||"u_spy".equals(id(item)));event.getItemsToKeep().removeIf(item->book(item)||"u_spy".equals(id(item)));
         if(!spy)return;
         try {
@@ -203,9 +233,9 @@ public final class EspionageService implements Listener,CommandExecutor {
         }catch(IllegalArgumentException failure){player.sendMessage(Component.text(failure.getMessage()));}catch(SQLException|RuntimeException failure){plugin.getLogger().severe("Spy action failed: "+failure.getMessage());player.kick(Component.text("Действие шпиона приостановлено. Переподключитесь после восстановления сервера."));}return true;
     }
     @EventHandler public void join(PlayerJoinEvent event){joined.put(event.getPlayer().getUniqueId(),System.currentTimeMillis());}
-    @EventHandler public void quit(PlayerQuitEvent event){joined.remove(event.getPlayer().getUniqueId());offers.remove(event.getPlayer().getUniqueId());seenSpy.remove(event.getPlayer().getUniqueId());equipWarnings.remove(event.getPlayer().getUniqueId());}
+    @EventHandler public void quit(PlayerQuitEvent event){joined.remove(event.getPlayer().getUniqueId());offers.remove(event.getPlayer().getUniqueId());seenSpy.remove(event.getPlayer().getUniqueId());resetBooks.remove(event.getPlayer().getUniqueId());equipWarnings.remove(event.getPlayer().getUniqueId());}
     @EventHandler(priority=EventPriority.HIGH) public void use(PlayerInteractEvent event) {
-        if(event.getHand()!=EquipmentSlot.HAND || event.getAction()!=org.bukkit.event.block.Action.RIGHT_CLICK_AIR && event.getAction()!=org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK)return;String id=id(event.getItem());if(!"u_spy".equals(id) && !book(event.getItem()))return;event.setCancelled(true);
+        if(event.getAction()!=org.bukkit.event.block.Action.RIGHT_CLICK_AIR && event.getAction()!=org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK)return;String id=id(event.getItem());if(!"u_spy".equals(id) && !book(event.getItem()))return;event.setCancelled(true);
         try{if("u_spy".equals(id))equip(event.getPlayer());else offer(event.getPlayer(),id);}catch(IllegalArgumentException failure){event.getPlayer().sendMessage(Component.text(failure.getMessage()));}catch(SQLException|RuntimeException failure){plugin.getLogger().severe("Spy item action failed: "+failure.getMessage());event.getPlayer().kick(Component.text("Действие шпиона приостановлено."));}
     }
     @EventHandler(priority=EventPriority.HIGH,ignoreCancelled=true) public void chat(io.papermc.paper.event.player.AsyncChatEvent event) {

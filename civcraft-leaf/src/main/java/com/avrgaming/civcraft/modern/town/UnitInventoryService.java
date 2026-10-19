@@ -2,6 +2,7 @@ package com.avrgaming.civcraft.modern.town;
 
 import com.avrgaming.civcraft.modern.CivCraftModernPlugin;
 import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
+import com.avrgaming.civcraft.modern.trade.GoodieTransferService;
 import java.sql.SQLException;
 import java.util.*;
 import net.kyori.adventure.text.Component;
@@ -22,9 +23,14 @@ public final class UnitInventoryService implements Listener {
     private final StorageBootstrap storage;
     private final NamespacedKey ownerTown;
     private final Map<UUID,Long> warnings=new HashMap<>();
+    private record Relocation(ItemStack item,boolean groundPickup){}
+    private final Map<UUID,Relocation> reposition=new LinkedHashMap<>();
+    private final Set<UUID> closeChecks=new LinkedHashSet<>();
+    private long lastFailure;
     public UnitInventoryService(CivCraftModernPlugin plugin,StorageBootstrap storage) {
         this.plugin=plugin;this.storage=storage;ownerTown=new NamespacedKey(plugin,"unit-town");
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
+        plugin.getServer().getScheduler().runTaskTimer(plugin,this::finishMoves,1L,1L);
     }
     private boolean unit(ItemStack item){String id=plugin.nativeItems().id(item);return "u_spy".equals(id)||"u_settler".equals(id);}
     private boolean book(ItemStack item){String id=plugin.nativeItems().id(item);return id!=null && id.startsWith("spy_");}
@@ -91,5 +97,63 @@ public final class UnitInventoryService implements Listener {
     public void spawn(ItemSpawnEvent event){if(book(event.getEntity().getItemStack()))event.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
     public void entity(PlayerInteractEntityEvent event){var item=event.getPlayer().getInventory().getItem(event.getHand());if(book(item))event.setCancelled(true);}
-    @EventHandler public void quit(org.bukkit.event.player.PlayerQuitEvent event){warnings.remove(event.getPlayer().getUniqueId());}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true)
+    public void craft(CraftItemEvent event){if(Arrays.stream(event.getInventory().getMatrix()).anyMatch(item->unit(item)||book(item)))event.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST)
+    public void death(org.bukkit.event.entity.PlayerDeathEvent event) {
+        if(event.getKeepInventory())return;
+        var soulbound=new NamespacedKey(plugin,"soulbound");
+        java.util.function.Predicate<ItemStack> removed=item->book(item) || unit(item) && !item.getItemMeta().getPersistentDataContainer().has(soulbound,PersistentDataType.BYTE);
+        event.getDrops().removeIf(removed);event.getItemsToKeep().removeIf(removed);
+    }
+    private void reposition(Player player,ItemStack item){if(unit(item))reposition.put(player.getUniqueId(),new Relocation(item.clone(),false));}
+    /** Wait for Bukkit to apply the accepted move; never mutate an inventory inside its click. */
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void acceptedClick(InventoryClickEvent event) {
+        if(!(event.getWhoClicked() instanceof Player player) || event.isShiftClick())return;
+        boolean bottom=event.getClickedInventory()==player.getInventory();
+        switch(event.getAction()) {
+            case PLACE_ALL,PLACE_ONE,PLACE_SOME,SWAP_WITH_CURSOR -> {if(bottom)reposition(player,event.getCursor());}
+            case HOTBAR_SWAP,HOTBAR_MOVE_AND_READD -> {
+                // Numeric keys and the offhand key use the same native swap operation.
+                if(!bottom)reposition(player,event.getCurrentItem());
+            }
+            default -> {}
+        }
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void acceptedDrag(InventoryDragEvent event) {
+        if(event.getWhoClicked() instanceof Player player && event.getNewItems().keySet().stream().anyMatch(slot->event.getView().getInventory(slot)==player.getInventory()))reposition(player,event.getOldCursor());
+    }
+    @EventHandler(priority=EventPriority.MONITOR,ignoreCancelled=true)
+    public void acceptedPickup(EntityPickupItemEvent event){if(event.getEntity() instanceof Player player && unit(event.getItem().getItemStack()))reposition.put(player.getUniqueId(),new Relocation(event.getItem().getItemStack().clone(),true));}
+    @EventHandler(priority=EventPriority.MONITOR)
+    public void closed(InventoryCloseEvent event){if(event.getPlayer() instanceof Player player)closeChecks.add(player.getUniqueId());}
+    private void finishMoves() {
+        var waiting=new LinkedHashSet<>(closeChecks);waiting.addAll(reposition.keySet());int budget=16;
+        for(var uuid:waiting) {
+            if(budget--<=0)break;
+            var player=plugin.getServer().getPlayer(uuid);
+            if(player==null || player.isDead()){closeChecks.remove(uuid);reposition.remove(uuid);continue;}
+            var target=reposition.get(uuid);boolean clean=closeChecks.contains(uuid);
+            try {
+                plugin.goodieTransfers().changeUnitInventory(player,(inventory,cursor)->{
+                    var drops=new ArrayList<ItemStack>();
+                    if(clean) {
+                        boolean kept=false;
+                        for(int i=0;i<inventory.length;i++)if(unit(inventory[i])) {
+                            var item=inventory[i];int remove=kept?item.getAmount():Math.max(0,item.getAmount()-1);
+                            if(!kept){kept=true;inventory[i]=item.clone();inventory[i].setAmount(1);}else inventory[i]=null;
+                            while(remove>0){var drop=item.clone();int count=Math.min(remove,item.getMaxStackSize());drop.setAmount(count);drops.add(drop);remove-=count;}
+                        }
+                    }
+                    if(target!=null)drops.addAll(UnitInventoryLayout.reposition(inventory,target.item(),target.groundPickup()));
+                    return new GoodieTransferService.InventoryChange(inventory,cursor,drops);
+                });
+                closeChecks.remove(uuid);reposition.remove(uuid);
+            }catch(IllegalArgumentException waitingForJournal){/* Retry after the other inventory intent completes. */}
+            catch(SQLException|RuntimeException failure){long now=System.currentTimeMillis();if(now-lastFailure>30000){lastFailure=now;plugin.getLogger().severe("Unit slot restoration retained: "+failure.getMessage());}}
+        }
+    }
+    @EventHandler public void quit(org.bukkit.event.player.PlayerQuitEvent event){var uuid=event.getPlayer().getUniqueId();warnings.remove(uuid);closeChecks.remove(uuid);reposition.remove(uuid);}
 }

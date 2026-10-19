@@ -49,6 +49,14 @@ public final class GoodieTransferService implements Listener {
     }
     public boolean isGoodie(ItemStack item){return items.token(item)!=null;}
     public void checkpointCursor(Player player){chests.checkpointCursor(player);}
+    /** Complete after-image for a unit/books rearrangement, including saved overflow drops. */
+    public record InventoryChange(ItemStack[] inventory,ItemStack cursor,List<ItemStack> drops) {
+        public InventoryChange{inventory=GoodieChestPlan.copy(inventory);cursor=GoodieChestPlan.clone(cursor);drops=drops.stream().map(ItemStack::clone).toList();}
+        @Override public ItemStack[] inventory(){return GoodieChestPlan.copy(inventory);}
+        @Override public ItemStack cursor(){return GoodieChestPlan.clone(cursor);}
+        @Override public List<ItemStack> drops(){return drops.stream().map(ItemStack::clone).toList();}
+    }
+    public String changeUnitInventory(Player player,java.util.function.BiFunction<ItemStack[],ItemStack,InventoryChange> change)throws SQLException{return chests.changeUnitInventory(player,change);}
     public String submitCampQuestItems(Player player,ItemStack[] inventory,long camp,String quest,int before,int removed,int target)throws SQLException{return chests.submitCampQuestItems(player,inventory,camp,quest,before,removed,target);}
     public String prepareCampQuestReward(Player player,long camp,String quest,List<ItemStack> items,List<com.avrgaming.civcraft.modern.campnpc.reward.QuestRewardStore.Effect> effects,List<String> commands)throws SQLException{return chests.prepareCampQuestReward(player,camp,quest,items,effects,commands);}
     public void shutdown(){chests.shutdown();}

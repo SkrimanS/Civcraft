@@ -385,10 +385,12 @@ public final class NativeTradeService implements Listener {
     private void restoreInventory(Player player,String id,byte[] inventory) {
         ItemStack[] contents=ItemStack.deserializeItemsFromBytes(inventory);
         if(contents.length!=player.getInventory().getSize())throw new IllegalArgumentException("Сохранённый торговый инвентарь имеет неверный размер");
+        ItemStack[] previous=player.getInventory().getContents();
         player.getInventory().setContents(contents);
         player.getPersistentDataContainer().set(applied,PersistentDataType.STRING,id);
         if(plugin.goodieTransfers()!=null)plugin.goodieTransfers().checkpointCursor(player);
         player.saveData();
+        plugin.unitInventoryApplied(player,previous);
     }
     /** Explicit JVM flags are used by the isolated crash-recovery integration tests. */
     private static void testInterruption(String phase,Player player) {

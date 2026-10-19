@@ -71,6 +71,14 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private Lang lang;
     private GameplayRestrictionService gameplayRestrictions;
     private NativeLegacyItems nativeItems;
+    private com.avrgaming.civcraft.modern.espionage.EspionageService espionage;
+    /** Notify only a changed spy item; book-only after-images must not trigger another issue. */
+    public void unitInventoryApplied(org.bukkit.entity.Player player,org.bukkit.inventory.ItemStack[] before) {
+        if(espionage==null || before==null)return;
+        var previous=java.util.Arrays.stream(before).filter(item->"u_spy".equals(nativeItems.id(item))).findFirst().orElse(null);
+        var current=java.util.Arrays.stream(player.getInventory().getContents()).filter(item->"u_spy".equals(nativeItems.id(item))).findFirst().orElse(null);
+        if(!java.util.Objects.equals(previous,current))espionage.inventoryChanged(player);
+    }
     private com.avrgaming.civcraft.modern.government.GovernmentService governments;
     private com.avrgaming.civcraft.modern.trade.NativeTradeService trades;
     private com.avrgaming.civcraft.modern.town.ConsumptionService consumption;
@@ -281,7 +289,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             getServer().getScheduler().runTaskTimer(this,pastures::tick,80L,20L);
             buildingActivity=new com.avrgaming.civcraft.modern.build.BuildingActivityService(this,storage);
             getServer().getScheduler().runTaskTimer(this,buildingActivity::tick,20L,20L);
-            new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
+            espionage=new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
             new com.avrgaming.civcraft.modern.town.UnitInventoryService(this,storage);
             roads=new com.avrgaming.civcraft.modern.road.RoadService(this,storage);
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
