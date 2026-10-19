@@ -96,7 +96,7 @@ public final class CampService {
     public void startTasks() {
         plugin.getServer().getScheduler().runTask(plugin, this::setupMissingWorkstations);
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::setupMissingWorkstations, 20L, 20L);
-        plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickBreaker, 20L * 8L, 20L * 8L);
+        plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickBreaker, 20L * 20L, 20L * 20L);
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickFarmGrowth, 20L * 60L, 20L * 60L);
         plugin.getServer().getScheduler().runTaskTimer(plugin, this::tickCampProduction, 20L * 60L * 60L, 20L * 60L * 60L);
     }
@@ -354,40 +354,7 @@ public final class CampService {
         longhouse.runHour();
     }
 
-    private void tickBreaker() {
-        try {
-            for (CampInfo camp : camps()) {
-                if (!camp.breakerUpgrade()) {
-                    continue;
-                }
-                Location input = camp.breakerInputLocation();
-                Location output = camp.breakerOutputLocation();
-                if (input == null || output == null || !(input.getBlock().getState() instanceof Chest inputChest) || !(output.getBlock().getState() instanceof Chest outputChest)) {
-                    continue;
-                }
-                if (countBreakerInputs(inputChest.getInventory()) < 8) {
-                    continue;
-                }
-
-                List<Material> drops = new ArrayList<>();
-                for (int i = 0; i < 8; i++) {
-                    drops.add(randomBreakerDrop());
-                }
-                if (!canFitItems(outputChest.getInventory(), drops)) {
-                    continue;
-                }
-
-                for (int i = 0; i < 8; i++) {
-                    removeOneBreakerInput(inputChest.getInventory());
-                }
-                for (Material drop : drops) {
-                    outputChest.getInventory().addItem(new ItemStack(drop, 1));
-                }
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Camp breaker tick failed: " + exception.getMessage());
-        }
-    }
+    private void tickBreaker() { longhouse.runSifters(); }
 
     private void tickFarmGrowth() {
         long now = System.currentTimeMillis();
@@ -1048,38 +1015,6 @@ public final class CampService {
         statement.setInt(index + 3, location.getBlockZ());
     }
 
-    private boolean removeItems(Inventory inventory, Material material, int amount) {
-        if (!inventory.containsAtLeast(new ItemStack(material), amount)) {
-            return false;
-        }
-        int left = amount;
-        for (ItemStack item : inventory.getContents()) {
-            if (item == null || item.getType() != material) {
-                continue;
-            }
-            int take = Math.min(left, item.getAmount());
-            item.setAmount(item.getAmount() - take);
-            left -= take;
-            if (left <= 0) {
-                return true;
-            }
-        }
-        return true;
-    }
-
-    private boolean hasInventorySpace(Inventory inventory) {
-        return inventory.firstEmpty() >= 0;
-    }
-
-    private Material randomBreakerDrop() {
-        double value = Math.random();
-        if (value < 0.80) return Material.GRAVEL;
-        if (value < 0.90) return Material.IRON_INGOT;
-        if (value < 0.97) return Material.GOLD_INGOT;
-        if (value < 0.99) return Material.DIAMOND;
-        return Material.EMERALD;
-    }
-
     private int memberCount(long campId) throws SQLException {
         try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("SELECT COUNT(*) AS count FROM camp_members WHERE camp_id = ?")) {
             statement.setLong(1, campId);
@@ -1493,74 +1428,6 @@ public final class CampService {
                 plugin.getLogger().warning("Unable to remove DecentHolograms camp hologram: " + exception.getMessage());
             }
         }
-    }
-
-    private int countBreakerInputs(Inventory inventory) {
-        int count = 0;
-        for (Material material : breakerInputMaterials()) {
-            count += countItems(inventory, material);
-        }
-        return count;
-    }
-
-    private boolean removeOneBreakerInput(Inventory inventory) {
-        for (Material material : breakerInputMaterials()) {
-            if (removeItems(inventory, material, 1)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<Material> breakerInputMaterials() {
-        return List.of(Material.COBBLESTONE, Material.ANDESITE, Material.DIORITE, Material.GRANITE);
-    }
-
-    private boolean canFitItems(Inventory inventory, List<Material> materials) {
-        Map<Material, Integer> required = new HashMap<>();
-        for (Material material : materials) {
-            required.merge(material, 1, Integer::sum);
-        }
-
-        int emptySlots = 0;
-        for (ItemStack item : inventory.getContents()) {
-            if (item == null || item.getType() == Material.AIR) {
-                emptySlots++;
-                continue;
-            }
-            Integer amount = required.get(item.getType());
-            if (amount == null || amount <= 0) {
-                continue;
-            }
-            int free = Math.max(0, item.getMaxStackSize() - item.getAmount());
-            if (free > 0) {
-                required.put(item.getType(), Math.max(0, amount - free));
-            }
-        }
-
-        for (Map.Entry<Material, Integer> entry : required.entrySet()) {
-            int amount = entry.getValue();
-            if (amount <= 0) {
-                continue;
-            }
-            int maxStack = Math.max(1, entry.getKey().getMaxStackSize());
-            int neededSlots = (int) Math.ceil(amount / (double) maxStack);
-            emptySlots -= neededSlots;
-            if (emptySlots < 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private int countItems(Inventory inventory, Material material) {
-        int count = 0;
-        for (ItemStack item : inventory.getContents()) {
-            if (item != null && item.getType() == material) {
-                count += item.getAmount();
-            }
-        }
-        return count;
     }
 
     private String blockKey(Block block) {

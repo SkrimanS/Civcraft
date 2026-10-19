@@ -15,8 +15,9 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.inventory.*;
+import org.bukkit.configuration.file.YamlConfiguration;
 
-/** Original longhouse consumption, starvation and owner-tagged leadership tokens. */
+/** Original longhouse and sifter operations on physical camp chests. */
 public final class CampLonghouseService implements Listener {
     private final CivCraftModernPlugin plugin;
     private final StorageBootstrap storage;
@@ -24,11 +25,15 @@ public final class CampLonghouseService implements Listener {
     private final Map<Integer,Material> materials=new HashMap<>();
     private final Set<ConsumptionContainers.Position> locked=new HashSet<>();
     private final NamespacedKey applied;
+    private final CampSifterRules sifter;
+    private final Random random=new Random();
     private boolean paused;
     private long lastWarning;
     public CampLonghouseService(CivCraftModernPlugin plugin)throws SQLException,IOException {
         this.plugin=plugin;storage=plugin.storage();applied=new NamespacedKey(plugin,"last-camp-meal");
         levels=ConsumptionCatalog.longhouse(new File(plugin.getDataFolder(),"civcraft/data/camp.yml"));
+        var config=YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(),"civcraft/data/camp.yml"));
+        sifter=new CampSifterRules(config.getDouble("camp.sifter_gold_nugget_chance",0.10),config.getDouble("camp.sifter_iron_ingot_chance",0.025));
         var registry=new LegacyItemMaterials(plugin.getResource("legacy-materials.properties"));
         for(var level:levels.values())for(int id:level.food().keySet())materials.putIfAbsent(id,registry.resolve(id,0));
         storage.transaction(db->{CampLonghouseStore.install(db,Collections.max(levels.keySet()));return null;});
@@ -38,12 +43,46 @@ public final class CampLonghouseService implements Listener {
     }
     public int maximum(int level){return levels.containsKey(level)?levels.get(level).count():0;}
     public int bread(int level){return levels.containsKey(level)?levels.get(level).food().getOrDefault(297,0):0;}
+    public void runSifters() {
+        if(paused)return;
+        try {
+            var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE breaker_upgrade=1 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
+            for(long id:ids){if(paused)break;try{sift(id);}catch(Exception failure){warn(failure);}}
+        }catch(Exception failure){warn(failure);}
+    }
+    private void sift(long id)throws SQLException,IOException {
+        var camp=storage.query(db->{CampLonghouseStore.requireUnlocked(db,id);try(var s=db.prepareStatement("SELECT * FROM camps WHERE id=? AND breaker_upgrade=1")) {
+            s.setLong(1,id);try(var r=s.executeQuery()){return r.next()?new Sifter(UUID.fromString(r.getString("owner_uuid")),r.getInt("level"),r.getInt("experience"),point(r,"breaker_input"),point(r,"breaker_output")):null;}
+        }});
+        if(camp==null || camp.input()==null || camp.output()==null)return;
+        var source=positions(camp.input());var destination=positions(camp.output());
+        if(source.isEmpty() || destination.isEmpty())return;
+        var all=new LinkedHashSet<>(source);all.addAll(destination);
+        storage.query(db->{GoodieChestStore.requirePositionsAvailable(db,all.stream().map(p->new GoodieChestStore.Position(p.world(),p.x(),p.y(),p.z())).toList());return null;});
+        var plan=sifter.plan(ConsumptionContainers.capture(source),ConsumptionContainers.capture(destination),random);
+        if(plan.isEmpty())return;
+        var meal=new CampLonghouseStore.Pending(UUID.randomUUID().toString(),id,camp.leader(),camp.level(),camp.count(),0,"SIFT",ConsumptionContainers.encode(plan.get()));
+        storage.transaction(db->{CampLonghouseStore.prepare(db,meal,camp.level(),camp.count());return null;});
+        for(var image:plan.get())locked.add(image.position());
+        interrupt("sifter-prepared",id);finish(meal);
+    }
+    private static ConsumptionContainers.Position point(ResultSet r,String prefix)throws SQLException {
+        String world=r.getString(prefix+"_world");return world==null?null:new ConsumptionContainers.Position(world,r.getInt(prefix+"_x"),r.getInt(prefix+"_y"),r.getInt(prefix+"_z"));
+    }
+    private static Set<ConsumptionContainers.Position> positions(ConsumptionContainers.Position point) {
+        var world=Bukkit.getWorld(point.world());if(world==null || !world.isChunkLoaded(point.x()>>4,point.z()>>4))return Set.of();
+        if(!(world.getBlockAt(point.x(),point.y(),point.z()).getState() instanceof Chest chest))return Set.of();
+        var out=new LinkedHashSet<ConsumptionContainers.Position>();addPositions(chest.getInventory().getHolder(),out);
+        for(var p:out)if(!world.isChunkLoaded(p.x()>>4,p.z()>>4))return Set.of();
+        return Collections.unmodifiableSet(out);
+    }
     public void runHour() {
         if(paused)return;
         try {
             recover();
+            if(paused)return;
             var ids=storage.query(db->{var out=new ArrayList<Long>();try(var s=db.createStatement();var r=s.executeQuery("SELECT id FROM camps WHERE longhouse_upgrade=1 ORDER BY id")){while(r.next())out.add(r.getLong(1));}return out;});
-            for(long id:ids)try{produce(id);}catch(Exception failure){warn(failure);}
+            for(long id:ids){if(paused)break;try{produce(id);}catch(Exception failure){warn(failure);}}
         }catch(Exception failure){warn(failure);}
     }
     private void produce(long id)throws SQLException,IOException {
@@ -102,13 +141,13 @@ public final class CampLonghouseService implements Listener {
             var p=image.position();var world=Bukkit.getWorld(p.world());
             if(world==null || !world.isChunkLoaded(p.x()>>4,p.z()>>4))return;
         }
-        if(Set.of("GROW","LEVELUP","MAXED").contains(meal.result())) {
+        if(Set.of("GROW","LEVELUP","MAXED","SIFT").contains(meal.result())) {
             for(var world:ConsumptionContainers.apply(images,meal.id(),applied))world.save(true);
-            interrupt("world-saved",meal.camp());
+            interrupt(meal.result().equals("SIFT")?"sifter-world-saved":"world-saved",meal.camp());
         }
         boolean completed=storage.transaction(db->CampLonghouseStore.complete(db,meal));
         for(var image:images)locked.remove(image.position());
-        if(completed) {
+        if(completed && !meal.result().equals("SIFT")) {
             var members=storage.query(db->{var out=new ArrayList<UUID>();try(var s=db.prepareStatement("SELECT uuid FROM camp_members WHERE camp_id=?")){s.setLong(1,meal.camp());try(var r=s.executeQuery()){while(r.next())out.add(UUID.fromString(r.getString(1)));}}return out;});
             String result=switch(meal.result()) {
                 case "GROW"->"прогресс вырос";case "LEVELUP"->"уровень повышен";case "MAXED"->"предел уровня";
@@ -123,8 +162,9 @@ public final class CampLonghouseService implements Listener {
             paused=true;throw new IllegalStateException("Injected camp meal interruption at "+phase);
         }
     }
-    private void warn(Exception failure){long now=System.currentTimeMillis();if(now-lastWarning>30000){lastWarning=now;plugin.getLogger().warning("Camp longhouse: "+failure.getMessage());}}
+    private void warn(Exception failure){long now=System.currentTimeMillis();if(now-lastWarning>30000){lastWarning=now;plugin.getLogger().warning("Camp production: "+failure.getMessage());}}
     private record Camp(UUID leader,int level,int count,String world,int x,int y,int z) {}
+    private record Sifter(UUID leader,int level,int count,ConsumptionContainers.Position input,ConsumptionContainers.Position output) {}
     private boolean locked(Block b){return locked.contains(new ConsumptionContainers.Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()));}
     private boolean locked(Inventory i){return locked(i.getHolder());}
     private boolean locked(InventoryHolder h){return h instanceof Chest c?locked(c.getBlock()):h instanceof DoubleChest pair && (locked(pair.getLeftSide()) || locked(pair.getRightSide()));}

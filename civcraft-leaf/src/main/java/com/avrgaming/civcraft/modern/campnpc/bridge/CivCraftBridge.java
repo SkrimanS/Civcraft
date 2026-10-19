@@ -113,7 +113,9 @@ public final class CivCraftBridge {
             return 1;
         }
         try {
-            Method method = api.getClass().getMethod("getCampLevel", long.class);
+            Method method;
+            try { method = api.getClass().getMethod("getCampQuestLevel", long.class); }
+            catch (NoSuchMethodException legacyApi) { method = api.getClass().getMethod("getCampLevel", long.class); }
             return Math.max(1, asInt(method.invoke(api, campId)));
         } catch (ReflectiveOperationException ignored) {
             return 1;

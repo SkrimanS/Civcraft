@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.*;
 import com.avrgaming.civcraft.modern.trade.GoodieChestStore;
 
-/** Write-ahead meal receipt: physical food/token images precede the monetary reward. */
+/** Write-ahead camp chest receipt. Sifting and longhouse meals share exclusion/recovery. */
 public final class CampLonghouseStore {
     private CampLonghouseStore() {}
     public record Pending(String id,long camp,UUID leader,int level,int count,double coins,String result,byte[] containers) {}
@@ -25,18 +25,26 @@ public final class CampLonghouseStore {
                 s.executeUpdate("INSERT INTO camp_longhouse_legacy_progress SELECT id,level,experience FROM camps");
                 s.executeUpdate("UPDATE camps SET level=MIN("+maximum+",MAX(1,level)),experience=0");
             }
+            s.executeUpdate("CREATE TABLE IF NOT EXISTS camp_npc_progress(camp_id INTEGER PRIMARY KEY REFERENCES camps(id) ON DELETE CASCADE,experience INTEGER NOT NULL DEFAULT 0 CHECK(experience>=0))");
+            s.executeUpdate("INSERT OR IGNORE INTO camp_npc_progress SELECT p.camp_id,MAX(0,p.experience) FROM camp_longhouse_legacy_progress p JOIN camps c ON c.id=p.camp_id");
+            s.executeUpdate("CREATE TRIGGER IF NOT EXISTS camp_inventory_blocks_delete BEFORE DELETE ON camps WHEN EXISTS(SELECT 1 FROM camp_longhouse_operations WHERE camp_id=OLD.id AND status='PREPARED') BEGIN SELECT RAISE(ABORT,'Camp inventory is pending'); END");
+            s.executeUpdate("CREATE TRIGGER IF NOT EXISTS camp_inventory_blocks_leader_change BEFORE UPDATE OF owner_uuid ON camps WHEN NEW.owner_uuid<>OLD.owner_uuid AND EXISTS(SELECT 1 FROM camp_longhouse_operations WHERE camp_id=OLD.id AND status='PREPARED') BEGIN SELECT RAISE(ABORT,'Camp inventory is pending'); END");
+            s.executeUpdate("CREATE TRIGGER IF NOT EXISTS camp_inventory_blocks_progress_change BEFORE UPDATE OF level,experience ON camps WHEN (NEW.level<>OLD.level OR NEW.experience<>OLD.experience) AND EXISTS(SELECT 1 FROM camp_longhouse_operations WHERE camp_id=OLD.id AND status='PREPARED') BEGIN SELECT RAISE(ABORT,'Camp inventory is pending'); END");
         }
     }
     public static void requireUnlocked(Connection db,long camp)throws SQLException {
         try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name='camp_longhouse_operations'");var r=s.executeQuery()){if(!r.next())return;}
         try(var s=db.prepareStatement("SELECT 1 FROM camp_longhouse_operations WHERE camp_id=? AND status='PREPARED'")) {
-            s.setLong(1,camp);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Питание большого дома ещё сохраняется. Дождитесь восстановления операции.");}
+            s.setLong(1,camp);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Работа лагерного сундука ещё сохраняется. Дождитесь восстановления операции.");}
         }
     }
     public static void prepare(Connection db,Pending meal,int beforeLevel,int beforeCount)throws SQLException {
+        if(db.getAutoCommit())throw new SQLException("Camp production requires a transaction");
         requireUnlocked(db,meal.camp());
         GoodieChestStore.requireImagesUnlocked(db,meal.containers());
-        try(var s=db.prepareStatement("SELECT owner_uuid,level,experience,longhouse_upgrade FROM camps WHERE id=?")) {
+        boolean sifting=meal.result().equals("SIFT");
+        if(sifting && (meal.coins()!=0 || meal.level()!=beforeLevel || meal.count()!=beforeCount))throw new SQLException("Sifter cannot change camp progression");
+        try(var s=db.prepareStatement("SELECT owner_uuid,level,experience,"+(sifting?"breaker_upgrade":"longhouse_upgrade")+" FROM camps WHERE id=?")) {
             s.setLong(1,meal.camp());try(var r=s.executeQuery()) {
                 if(!r.next() || !meal.leader().toString().equals(r.getString(1)) || r.getInt(2)!=beforeLevel || r.getInt(3)!=beforeCount || r.getInt(4)==0)
                     throw new SQLException("Camp changed before its meal");
@@ -55,8 +63,14 @@ public final class CampLonghouseStore {
     }
     /** Caller owns transaction. Updating the receipt and issuing money are inseparable. */
     public static boolean complete(Connection db,Pending meal)throws SQLException {
+        if(db.getAutoCommit())throw new SQLException("Camp production requires a transaction");
         try(var s=db.prepareStatement("UPDATE camp_longhouse_operations SET status='COMPLETED',containers=NULL WHERE id=? AND status='PREPARED'")) {
             s.setString(1,meal.id());if(s.executeUpdate()==0)return false;
+        }
+        if(meal.result().equals("SIFT")) {
+            // No monetary audit needs to retain 4,320 empty sifter rows per camp per day.
+            try(var s=db.prepareStatement("DELETE FROM camp_longhouse_operations WHERE id=? AND status='COMPLETED'")){s.setString(1,meal.id());s.executeUpdate();}
+            return true;
         }
         try(var s=db.prepareStatement("UPDATE camps SET level=?,experience=? WHERE id=? AND owner_uuid=?")) {
             s.setInt(1,meal.level());s.setInt(2,meal.count());s.setLong(3,meal.camp());s.setString(4,meal.leader().toString());

@@ -265,31 +265,22 @@ public final class CivCraftCampApi {
     }
 
     public void addCampExperience(long campId, int amount) {
-        if (amount <= 0) {
-            return;
-        }
-        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement("""
-                UPDATE camps
-                SET experience = experience + ?,
-                    level = CASE
-                        WHEN experience + ? >= 1200 THEN 5
-                        WHEN experience + ? >= 600 THEN 4
-                        WHEN experience + ? >= 300 THEN 3
-                        WHEN experience + ? >= 100 THEN 2
-                        ELSE 1
-                    END
-                WHERE id = ?
+        if(amount<=0)return;
+        try(Connection connection=connect();var statement=connection.prepareStatement("""
+                INSERT INTO camp_npc_progress(camp_id,experience) SELECT id,? FROM camps WHERE id=?
+                ON CONFLICT(camp_id) DO UPDATE SET experience=MIN(2147483647,camp_npc_progress.experience+excluded.experience)
                 """)) {
-            statement.setInt(1, amount);
-            statement.setInt(2, amount);
-            statement.setInt(3, amount);
-            statement.setInt(4, amount);
-            statement.setInt(5, amount);
-            statement.setLong(6, campId);
-            statement.executeUpdate();
-        } catch (SQLException exception) {
-            plugin.getLogger().warning("Unable to add camp experience: " + exception.getMessage());
-        }
+            statement.setInt(1,amount);statement.setLong(2,campId);statement.executeUpdate();
+        }catch(SQLException exception){plugin.getLogger().warning("Unable to add camp NPC experience: "+exception.getMessage());}
+    }
+
+    public int getCampQuestLevel(long campId) {
+        try(Connection connection=connect();var statement=connection.prepareStatement("SELECT experience FROM camp_npc_progress WHERE camp_id=?")) {
+            statement.setLong(1,campId);try(var rs=statement.executeQuery()) {
+                int xp=rs.next()?rs.getInt(1):0;
+                return xp>=1200?5:xp>=600?4:xp>=300?3:xp>=100?2:1;
+            }
+        }catch(SQLException exception){plugin.getLogger().warning("Unable to load camp NPC level: "+exception.getMessage());return 1;}
     }
 
     public void addCampControlHp(long campId, int amount) {
