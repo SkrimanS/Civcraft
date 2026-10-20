@@ -993,6 +993,20 @@ public final class LegacyStructureService {
         }.runTaskTimer(plugin, 1L, 1L);
     }
 
+    private final Map<Path,ExplosionTemplateShape> explosionShapes=new java.util.HashMap<>();
+    public ExplosionTemplateShape explosionShape(String storedPath)throws IOException {
+        Path path=Path.of(storedPath).toRealPath();
+        if(!path.startsWith(templateRoot().toRealPath()) && !(Files.isDirectory(schematicRoot()) && path.startsWith(schematicRoot().toRealPath())))throw new IOException("Explosion template is outside configured roots");
+        var cached=explosionShapes.get(path);if(cached!=null)return cached;
+        String name=path.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+        ExplosionTemplateShape shape;
+        if(name.endsWith(".def"))shape=ExplosionTemplateShape.legacy(loadTemplate(path));
+        else if(name.endsWith(".schem") || name.endsWith(".schematic")) {
+            if(!plugin.getServer().getPluginManager().isPluginEnabled("WorldEdit") && !plugin.getServer().getPluginManager().isPluginEnabled("FastAsyncWorldEdit"))throw new IOException("Schematic explosion geometry requires WorldEdit");
+            shape=ExplosionTemplateShape.schematic(loadSchematic(path));
+        }else throw new IOException("Unsupported explosion template format");
+        explosionShapes.put(path,shape);return shape;
+    }
     private LegacyDefTemplate loadTemplate(Path path) throws IOException {
         Path normalized = path.toAbsolutePath().normalize();
         LegacyDefTemplate cached = templateCache.get(normalized);

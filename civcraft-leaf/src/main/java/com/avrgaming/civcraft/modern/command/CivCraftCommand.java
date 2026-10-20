@@ -475,8 +475,11 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             }
             var foundations=plugin.storage().query(com.avrgaming.civcraft.modern.foundation.FoundationEscrowStore::active);
             var explosions=plugin.storage().query(db->com.avrgaming.civcraft.modern.war.LegacyExplosionStore.installed(db)?com.avrgaming.civcraft.modern.war.LegacyExplosionStore.pending(db):List.<com.avrgaming.civcraft.modern.war.LegacyExplosionStore.Request>of());
-            send(sender,"&6Военных взрывов, ожидающих планирования: &e"+explosions.size());
-            for(var explosion:explosions.stream().limit(10).toList())send(sender,"&7"+explosion.id()+" — "+explosion.world()+": "+explosion.x()+", "+explosion.y()+", "+explosion.z());
+            send(sender,"&6Военных взрывов, ожидающих подготовки местности: &e"+explosions.size());
+            for(var explosion:explosions.stream().limit(10).toList()) {
+                boolean damageSaved=plugin.storage().query(db->com.avrgaming.civcraft.modern.war.LegacyExplosionStore.damageReady(db,explosion.id()));
+                send(sender,"&7"+explosion.id()+" — "+explosion.world()+": "+explosion.x()+", "+explosion.y()+", "+explosion.z()+"; "+(damageSaved?"урон сохранён":"ожидается урон"));
+            }
             send(sender,"&6Незавершённых оснований/возвратов: &e"+foundations.size());
             for(var foundation:foundations.stream().limit(15).toList()) {
                 String player=plugin.storage().findResident(foundation.player()).map(ResidentProfile::name).orElse(foundation.player().toString());

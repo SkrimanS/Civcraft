@@ -18,12 +18,20 @@ public final class LegacyExplosionStore {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS legacy_explosion_requests(id TEXT PRIMARY KEY,war_start INTEGER NOT NULL,world TEXT NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,radius INTEGER NOT NULL,damage INTEGER NOT NULL,state TEXT NOT NULL CHECK(state IN ('RECEIVED','PREPARED','DONE','CANCELLED')))");
             s.executeUpdate("CREATE TABLE IF NOT EXISTS legacy_explosion_hits(explosion_id TEXT NOT NULL REFERENCES legacy_explosion_requests(id),build_id INTEGER NOT NULL,war_start INTEGER NOT NULL,before_hp INTEGER NOT NULL,after_hp INTEGER NOT NULL,stopped_construction INTEGER NOT NULL,PRIMARY KEY(explosion_id,build_id))");
         }
+        boolean damageReady=false;try(var s=db.createStatement();var r=s.executeQuery("PRAGMA table_info(legacy_explosion_requests)")){while(r.next())if(r.getString("name").equals("damage_ready"))damageReady=true;}
+        if(!damageReady)try(var s=db.createStatement()){s.executeUpdate("ALTER TABLE legacy_explosion_requests ADD COLUMN damage_ready INTEGER NOT NULL DEFAULT 0");}
     }
     public static Long activeWar(Connection db,long now)throws SQLException {
         try(var s=db.prepareStatement("SELECT start_at FROM war_sessions WHERE state='ACTIVE' AND start_at<=? AND end_at>? ORDER BY start_at LIMIT 1")){s.setLong(1,now);s.setLong(2,now);try(var r=s.executeQuery()){return r.next()?r.getLong(1):null;}}
     }
     public static void receive(Connection db,Request r)throws SQLException {
-        transaction(db);try(var s=db.prepareStatement("INSERT OR IGNORE INTO legacy_explosion_requests VALUES(?,?,?,?,?,?,?,?, 'RECEIVED')")){s.setString(1,r.id());s.setLong(2,r.war());s.setString(3,r.world());s.setInt(4,r.x());s.setInt(5,r.y());s.setInt(6,r.z());s.setInt(7,r.radius());s.setInt(8,r.damage());s.executeUpdate();}
+        transaction(db);try(var s=db.prepareStatement("INSERT OR IGNORE INTO legacy_explosion_requests(id,war_start,world,x,y,z,radius,damage,state) VALUES(?,?,?,?,?,?,?,?, 'RECEIVED')")){s.setString(1,r.id());s.setLong(2,r.war());s.setString(3,r.world());s.setInt(4,r.x());s.setInt(5,r.y());s.setInt(6,r.z());s.setInt(7,r.radius());s.setInt(8,r.damage());s.executeUpdate();}
+    }
+    public static boolean damageReady(Connection db,String id)throws SQLException {
+        try(var s=db.prepareStatement("SELECT damage_ready FROM legacy_explosion_requests WHERE id=?")){s.setString(1,id);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing explosion request");return r.getBoolean(1);}}
+    }
+    public static void damagePrepared(Connection db,String id)throws SQLException {
+        transaction(db);try(var s=db.prepareStatement("UPDATE legacy_explosion_requests SET damage_ready=1 WHERE id=? AND state='RECEIVED' AND damage_ready=0")){s.setString(1,id);if(s.executeUpdate()!=1)throw new SQLException("Explosion damage stage changed");}
     }
     public static List<Request> pending(Connection db)throws SQLException {
         var out=new ArrayList<Request>();try(var s=db.createStatement();var r=s.executeQuery("SELECT * FROM legacy_explosion_requests WHERE state='RECEIVED' ORDER BY rowid")){while(r.next())out.add(new Request(r.getString("id"),r.getLong("war_start"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getInt("radius"),r.getInt("damage")));}return out;
