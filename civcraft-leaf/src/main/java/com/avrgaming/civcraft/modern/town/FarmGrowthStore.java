@@ -43,6 +43,7 @@ public final class FarmGrowthStore {
         try(var s=db.prepareStatement("SELECT world,x,z FROM active_structure_builds WHERE id=? AND structure_id='ti_farm' AND status='COMPLETE' AND town_id IS NOT NULL")){s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Farm is not complete");world=r.getString(1);x=Math.floorDiv(r.getInt(2),16);z=Math.floorDiv(r.getInt(3),16);}}
         if(FarmPlots.registered(db,world,x*16,z*16).orElseThrow().farm()!=build)throw new SQLException("Farm chunk belongs to another registration");
         for(var cell:cells){var p=cell.position();if(!world.equals(p.world()) || Math.floorDiv(p.x(),16)!=x || Math.floorDiv(p.z(),16)!=z)throw new IllegalArgumentException("Рост за пределами зарегистрированного чанка фермы");
+            com.avrgaming.civcraft.modern.wall.WallStore.requireAreaFree(db,p.world(),p.x(),Math.subtractExact(p.y(),1),p.z(),1,2,1);
             try(var s=db.prepareStatement("SELECT 1 FROM resource_production_plantings WHERE world=? AND x=? AND y=? AND z=?")){s.setString(1,p.world());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());try(var r=s.executeQuery()){if(r.next())throw new SQLException("Windmill planting is pending");}}
         }
         var clock=ProductionStore.initialize(db,build,state.period(),0);

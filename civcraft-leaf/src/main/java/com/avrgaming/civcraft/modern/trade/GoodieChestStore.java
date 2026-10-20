@@ -74,6 +74,7 @@ public final class GoodieChestStore {
         reserved.addAll(ruinPositions(db));
         reserved.addAll(siegePositions(db));
         reserved.addAll(roadPositions(db));
+        reserved.addAll(wallPositions(db));
         if(reserved.isEmpty())return;
         var positions=positions(containers);if(positions.stream().anyMatch(reserved::contains))throw new IllegalArgumentException("Сундук участвует в незавершённом переносе товара.");
     }
@@ -90,6 +91,7 @@ public final class GoodieChestStore {
         var out=new HashSet<Position>(ruinPositions(db));
         out.addAll(siegePositions(db));
         out.addAll(roadPositions(db));
+        out.addAll(wallPositions(db));
         for(String table:List.of("consumption_receipts","resource_production_operations","trade_ship_operations","camp_longhouse_operations","camp_fire_operations")) {
             boolean exists;try(var s=db.prepareStatement("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")){s.setString(1,table);try(var r=s.executeQuery()){exists=r.next();}}if(!exists)continue;
             try(var s=db.createStatement();var r=s.executeQuery("SELECT containers FROM "+table+" WHERE status='PREPARED'")) {
@@ -105,6 +107,11 @@ public final class GoodieChestStore {
         if(!com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db))return Set.of();
         var out=new HashSet<Position>();try(var s=db.createStatement();var r=s.executeQuery("SELECT j.world,c.x,c.y,c.z FROM siege_world_cells c JOIN siege_world_jobs j ON j.id=c.job_id WHERE j.state='PREPARED'")){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}
         try(var s=db.prepareStatement("SELECT t.world,t.x,t.y,t.z FROM siege_original_terrain t JOIN war_sessions w ON w.start_at=t.war_start WHERE t.block_nbt IS NOT NULL AND w.state='ACTIVE' AND w.end_at>?")){s.setLong(1,System.currentTimeMillis());try(var r=s.executeQuery()){while(r.next())out.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));}}return out;
+    }
+    private static Set<Position> wallPositions(Connection db)throws SQLException {
+        var out=new HashSet<Position>();
+        for(var p:com.avrgaming.civcraft.modern.wall.WallStore.reservedPositions(db))out.add(new Position(p.world(),p.x(),p.y(),p.z()));
+        return out;
     }
     private static Set<Position> roadPositions(Connection db)throws SQLException {
         if(!com.avrgaming.civcraft.modern.road.RoadStore.installed(db))return Set.of();

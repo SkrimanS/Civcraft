@@ -28,6 +28,7 @@ public final class SiegeCannonImpact {
             blast:for(int x=-radius;x<radius;x++)for(int z=-radius;z<radius;z++)for(int y=-radius;y<radius;y++){
                 int by=center.getBlockY()+y;if(by<world.getMinHeight() || by>=world.getMaxHeight())continue;
                 var b=world.getBlockAt(center.getBlockX()+x,by,center.getBlockZ()+z);
+                if(com.avrgaming.civcraft.modern.wall.WallStore.reserved(db,world.getName(),b.getX(),b.getY(),b.getZ()))throw new IllegalArgumentException("В зоне попадания ещё сохраняется стена.");
                 if(b.getType()==Material.BEDROCK || b.getLocation().distanceSquared(center)>catalog.radius()*catalog.radius())continue;
                 if(SiegeWorldStore.locked(db,world.getName(),b.getX(),b.getY(),b.getZ()))throw new IllegalArgumentException("В зоне попадания ещё сохраняются изменения мира.");
                 if(com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,world.getName(),b.getX(),b.getY(),b.getZ()))throw new IllegalArgumentException("В зоне попадания ещё сохраняется дорога.");

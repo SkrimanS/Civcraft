@@ -66,6 +66,7 @@ public final class LegacyExplosionImpact {
                     if(BuildingDamageStore.health(db,target.build()).hitpoints()>0 || target.status().equals("WAR_DESTROY_PENDING"))continue;
                 }
                 var block=world.getBlockAt(bx,by,bz);
+                if(com.avrgaming.civcraft.modern.wall.WallStore.reserved(db,request.world(),bx,by,bz))throw new IllegalArgumentException("Взрыв ожидает завершения установки или восстановления стены.");
                 if(block.getState() instanceof Sign || block.getType()==Material.TNT || block.getType().isAir())continue;
                 if(markers.contains(new com.avrgaming.civcraft.modern.trade.TradeMarkerStore.Position(request.world(),bx,by,bz)))throw new IllegalArgumentException("Взрыв ожидает завершения установки торгового маркера.");
                 if(SiegeWorldStore.locked(db,request.world(),bx,by,bz) || com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,request.world(),bx,by,bz) || production.contains(new SiegeWorldStore.Position(bx,by,bz)))throw new IllegalArgumentException("Взрыв ожидает завершения сохранения местности.");

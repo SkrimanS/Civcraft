@@ -11,6 +11,7 @@ public final class WallStore {
     private WallStore() {}
     public record Job(String id,long build,String world,String kind,String state) {}
     public record Image(WallRules.Point point,String data,String nbt) {}
+    public record Position(String world,int x,int y,int z) {}
     private static void tx(Connection db)throws SQLException{if(db.getAutoCommit())throw new SQLException("Wall operation requires a transaction");}
     public static boolean installed(Connection db)throws SQLException {
         try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='walls'")){return r.next();}
@@ -93,6 +94,30 @@ public final class WallStore {
         if(!installed(db))return false;
         try(var s=db.prepareStatement("SELECT 1 FROM wall_job_cells c JOIN wall_jobs j ON j.id=c.job_id JOIN structure_builds b ON b.id=j.build_id WHERE j.state='PREPARED' AND b.world=? AND c.x=? AND c.y=? AND c.z=? LIMIT 1")) {
             s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){return r.next();}
+        }
+    }
+    public static Set<Position> reservedPositions(Connection db)throws SQLException {
+        if(!installed(db))return Set.of();var result=new HashSet<Position>();
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT b.world,c.x,c.y,c.z FROM wall_job_cells c JOIN wall_jobs j ON j.id=c.job_id JOIN structure_builds b ON b.id=j.build_id WHERE j.state='PREPARED'")) {
+            while(r.next())result.add(new Position(r.getString(1),r.getInt(2),r.getInt(3),r.getInt(4)));
+        }return Set.copyOf(result);
+    }
+    public static boolean occupiesChunk(Connection db,String world,int chunkX,int chunkZ)throws SQLException {
+        if(!installed(db))return false;
+        try(var s=db.prepareStatement("SELECT 1 FROM wall_columns c JOIN walls w ON w.build_id=c.build_id JOIN structure_builds b ON b.id=w.build_id WHERE b.world=? AND c.x BETWEEN ? AND ? AND c.z BETWEEN ? AND ? AND w.state<>'RETIRED' LIMIT 1")) {
+            s.setString(1,world);s.setLong(2,(long)chunkX*16);s.setLong(3,(long)chunkX*16+15);s.setLong(4,(long)chunkZ*16);s.setLong(5,(long)chunkZ*16+15);try(var r=s.executeQuery()){return r.next();}
+        }
+    }
+    /** Operational locks only. Completed wall column protection is a separate rule. */
+    public static void requireAreaFree(Connection db,String world,int x,int y,int z,int width,int height,int depth)throws SQLException {
+        if(!installed(db))return;
+        if(width<1 || height<1 || depth<1)throw new IllegalArgumentException("Неверный размер проверяемой области стены.");
+        try(var s=db.prepareStatement("""
+            SELECT 1 FROM wall_job_cells c JOIN wall_jobs j ON j.id=c.job_id JOIN structure_builds b ON b.id=j.build_id
+            WHERE j.state='PREPARED' AND b.world=? AND c.x BETWEEN ? AND ? AND c.y BETWEEN ? AND ? AND c.z BETWEEN ? AND ? LIMIT 1
+            """)) {
+            s.setString(1,world);s.setInt(2,x);s.setInt(3,Math.addExact(x,width-1));s.setInt(4,y);s.setInt(5,Math.addExact(y,height-1));s.setInt(6,z);s.setInt(7,Math.addExact(z,depth-1));
+            try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("В этой области ещё выполняется установка или восстановление стены.");}
         }
     }
     public static void requireColumnsFree(Connection db,String world,int x,int z)throws SQLException {

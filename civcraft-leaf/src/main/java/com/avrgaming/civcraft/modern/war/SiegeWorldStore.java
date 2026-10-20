@@ -21,6 +21,7 @@ public final class SiegeWorldStore {
     }
     public static void prepare(Connection db,String id,long war,String world,String kind,List<Cell> cells,boolean remember)throws SQLException{
         transaction(db);
+        for(var cell:cells)com.avrgaming.civcraft.modern.wall.WallStore.requireAreaFree(db,world,cell.x(),cell.y(),cell.z(),1,1,1);
         try(var s=db.prepareStatement("INSERT INTO siege_world_jobs(id,war_start,world,kind) VALUES(?,?,?,?)")){s.setString(1,id);s.setLong(2,war);s.setString(3,world);s.setString(4,kind);s.executeUpdate();}
         try(var s=db.prepareStatement("INSERT INTO siege_world_cells VALUES(?,?,?,?,?,?,?,?,?,?)");var original=db.prepareStatement("INSERT OR IGNORE INTO siege_original_terrain VALUES(?,?,?,?,?,?,?)")){
             int index=0;for(var c:cells){s.setString(1,id);s.setInt(2,index++);s.setInt(3,c.x());s.setInt(4,c.y());s.setInt(5,c.z());s.setString(6,c.before());s.setString(7,c.nbt());s.setString(8,c.after());s.setString(9,c.afterNbt());s.setString(10,c.role());
@@ -77,7 +78,19 @@ public final class SiegeWorldStore {
         }return result;
     }
     public static void requireAreaFree(Connection db,String world,int x,int y,int z,int width,int height,int depth)throws SQLException{
+        com.avrgaming.civcraft.modern.wall.WallStore.requireAreaFree(db,world,x,y,z,width,height,depth);
         if(!installed(db))return;
+        // End-of-war restoration may not have been queued by its clock yet.
+        // Do not admit a new structure into saved terrain in that interval.
+        try(var s=db.prepareStatement("""
+            SELECT 1 FROM siege_original_terrain t JOIN war_sessions w ON w.start_at=t.war_start
+            WHERE t.world=? AND t.x BETWEEN ? AND ? AND t.y BETWEEN ? AND ? AND t.z BETWEEN ? AND ?
+              AND (w.state<>'ACTIVE' OR w.end_at<=?) AND NOT EXISTS(
+                SELECT 1 FROM siege_world_jobs j WHERE j.id='restore:'||t.war_start||':'||t.world AND j.state='DONE') LIMIT 1
+            """)) {
+            s.setString(1,world);s.setInt(2,x);s.setInt(3,Math.addExact(x,width-1));s.setInt(4,y);s.setInt(5,Math.addExact(y,height-1));s.setInt(6,z);s.setInt(7,Math.addExact(z,depth-1));s.setLong(8,System.currentTimeMillis());
+            try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Эта местность ещё ожидает восстановления после войны.");}
+        }
         String sql="SELECT 1 FROM siege_world_cells b JOIN siege_world_jobs j ON j.id=b.job_id LEFT JOIN siege_cannons c ON c.id=j.id WHERE j.world=? AND b.x BETWEEN ? AND ? AND b.y BETWEEN ? AND ? AND b.z BETWEEN ? AND ? AND (j.state='PREPARED' OR (c.state IN ('PREPARED','ACTIVE','DESTROY_PENDING') AND b.role<>'air')) LIMIT 1";
         try(var s=db.prepareStatement(sql)){
             s.setString(1,world);s.setInt(2,x);s.setInt(3,Math.addExact(x,width-1));s.setInt(4,y);s.setInt(5,Math.addExact(y,height-1));s.setInt(6,z);s.setInt(7,Math.addExact(z,depth-1));try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Осадная пушка или восстановление военной местности мешает строительству.");}

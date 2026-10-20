@@ -71,6 +71,7 @@ public final class TradeGoodWorldService implements Listener {
             var world=Bukkit.getWorld(worldName);if(world==null)return;
             if(!world.isChunkLoaded(chunk.x(),chunk.z())){queued.remove(chunk);queued.add(chunk);return;}
             var pick=storage.query(db->TradeGenerationStore.pick(db,worldName,chunk.x(),chunk.z()));if(pick==null){discard(chunk);return;}
+            if(storage.query(db->com.avrgaming.civcraft.modern.wall.WallStore.occupiesChunk(db,worldName,chunk.x(),chunk.z()))){discard(chunk);return;}
             boolean occupied=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM town_claims WHERE world=? AND chunk_x=? AND chunk_z=? UNION ALL SELECT 1 FROM structure_chunks WHERE world=? AND chunk_x=? AND chunk_z=? LIMIT 1")) {
                 s.setString(1,worldName);s.setInt(2,chunk.x());s.setInt(3,chunk.z());s.setString(4,worldName);s.setInt(5,chunk.x());s.setInt(6,chunk.z());try(var r=s.executeQuery()){return r.next();}
             }});if(occupied){discard(chunk);return;}
@@ -93,6 +94,8 @@ public final class TradeGoodWorldService implements Listener {
         var world=Bukkit.getWorld(job.world());if(world==null)throw new IllegalStateException("Trade marker world unavailable");
         var positions=TradeMarkerStore.positions(job);
         for(var position:positions) {
+            if(storage.query(db->com.avrgaming.civcraft.modern.wall.WallStore.reserved(db,position.world(),position.x(),position.y(),position.z())))
+                throw new IllegalStateException("Trade marker waits for saved wall operation");
             if(storage.query(db->com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db)
                     && com.avrgaming.civcraft.modern.war.SiegeWorldStore.locked(db,position.world(),position.x(),position.y(),position.z())))
                 throw new IllegalStateException("Trade marker waits for saved war terrain operation");

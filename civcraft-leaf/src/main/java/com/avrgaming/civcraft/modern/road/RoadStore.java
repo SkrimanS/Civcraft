@@ -56,6 +56,8 @@ public final class RoadStore {
         job(db,"build:"+id,id,"BUILD",0,cells.stream().map(c->new Cell(c.point(),c.after(),null,c.after(),c.floor())).toList());return id;
     }
     public static void job(Connection db,String request,long id,String kind,long refund,List<Cell> images)throws SQLException{
+        String world;try(var s=db.prepareStatement("SELECT world FROM structure_builds WHERE id=?")){s.setLong(1,id);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Road job building missing");world=r.getString(1);}}
+        for(var image:images){var p=image.point();com.avrgaming.civcraft.modern.wall.WallStore.requireAreaFree(db,world,p.x(),p.y(),p.z(),1,1,1);}
         tx(db);try(var s=db.prepareStatement("INSERT INTO road_jobs(id,build_id,kind,refund) VALUES(?,?,?,?)")){s.setString(1,request);s.setLong(2,id);s.setString(3,kind);s.setLong(4,refund);s.executeUpdate();}
         try(var s=db.prepareStatement("INSERT INTO road_job_cells VALUES(?,?,?,?,?,?,?)")){int index=0;for(var c:images){s.setString(1,request);s.setInt(2,index++);s.setInt(3,c.point().x());s.setInt(4,c.point().y());s.setInt(5,c.point().z());s.setString(6,c.after());s.setString(7,c.nbt());s.addBatch();}s.executeBatch();}
     }
@@ -75,6 +77,7 @@ public final class RoadStore {
         try(var s=db.prepareStatement("SELECT 1 FROM road_job_cells c JOIN road_jobs j ON j.id=c.job_id JOIN structure_builds b ON b.id=j.build_id WHERE j.state='PREPARED' AND b.world=? AND c.x=? AND c.y=? AND c.z=? LIMIT 1")){s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){return r.next();}}
     }
     public static void requireAreaFree(Connection db,String world,int x,int y,int z,int width,int height,int depth,Long civ)throws SQLException{
+        com.avrgaming.civcraft.modern.wall.WallStore.requireAreaFree(db,world,x,y,z,width,height,depth);
         if(!installed(db))return;
         try(var s=db.prepareStatement("SELECT 1 FROM road_cells c JOIN roads r ON r.build_id=c.build_id JOIN structure_builds b ON b.id=r.build_id JOIN towns t ON t.id=b.town_id WHERE b.world=? AND c.x BETWEEN ? AND ? AND c.y BETWEEN ? AND ? AND c.z BETWEEN ? AND ? AND r.state IN ('BUILDING','ACTIVE','REMOVING') AND (r.state<>'ACTIVE' OR ? IS NULL OR t.civ_id<>?) AND NOT EXISTS(SELECT 1 FROM protected_blocks p WHERE p.world=b.world AND p.x=c.x AND p.y=c.y AND p.z=c.z AND (c.source_build IS NULL OR p.build_id<>c.source_build)) LIMIT 1")){
             s.setString(1,world);s.setInt(2,x);s.setInt(3,Math.addExact(x,width-1));s.setInt(4,y);s.setInt(5,Math.addExact(y,height-1));s.setInt(6,z);s.setInt(7,Math.addExact(z,depth-1));if(civ==null){s.setNull(8,Types.INTEGER);s.setNull(9,Types.INTEGER);}else{s.setLong(8,civ);s.setLong(9,civ);}try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Чужая дорога или незавершённая работа с дорогой мешает размещению.");}

@@ -60,6 +60,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     private com.avrgaming.civcraft.modern.war.SiegeCannonService siegeCannons;
     private com.avrgaming.civcraft.modern.road.RoadService roads;
     public com.avrgaming.civcraft.modern.road.RoadService roads(){return roads;}
+    private com.avrgaming.civcraft.modern.wall.WallBuildService walls;
+    public com.avrgaming.civcraft.modern.wall.WallBuildService walls(){return walls;}
     public boolean isWarCampPending(java.util.UUID player){return warCampItems!=null&&warCampItems.hasPending(player);}
     public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
     private TabPrefixService tabPrefixes;
@@ -170,6 +172,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             }
         },1L,20L);
 
+        new com.avrgaming.civcraft.modern.wall.WallOperationProtection(this);
         this.economy = new CivCraftEconomyService(this, storage, settings);
         try {
             this.nativeItems = new NativeLegacyItems(this, storage);
@@ -293,6 +296,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             espionage=new com.avrgaming.civcraft.modern.espionage.EspionageService(this,storage);
             new com.avrgaming.civcraft.modern.town.UnitInventoryService(this,storage);
             roads=new com.avrgaming.civcraft.modern.road.RoadService(this,storage);
+            walls=new com.avrgaming.civcraft.modern.wall.WallBuildService(this,
+                    com.avrgaming.civcraft.modern.wall.WallCatalog.load(getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile(),getDataFolder().toPath().resolve("civcraft/data/structures.yml").toFile()));
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
