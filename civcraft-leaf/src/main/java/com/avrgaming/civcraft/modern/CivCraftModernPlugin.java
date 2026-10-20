@@ -308,6 +308,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             wallMarkers=new com.avrgaming.civcraft.modern.wall.WallMarkerService(this,wallCatalog);
             wallRepairs=new com.avrgaming.civcraft.modern.wall.WallRepairService(this,wallCatalog);
             wallManagement=new com.avrgaming.civcraft.modern.wall.WallManagementService(this,wallCatalog);
+            new com.avrgaming.civcraft.modern.wall.WallColumnService(this);
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.

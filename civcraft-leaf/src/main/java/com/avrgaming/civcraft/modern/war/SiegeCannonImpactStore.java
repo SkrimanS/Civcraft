@@ -15,7 +15,7 @@ public final class SiegeCannonImpactStore {
     }
     public static Target target(Connection db,String world,int x,int y,int z,String campType)throws SQLException{
         try(var s=db.prepareStatement("SELECT b.id,b.structure_id,b.status,b.y,(EXISTS(SELECT 1 FROM structure_trade_points t WHERE t.world=p.world AND t.x=p.x AND t.y=p.y AND t.z=p.z) OR EXISTS(SELECT 1 FROM structure_chests c WHERE c.world=p.world AND c.x=p.x AND c.y=p.y AND c.z=p.z)) FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=?")){
-            s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){if(!r.next())return null;String type=r.getString(2);return new Target(r.getLong(1),type,r.getString(3),campType.equals(type),y>r.getInt(4) && !r.getBoolean(5));}
+            s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){if(!r.next())return null;String type=r.getString(2);return new Target(r.getLong(1),type,r.getString(3),campType.equals(type),(y>r.getInt(4) || "ti_wall".equals(type) || "ti_fortifiedwall".equals(type)) && !r.getBoolean(5));}
         }
     }
     public static boolean camp(Connection db,String world,int x,int y,int z)throws SQLException{

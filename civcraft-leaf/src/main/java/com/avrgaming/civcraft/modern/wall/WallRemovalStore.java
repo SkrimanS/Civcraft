@@ -49,7 +49,7 @@ public final class WallRemovalStore {
     }
     public static long undo(Connection db,String request,UUID actor,long id,WallCatalog.Profile profile)throws SQLException {
         tx(db);var wall=owned(db,actor,id,profile);
-        // Both wall implementations define processUndo; include FortifiedWall despite the old Town type-check omission.
+        // FortifiedWall inherits Wall, so both types satisfy the original Town.processUndo check.
         try(var s=db.prepareStatement("SELECT 1 FROM wall_undo_targets u WHERE u.town_id=? AND u.build_id=? AND u.build_id=(SELECT MAX(b.id) FROM structure_builds b WHERE b.town_id=u.town_id)")) {
             s.setLong(1,wall.town());s.setLong(2,id);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Эта стена уже не является последней доступной для отмены постройкой.");}
         }

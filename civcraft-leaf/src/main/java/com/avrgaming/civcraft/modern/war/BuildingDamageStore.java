@@ -28,12 +28,15 @@ public final class BuildingDamageStore {
         }
     }
     public static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now)throws SQLException {
-        return hit(db,id,actor,world,x,y,z,amount,now,false);
+        return hit(db,id,actor,world,x,y,z,amount,now,false,null);
     }
     public static Health cannonHit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now)throws SQLException {
-        return hit(db,id,actor,world,x,y,z,amount,now,true);
+        return hit(db,id,actor,world,x,y,z,amount,now,true,null);
     }
-    private static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now,boolean cannon)throws SQLException {
+    public static Health wallColumnHit(Connection db,String id,UUID actor,long wall,String world,int x,int y,int z,int amount,long now)throws SQLException {
+        return hit(db,id,actor,world,x,y,z,amount,now,false,wall);
+    }
+    private static Health hit(Connection db,String id,UUID actor,String world,int x,int y,int z,int amount,long now,boolean cannon,Long syntheticWall)throws SQLException {
         if(id==null || id.isBlank() || amount<1)throw new IllegalArgumentException("Неверный урон постройке");
         try(var s=db.prepareStatement("SELECT build_id FROM building_damage_hits WHERE id=?")) {
             s.setString(1,id);try(var r=s.executeQuery()){if(r.next())return health(db,r.getLong(1));}
@@ -50,8 +53,15 @@ public final class BuildingDamageStore {
             s.setLong(1,session);s.setLong(2,town);s.setLong(3,session);s.setLong(4,town);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("Жители побеждённого города не могут атаковать здания.");}
         }
         long build,defender;String type,status;
-        try(var s=db.prepareStatement("SELECT b.id,t.civ_id,b.structure_id,b.status FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id JOIN towns t ON t.id=b.town_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=?")) {
-            s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Это не структурный блок города.");build=r.getLong(1);defender=r.getLong(2);type=r.getString(3);status=r.getString(4);}
+        if(syntheticWall!=null) {
+            var column=com.avrgaming.civcraft.modern.wall.WallColumnStore.protecting(db,world,x,y,z);
+            if(column==null || column.build()!=syntheticWall)throw new IllegalArgumentException("Колонка больше не защищена действующей стеной.");
+            build=syntheticWall;defender=column.civilization();status="COMPLETE";
+            try(var s=db.prepareStatement("SELECT structure_id FROM structure_builds WHERE id=?")){s.setLong(1,build);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Missing wall column owner");type=r.getString(1);}}
+        }else {
+            try(var s=db.prepareStatement("SELECT b.id,t.civ_id,b.structure_id,b.status FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id JOIN towns t ON t.id=b.town_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=?")) {
+                s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Это не структурный блок города.");build=r.getLong(1);defender=r.getLong(2);type=r.getString(3);status=r.getString(4);}
+            }
         }
         if(DiplomacyStore.status(db,civ,defender)!=DiplomacyStore.Status.WAR)throw new IllegalArgumentException("Ваша цивилизация не воюет с владельцем здания.");
         if(!status.equals("COMPLETE"))throw new IllegalArgumentException("Здание не готово к атаке или уже разрушено.");
