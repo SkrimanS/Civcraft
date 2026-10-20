@@ -23,6 +23,7 @@ public final class ConquestStore {
         long old;Long mother;
         try(var s=db.prepareStatement("SELECT t.civ_id,c.mother_civ FROM towns t LEFT JOIN town_conquests c ON c.town_id=t.id WHERE t.id=?")){s.setLong(1,town);try(var r=s.executeQuery()){if(!r.next())throw new SQLException("Captured town disappeared");old=r.getLong(1);mother=r.getObject(2)==null?null:r.getLong(2);}}
         if(old==winner)return false;
+        com.avrgaming.civcraft.modern.wall.WallStore.requireTownUnlocked(db,town);
         com.avrgaming.civcraft.modern.trade.TradeShipOperations.requireTownUnlocked(db,town);
         com.avrgaming.civcraft.modern.town.ProductionStore.requireTownUnlocked(db,town);
         if(conquered(db,winner))throw new SQLException("Capture winner is dormant");
@@ -51,6 +52,12 @@ public final class ConquestStore {
             if(!foundationPending)for(var v:civs)if(com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.settlementChangeHeld(db,null,v.loser())
                     || com.avrgaming.civcraft.modern.foundation.FoundationCreationProtection.civilizationHeld(db,v.winner())){foundationPending=true;break;}
             if(foundationPending)continue;
+            if(!casual) {
+                boolean wallPending=false;
+                for(var v:towns)if(com.avrgaming.civcraft.modern.wall.WallStore.townPending(db,v.loser())){wallPending=true;break;}
+                if(!wallPending)for(var v:civs)if(com.avrgaming.civcraft.modern.wall.WallStore.civilizationPending(db,v.loser())){wallPending=true;break;}
+                if(wallPending)continue;
+            }
             if(!casual) {
                 for(var v:towns)if(transfer(db,war,v.loser(),v.winner(),now))moved++;
                 for(var v:civs) {

@@ -39,6 +39,8 @@ public final class WallStore {
             s.executeUpdate("CREATE TABLE IF NOT EXISTS wall_job_cells(job_id TEXT NOT NULL REFERENCES wall_jobs(id) ON DELETE CASCADE,ordinal INTEGER NOT NULL,x INTEGER NOT NULL,y INTEGER NOT NULL,z INTEGER NOT NULL,block_data TEXT NOT NULL,block_nbt TEXT,PRIMARY KEY(job_id,ordinal),UNIQUE(job_id,x,y,z))");
             s.executeUpdate("CREATE INDEX IF NOT EXISTS wall_job_cell_position ON wall_job_cells(x,y,z)");
             s.executeUpdate("CREATE TRIGGER IF NOT EXISTS pending_wall_blocks_delete BEFORE DELETE ON structure_builds WHEN EXISTS(SELECT 1 FROM wall_jobs WHERE build_id=OLD.id AND state='PREPARED') BEGIN SELECT RAISE(ABORT,'Wall terrain operation is pending'); END");
+            s.executeUpdate("CREATE TRIGGER IF NOT EXISTS pending_wall_town_change BEFORE UPDATE OF town_id ON structure_builds WHEN NEW.town_id IS NOT OLD.town_id AND EXISTS(SELECT 1 FROM wall_jobs WHERE build_id=OLD.id AND state='PREPARED') BEGIN SELECT RAISE(ABORT,'Wall ownership operation is pending'); END");
+            s.executeUpdate("CREATE TRIGGER IF NOT EXISTS pending_wall_civ_change BEFORE UPDATE OF civ_id ON towns WHEN NEW.civ_id IS NOT OLD.civ_id AND EXISTS(SELECT 1 FROM wall_jobs j JOIN structure_builds b ON b.id=j.build_id WHERE b.town_id=OLD.id AND j.state='PREPARED') BEGIN SELECT RAISE(ABORT,'Town wall operation is pending'); END");
         }
         WallRemovalStore.install(db);
         WallRepairStore.install(db);
@@ -98,6 +100,37 @@ public final class WallStore {
         try(var s=db.prepareStatement("SELECT 1 FROM wall_job_cells c JOIN wall_jobs j ON j.id=c.job_id JOIN structure_builds b ON b.id=j.build_id WHERE j.state='PREPARED' AND b.world=? AND c.x=? AND c.y=? AND c.z=? LIMIT 1")) {
             s.setString(1,world);s.setInt(2,x);s.setInt(3,y);s.setInt(4,z);try(var r=s.executeQuery()){return r.next();}
         }
+    }
+    public static boolean townPending(Connection db,long town)throws SQLException {
+        if(!installed(db))return false;
+        try(var s=db.prepareStatement("SELECT 1 FROM wall_jobs j JOIN structure_builds b ON b.id=j.build_id WHERE b.town_id=? AND j.state='PREPARED' LIMIT 1")) {
+            s.setLong(1,town);try(var r=s.executeQuery()){return r.next();}
+        }
+    }
+    public static void configure(Connection db,WallCatalog catalog)throws SQLException {
+        tx(db);
+        // Legacy static wall settings and Buildable.info follow the current configuration.
+        // Keep recorded geometry and actual combat HP; changing a setting must not heal a wall.
+        for(var profile:List.of(catalog.ordinary(),catalog.fortified())) {
+            try(var s=db.prepareStatement("UPDATE walls SET maximum_height=? WHERE state<>'RETIRED' AND build_id IN (SELECT id FROM structure_builds WHERE structure_id=?)")) {
+                s.setInt(1,profile.maximumHeight());s.setString(2,profile.type());s.executeUpdate();
+            }
+            try(var s=db.prepareStatement("UPDATE structure_builds SET max_hitpoints=? WHERE structure_id=? AND id IN (SELECT build_id FROM walls WHERE state<>'RETIRED')")) {
+                s.setInt(1,profile.hitpoints());s.setString(2,profile.type());s.executeUpdate();
+            }
+        }
+    }
+    public static boolean civilizationPending(Connection db,long civilization)throws SQLException {
+        if(!installed(db))return false;
+        try(var s=db.prepareStatement("SELECT 1 FROM wall_jobs j JOIN structure_builds b ON b.id=j.build_id JOIN towns t ON t.id=b.town_id WHERE t.civ_id=? AND j.state='PREPARED' LIMIT 1")) {
+            s.setLong(1,civilization);try(var r=s.executeQuery()){return r.next();}
+        }
+    }
+    public static void requireTownUnlocked(Connection db,long town)throws SQLException {
+        if(townPending(db,town))throw new IllegalArgumentException("Дождитесь завершения строительства, отмены или ремонта стен города.");
+    }
+    public static void requireCivilizationUnlocked(Connection db,long civilization)throws SQLException {
+        if(civilizationPending(db,civilization))throw new IllegalArgumentException("Дождитесь завершения работ со стенами в городах цивилизации.");
     }
     public static Set<Position> reservedPositions(Connection db)throws SQLException {
         if(!installed(db))return Set.of();var result=new HashSet<Position>();

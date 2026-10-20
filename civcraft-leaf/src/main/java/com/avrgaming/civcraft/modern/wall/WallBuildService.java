@@ -19,7 +19,7 @@ public final class WallBuildService {
     private long lastWarning;
     public WallBuildService(CivCraftModernPlugin plugin,WallCatalog catalog)throws SQLException {
         this.plugin=plugin;this.catalog=catalog;placement=new WallPlacement(plugin);
-        plugin.storage().transaction(db->{WallStore.install(db);return null;});
+        plugin.storage().transaction(db->{WallStore.install(db);WallStore.configure(db,catalog);return null;});
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,1L,1L);
     }
     /** The marker session keeps request stable through retries, including an uncertain SQL response. */

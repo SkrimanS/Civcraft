@@ -59,7 +59,7 @@ public final class WallRemovalStore {
             positions.add(new GoodieChestStore.Position(wall.world(),p.x(),p.y(),p.z()));
         }
         GoodieChestStore.requirePositionsAvailable(db,positions);requireOwnership(db,wall);
-        long refund=WallUndoRules.refund(cells,wall.segmentCost(),wall.height());
+        long refund=WallUndoRules.refund(cells,profile.segmentCost(),profile.height());
         try(var s=db.prepareStatement("SELECT 1 FROM towns WHERE id=? AND coins<=?")) {
             s.setLong(1,wall.town());s.setLong(2,Long.MAX_VALUE-refund);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Казна города не вмещает возврат стоимости стены.");}
         }

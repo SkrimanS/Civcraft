@@ -2193,6 +2193,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized void deleteTown(long townId, UUID mayor) throws SQLException {
         connection.setAutoCommit(false);
         try {
+            com.avrgaming.civcraft.modern.wall.WallStore.requireTownUnlocked(connection,townId);
             try (PreparedStatement statement = connection.prepareStatement("DELETE FROM structure_chunks WHERE town_id = ?")) {
                 statement.setLong(1, townId);
                 statement.executeUpdate();
@@ -2221,7 +2222,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.executeUpdate();
             }
             connection.commit();
-        } catch (SQLException exception) {
+        } catch (SQLException | RuntimeException exception) {
             connection.rollback();
             throw exception;
         } finally {
@@ -2232,6 +2233,7 @@ public final class StorageBootstrap implements AutoCloseable {
     public synchronized void deleteCivilization(long civId, UUID leader) throws SQLException {
         connection.setAutoCommit(false);
         try {
+            com.avrgaming.civcraft.modern.wall.WallStore.requireCivilizationUnlocked(connection,civId);
             try (PreparedStatement townSelect = connection.prepareStatement("SELECT id FROM towns WHERE civ_id = ?")) {
                 townSelect.setLong(1, civId);
                 try (ResultSet rs = townSelect.executeQuery()) {
@@ -2285,7 +2287,7 @@ public final class StorageBootstrap implements AutoCloseable {
                 statement.executeUpdate();
             }
             connection.commit();
-        } catch (SQLException exception) {
+        } catch (SQLException | RuntimeException exception) {
             connection.rollback();
             throw exception;
         } finally {
