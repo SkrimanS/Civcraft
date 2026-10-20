@@ -2,7 +2,6 @@ package com.avrgaming.civcraft.modern.build;
 
 import com.avrgaming.civcraft.modern.storage.StorageBootstrap;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Optional;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -169,17 +168,13 @@ public final class ConstructionAreaProtectionListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityExplosion(EntityExplodeEvent event) {
-        removeLocked(event.blockList());
+        if(event.blockList().stream().anyMatch(block -> locked(block.getLocation())))event.setCancelled(true);
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockExplosion(BlockExplodeEvent event) {
-        removeLocked(event.blockList());
-    }
-
-    private void removeLocked(List<Block> blocks) {
-        blocks.removeIf(block -> locked(block.getLocation()));
+        if(event.blockList().stream().anyMatch(block -> locked(block.getLocation())))event.setCancelled(true);
     }
 }

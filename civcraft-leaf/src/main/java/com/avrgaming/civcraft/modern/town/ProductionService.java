@@ -321,8 +321,8 @@ public final class ProductionService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void move(InventoryMoveItemEvent e){if(locked(e.getSource()) || locked(e.getDestination()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void breakBlock(BlockBreakEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void burn(BlockBurnEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){e.blockList().removeIf(this::locked);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){e.blockList().removeIf(this::locked);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){if(e.blockList().stream().anyMatch(this::locked))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){if(e.blockList().stream().anyMatch(this::locked))e.setCancelled(true);}
     private static boolean controlledCrop(Material type){return switch(type){case WHEAT,CARROTS,POTATOES,NETHER_WART,COCOA,MELON_STEM,PUMPKIN_STEM,ATTACHED_MELON_STEM,ATTACHED_PUMPKIN_STEM,MELON,PUMPKIN->true;default->false;};}
     // CampService advances its own upgraded garden directly; it does not depend on vanilla growth events.
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void grow(BlockGrowEvent e){if(locked(e.getBlock()) || controlledCrop(e.getBlock().getType()) || controlledCrop(e.getNewState().getType()))e.setCancelled(true);}

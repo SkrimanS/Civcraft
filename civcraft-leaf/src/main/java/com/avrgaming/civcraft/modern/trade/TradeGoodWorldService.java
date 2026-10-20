@@ -25,6 +25,7 @@ public final class TradeGoodWorldService implements Listener {
     private final TradeGoodGeneration generator;
     private String worldName;
     private final Set<TradeMarkerStore.Position> protectedMarkers=new HashSet<>();
+    private final Set<TradeMarkerStore.Position> pendingMarkers=new HashSet<>();
     private final Set<TradeGoodGeneration.Chunk> queued=new LinkedHashSet<>();
     private long lastWarning;
     public TradeGoodWorldService(CivCraftModernPlugin plugin,StorageBootstrap storage)throws SQLException {
@@ -32,6 +33,7 @@ public final class TradeGoodWorldService implements Listener {
         catalog=new TradeGoodsCatalog(file);generator=TradeGoodGeneration.load(file,catalog);
         storage.transaction(db->{TradeMarkerStore.install(db);return null;});
         for(var job:storage.query(db->TradeMarkerStore.jobs(db,false)))protectedMarkers.addAll(TradeMarkerStore.positions(job));
+        for(var job:storage.query(db->TradeMarkerStore.jobs(db,true)))pendingMarkers.addAll(TradeMarkerStore.positions(job));
         plugin.getServer().getPluginManager().registerEvents(this,plugin);
         for(var world:plugin.getServer().getWorlds())if(world.getEnvironment()==World.Environment.NORMAL){initialize(world);break;}
         plugin.getServer().getScheduler().runTaskTimer(plugin,this::tick,40L,1L);
@@ -79,7 +81,7 @@ public final class TradeGoodWorldService implements Listener {
             int face=Math.floorMod(generator.settings().seed()^chunk.x()^chunk.z(),4);
             var job=storage.transaction(db->{var prepared=TradeMarkerStore.prepare(db,catalog,good,worldName,x,y,z,face);TradeGenerationStore.removeRequest(db,worldName,chunk);return prepared;});
             queued.remove(chunk);
-            if(job!=null){protectedMarkers.addAll(TradeMarkerStore.positions(job));finish(job);}
+            if(job!=null){protectedMarkers.addAll(TradeMarkerStore.positions(job));pendingMarkers.addAll(TradeMarkerStore.positions(job));finish(job);}
         }catch(Exception failure) {
             if(System.currentTimeMillis()-lastWarning>30000){lastWarning=System.currentTimeMillis();plugin.getLogger().severe("Trade good generation failed; journal retained: "+failure.getMessage());}
         }
@@ -100,6 +102,7 @@ public final class TradeGoodWorldService implements Listener {
         var data=(Directional)block.getBlockData();data.setFacing(new BlockFace[]{BlockFace.NORTH,BlockFace.EAST,BlockFace.SOUTH,BlockFace.WEST}[job.face()]);block.setBlockData(data,false);
         var sign=(Sign)block.getState();sign.line(0,Component.text("Торговый товар"));sign.line(1,Component.text("----"));sign.line(2,Component.text(catalog.require(job.good()).name()));sign.line(3,Component.empty());sign.update(true,false);
         world.save(true);storage.transaction(db->{TradeMarkerStore.complete(db,job.deposit());return null;});
+        pendingMarkers.removeAll(positions);
     }
     private boolean protectedBlock(Block block){return protectedMarkers.contains(new TradeMarkerStore.Position(block.getWorld().getName(),block.getX(),block.getY(),block.getZ()));}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void destroy(BlockBreakEvent e){if(protectedBlock(e.getBlock()))e.setCancelled(true);}
@@ -109,6 +112,6 @@ public final class TradeGoodWorldService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void piston(BlockPistonRetractEvent e){if(e.getBlocks().stream().anyMatch(b->protectedBlock(b)||protectedBlock(b.getRelative(e.getDirection().getOppositeFace()))))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void burn(BlockBurnEvent e){if(protectedBlock(e.getBlock()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void physics(BlockPhysicsEvent e){if(protectedBlock(e.getBlock()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){e.blockList().removeIf(this::protectedBlock);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){e.blockList().removeIf(this::protectedBlock);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){if(e.blockList().stream().anyMatch(b->pendingMarkers.contains(new TradeMarkerStore.Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()))))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){if(e.blockList().stream().anyMatch(b->pendingMarkers.contains(new TradeMarkerStore.Position(b.getWorld().getName(),b.getX(),b.getY(),b.getZ()))))e.setCancelled(true);}
 }

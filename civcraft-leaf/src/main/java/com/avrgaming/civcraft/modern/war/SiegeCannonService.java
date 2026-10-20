@@ -41,6 +41,11 @@ public final class SiegeCannonService implements Listener {
     }
     private void warn(Exception failure){long now=System.currentTimeMillis();if(now-lastWarning>=30000){lastWarning=now;plugin.getLogger().severe("Siege cannon operation retained for recovery: "+failure.getMessage());}}
     private SiegeWorldStore.Owned owned(Location location)throws SQLException{return storage.query(db->SiegeWorldStore.owned(db,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ()));}
+    private boolean explosionLocked(Location location){
+        try{return storage.query(db->SiegeWorldStore.locked(db,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ())
+                || SiegeWorldStore.retainedContainer(db,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ(),System.currentTimeMillis()));}
+        catch(SQLException failure){warn(failure);return true;}
+    }
     private boolean guarded(Location location){
         if(location==null)return false;
         try{return storage.query(db->{if(SiegeWorldStore.locked(db,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ()) || SiegeWorldStore.retainedContainer(db,location.getWorld().getName(),location.getBlockX(),location.getBlockY(),location.getBlockZ(),System.currentTimeMillis()))return true;
@@ -197,8 +202,8 @@ public final class SiegeCannonService implements Listener {
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void burn(BlockBurnEvent e){if(guarded(e.getBlock().getLocation()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void ignite(BlockIgniteEvent e){if(guarded(e.getBlock().getLocation()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void change(EntityChangeBlockEvent e){if(guarded(e.getBlock().getLocation()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){e.blockList().removeIf(b->guarded(b.getLocation()));}
-    @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){e.blockList().removeIf(b->guarded(b.getLocation()));}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){if(e.blockList().stream().anyMatch(b->explosionLocked(b.getLocation())))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){if(e.blockList().stream().anyMatch(b->explosionLocked(b.getLocation())))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void open(InventoryOpenEvent e){if(guarded(e.getInventory()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void click(InventoryClickEvent e){if(guarded(e.getView().getTopInventory()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void drag(InventoryDragEvent e){if(guarded(e.getView().getTopInventory()))e.setCancelled(true);}

@@ -1,9 +1,10 @@
 package com.avrgaming.civcraft.modern.service;
 
+import java.util.List;
+
 import com.avrgaming.civcraft.modern.CivCraftModernPlugin;
 import com.avrgaming.civcraft.modern.domain.TownClaimRecord;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Optional;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Location;
@@ -13,13 +14,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
-import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
@@ -170,24 +169,6 @@ public final class TownClaimProtectionListener implements Listener {
                 }
             }
         }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onEntityExplode(EntityExplodeEvent event) {
-        if (plugin.getConfig().getBoolean("claim-protection.prevent-explosion-damage", true)) {
-            removeClaimedExplosionBlocks(event.blockList());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBlockExplode(BlockExplodeEvent event) {
-        if (plugin.getConfig().getBoolean("claim-protection.prevent-explosion-damage", true)) {
-            removeClaimedExplosionBlocks(event.blockList());
-        }
-    }
-
-    private void removeClaimedExplosionBlocks(List<Block> blocks) {
-        blocks.removeIf(block -> isClaimed(block.getLocation()));
     }
 
     private boolean sameClaim(Location source, Location destination) {

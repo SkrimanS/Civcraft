@@ -37,6 +37,7 @@ claim-protection:
   # Prevent hoppers from extracting/depositing items across town claim boundaries.
   prevent-cross-border-hoppers: true
   # Explosions outside a town cannot destroy claimed blocks.
+  # Deprecated: original war rules control entity explosions; claims do not filter block explosions.
   prevent-explosion-damage: true
   # Stop external fluids, fire, pistons and hostile entity block changes.
   prevent-environment-damage: true

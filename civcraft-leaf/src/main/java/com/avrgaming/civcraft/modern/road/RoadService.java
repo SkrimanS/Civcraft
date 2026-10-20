@@ -100,6 +100,13 @@ public final class RoadService implements Listener {
         for(var player:Bukkit.getOnlinePlayers()){movement(player,player.getLocation(),false);var resident=storage.findResident(player.getUniqueId()).orElse(null);if(resident!=null && resident.townId()!=null && resident.townId()==road.town())message(player,job.kind().equals("BUILD")?"Дорога #"+road.id()+" готова.":"Дорога #"+road.id()+" удалена, местность восстановлена.");}
     }catch(SQLException|RuntimeException e){warn(e);}}
     private RoadStore.At at(Location loc)throws SQLException{return storage.query(db->RoadStore.at(db,loc.getWorld().getName(),loc.getBlockX(),loc.getBlockY(),loc.getBlockZ()));}
+    private boolean explosionLocked(Location loc){
+        try{return storage.query(db->{
+            String world=loc.getWorld().getName();int x=loc.getBlockX(),y=loc.getBlockY(),z=loc.getBlockZ();
+            if(RoadStore.reserved(db,world,x,y,z))return true;
+            var cell=RoadStore.at(db,world,x,y,z);return cell!=null && !cell.road().state().equals("ACTIVE");
+        });}catch(SQLException failure){warn(failure);return true;}
+    }
     private boolean guarded(Location loc){if(loc==null)return false;try{return storage.query(db->{if(RoadStore.reserved(db,loc.getWorld().getName(),loc.getBlockX(),loc.getBlockY(),loc.getBlockZ()))return true;var at=RoadStore.at(db,loc.getWorld().getName(),loc.getBlockX(),loc.getBlockY(),loc.getBlockZ());return at!=null && (!at.road().state().equals("ACTIVE") || at.floor());});}catch(SQLException e){warn(e);return true;}}
     private boolean occupied(Location loc){if(loc==null)return false;try{return at(loc)!=null || guarded(loc);}catch(SQLException e){warn(e);return true;}}
     private boolean guarded(Inventory inventory){if(inventory instanceof DoubleChestInventory chest)return guarded(chest.getLeftSide().getLocation()) || guarded(chest.getRightSide().getLocation());return guarded(inventory.getLocation());}
@@ -136,8 +143,8 @@ public final class RoadService implements Listener {
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void ignite(BlockIgniteEvent e){for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)for(int z=-1;z<=1;z++){var b=e.getBlock();int by=b.getY()+y;if(by<b.getWorld().getMinHeight() || by>=b.getWorld().getMaxHeight())continue;if(occupied(b.getRelative(x,y,z).getLocation())){e.setCancelled(true);return;}}}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void fluid(BlockFromToEvent e){if(occupied(e.getToBlock().getLocation()) || occupied(e.getBlock().getLocation()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void entity(EntityChangeBlockEvent e){if(occupied(e.getBlock().getLocation()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void explosion(EntityExplodeEvent e){try{for(var b:e.blockList())if(at(b.getLocation())!=null || guarded(b.getLocation())){e.setCancelled(true);return;}}catch(SQLException failure){e.setCancelled(true);warn(failure);}}
-    @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void explosion(BlockExplodeEvent e){try{for(var b:e.blockList())if(at(b.getLocation())!=null || guarded(b.getLocation())){e.setCancelled(true);return;}}catch(SQLException failure){e.setCancelled(true);warn(failure);}}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explosion(EntityExplodeEvent e){if(e.blockList().stream().anyMatch(b->explosionLocked(b.getLocation())))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explosion(BlockExplodeEvent e){if(e.blockList().stream().anyMatch(b->explosionLocked(b.getLocation())))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void inventory(InventoryOpenEvent e){if(guarded(e.getInventory()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void click(InventoryClickEvent e){if(e.getWhoClicked() instanceof Player p && markers.containsKey(p.getUniqueId())){e.setCancelled(true);cancel(p);plugin.getServer().getScheduler().runTask(plugin,()->clean(p));}else if(guarded(e.getView().getTopInventory()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.LOWEST,ignoreCancelled=true) public void drag(InventoryDragEvent e){if(e.getWhoClicked() instanceof Player p && markers.containsKey(p.getUniqueId())){e.setCancelled(true);cancel(p);}else if(guarded(e.getView().getTopInventory()))e.setCancelled(true);}

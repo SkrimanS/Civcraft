@@ -79,8 +79,9 @@ public final class BuildingRuinService implements Listener {
             paused=true;throw new IllegalStateException("Injected ruin interruption at "+phase);
         }
     }
-    private boolean locked(Block block) {
-        try{return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND b.status IN ('WAR_DESTROY_PENDING','WAR_DESTROYED','WAR_REPAIR_PENDING') UNION ALL SELECT 1 FROM building_repair_blocks p JOIN building_repair_jobs j ON j.id=p.job_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND j.state='PREPARED' LIMIT 1")) {
+    private boolean locked(Block block) {return locked(block,true);}
+    private boolean locked(Block block,boolean includeDestroyed) {
+        try{return storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks p JOIN structure_builds b ON b.id=p.build_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND b.status IN ("+(includeDestroyed?"'WAR_DESTROY_PENDING','WAR_DESTROYED','WAR_REPAIR_PENDING'":"'WAR_DESTROY_PENDING','WAR_REPAIR_PENDING'")+") UNION ALL SELECT 1 FROM building_repair_blocks p JOIN building_repair_jobs j ON j.id=p.job_id WHERE p.world=? AND p.x=? AND p.y=? AND p.z=? AND j.state='PREPARED' LIMIT 1")) {
             for(int offset:new int[]{0,4}){s.setString(1+offset,block.getWorld().getName());s.setInt(2+offset,block.getX());s.setInt(3+offset,block.getY());s.setInt(4+offset,block.getZ());}try(var r=s.executeQuery()){return r.next();}
         }});}catch(SQLException failure){plugin.getLogger().warning("Ruin barrier lookup failed: "+failure.getMessage());return true;}
     }
@@ -88,6 +89,6 @@ public final class BuildingRuinService implements Listener {
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void physics(BlockPhysicsEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void burn(BlockBurnEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
     @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void entity(EntityChangeBlockEvent e){if(locked(e.getBlock()))e.setCancelled(true);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){e.blockList().removeIf(this::locked);}
-    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){e.blockList().removeIf(this::locked);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(EntityExplodeEvent e){if(e.blockList().stream().anyMatch(b->locked(b,false)))e.setCancelled(true);}
+    @EventHandler(priority=EventPriority.HIGHEST,ignoreCancelled=true) public void explode(BlockExplodeEvent e){if(e.blockList().stream().anyMatch(b->locked(b,false)))e.setCancelled(true);}
 }

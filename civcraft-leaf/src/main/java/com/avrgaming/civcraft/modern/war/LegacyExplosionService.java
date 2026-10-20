@@ -43,6 +43,18 @@ public final class LegacyExplosionService implements Listener {
             warn(failure);
         }
     }
+    /** Original WarListener HIGH reset; journal guards run later at HIGHEST. */
+    @EventHandler(priority=EventPriority.HIGH)
+    public void finalEntityPolicy(EntityExplodeEvent event) {
+        try {
+            boolean war=storage.query(db->LegacyExplosionStore.activeWar(db,System.currentTimeMillis()))!=null;
+            var entity=event.getEntity();
+            boolean custom=entity instanceof org.bukkit.entity.TNTPrimed
+                    || entity instanceof org.bukkit.entity.minecart.ExplosiveMinecart
+                    || entity instanceof org.bukkit.entity.Creeper;
+            event.setCancelled(!war || custom);
+        }catch(SQLException|RuntimeException failure){event.setCancelled(true);warn(failure);}
+    }
     private void tick() {
         try {
             storage.transaction(db->{LegacyExplosionStore.expire(db,System.currentTimeMillis());return null;});
