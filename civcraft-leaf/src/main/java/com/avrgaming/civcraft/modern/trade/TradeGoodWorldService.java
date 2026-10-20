@@ -93,6 +93,9 @@ public final class TradeGoodWorldService implements Listener {
         var world=Bukkit.getWorld(job.world());if(world==null)throw new IllegalStateException("Trade marker world unavailable");
         var positions=TradeMarkerStore.positions(job);
         for(var position:positions) {
+            if(storage.query(db->com.avrgaming.civcraft.modern.war.SiegeWorldStore.installed(db)
+                    && com.avrgaming.civcraft.modern.war.SiegeWorldStore.locked(db,position.world(),position.x(),position.y(),position.z())))
+                throw new IllegalStateException("Trade marker waits for saved war terrain operation");
             boolean foreign=storage.query(db->{try(var s=db.prepareStatement("SELECT 1 FROM protected_blocks WHERE world=? AND x=? AND y=? AND z=?")) {
                 s.setString(1,position.world());s.setInt(2,position.x());s.setInt(3,position.y());s.setInt(4,position.z());try(var r=s.executeQuery()){return r.next();}
             }});if(foreign)throw new IllegalStateException("Trade marker overlaps a structure");

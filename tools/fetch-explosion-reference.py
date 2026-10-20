@@ -8,7 +8,8 @@ import zipfile
 root = Path('tools/legacy-reference')
 tree = json.loads((root / 'original-tree.json').read_text(encoding='utf-8'))['tree']
 names = {'BlockListener.java', 'WarListener.java', 'WarRegen.java', 'Wall.java',
-         'TownHall.java', 'Buildable.java', 'CivCraft.java', 'Cannon.java', 'WarCamp.java'}
+         'TownHall.java', 'Buildable.java', 'CivCraft.java', 'Cannon.java', 'WarCamp.java',
+         'CivGlobal.java'}
 for entry in tree:
     path = entry['path']
     if '/src/' not in path or Path(path).name not in names:

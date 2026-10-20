@@ -35,6 +35,13 @@ public final class TradeMarkerStore {
             while(r.next())result.add(new Job(r.getLong("id"),r.getString("good_id"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getInt("face")));
         }return List.copyOf(result);
     }
+    /** Only unfinished marker writes, never the permanent protection of a deposit. */
+    public static Set<Position> pendingPositions(Connection db,String world)throws SQLException {
+        try(var s=db.createStatement();var r=s.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='trade_marker_jobs'")){if(!r.next())return Set.of();}
+        var result=new HashSet<Position>();
+        for(var job:jobs(db,true))if(job.world().equals(world))result.addAll(positions(job));
+        return Set.copyOf(result);
+    }
     public static Job completed(Connection db,long deposit)throws SQLException {
         try(var s=db.prepareStatement("SELECT d.*,j.face FROM trade_marker_jobs j JOIN trade_deposits d ON d.id=j.deposit_id WHERE d.id=? AND j.state='COMPLETE'")) {
             s.setLong(1,deposit);try(var r=s.executeQuery()){return r.next()?new Job(r.getLong("id"),r.getString("good_id"),r.getString("world"),r.getInt("x"),r.getInt("y"),r.getInt("z"),r.getInt("face")):null;}

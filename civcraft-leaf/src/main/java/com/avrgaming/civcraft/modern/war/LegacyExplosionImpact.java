@@ -49,6 +49,7 @@ public final class LegacyExplosionImpact {
             if(!SiegeWorldStore.active(db,request.war(),System.currentTimeMillis()) || SiegeWorldStore.job(db,request.id())!=null)return null;
             if(!LegacyExplosionStore.damageReady(db,request.id()))throw new SQLException("Explosion damage stage is not saved");
             var cells=new ArrayList<SiegeWorldStore.Cell>();var production=SiegeWorldStore.productionLocks(db,request.world());int radius=request.radius();
+            var markers=com.avrgaming.civcraft.modern.trade.TradeMarkerStore.pendingPositions(db,request.world());
             for(int y=-radius;y<=radius;y++)for(int x=-radius;x<=radius;x++)for(int z=-radius;z<=radius;z++) {
                 if((long)x*x+(long)y*y+(long)z*z>=(long)radius*radius)continue;
                 int bx=Math.addExact(request.x(),x),by=Math.addExact(request.y(),y),bz=Math.addExact(request.z(),z);
@@ -66,6 +67,7 @@ public final class LegacyExplosionImpact {
                 }
                 var block=world.getBlockAt(bx,by,bz);
                 if(block.getState() instanceof Sign || block.getType()==Material.TNT || block.getType().isAir())continue;
+                if(markers.contains(new com.avrgaming.civcraft.modern.trade.TradeMarkerStore.Position(request.world(),bx,by,bz)))throw new IllegalArgumentException("Взрыв ожидает завершения установки торгового маркера.");
                 if(SiegeWorldStore.locked(db,request.world(),bx,by,bz) || com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,request.world(),bx,by,bz) || production.contains(new SiegeWorldStore.Position(bx,by,bz)))throw new IllegalArgumentException("Взрыв ожидает завершения сохранения местности.");
                 if(plugin.storage().isActiveStructureChunk(request.world(),bx>>4,bz>>4))throw new IllegalArgumentException("Взрыв ожидает завершения строительного журнала.");
                 if(block.getState() instanceof Container)com.avrgaming.civcraft.modern.trade.GoodieChestStore.requirePositionsAvailable(db,List.of(new com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position(request.world(),bx,by,bz)));
