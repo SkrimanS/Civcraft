@@ -55,16 +55,18 @@ public final class LegacyExplosionImpact {
                 if(by<world.getMinHeight() || by>=world.getMaxHeight())continue;
                 var target=target(db,request,bx,by,bz,worldShape);
                 if(target!=null && target.camp() || SiegeCannonImpactStore.camp(db,request.world(),bx,by,bz))continue;
-                if(target!=null && !Set.of("DEMOLISHED","CANCELLED","WAR_DESTROYED").contains(target.status())) {
+                // Original damageability/control-point checks precede isDestroyed().
+                if(target!=null && !Set.of("DEMOLISHED","CANCELLED").contains(target.status())) {
                     if(!target.damageable() || target.type()==null)continue;
-                    if(!Set.of("COMPLETE","QUEUED","BUILDING","WAR_DESTROY_PENDING").contains(target.status()))throw new IllegalArgumentException("Взрыв ожидает завершения восстановления постройки.");
                     if(Set.of("s_capitol","s_townhall").contains(target.type()) && ControlPointStore.point(db,request.world(),bx,by,bz)!=null)continue;
+                }
+                if(target!=null && !Set.of("DEMOLISHED","CANCELLED","WAR_DESTROYED").contains(target.status())) {
+                    if(!Set.of("COMPLETE","QUEUED","BUILDING","WAR_DESTROY_PENDING").contains(target.status()))throw new IllegalArgumentException("Взрыв ожидает завершения восстановления постройки.");
                     if(BuildingDamageStore.health(db,target.build()).hitpoints()>0 || target.status().equals("WAR_DESTROY_PENDING"))continue;
                 }
                 var block=world.getBlockAt(bx,by,bz);
                 if(block.getState() instanceof Sign || block.getType()==Material.TNT || block.getType().isAir())continue;
                 if(SiegeWorldStore.locked(db,request.world(),bx,by,bz) || com.avrgaming.civcraft.modern.road.RoadStore.reserved(db,request.world(),bx,by,bz) || production.contains(new SiegeWorldStore.Position(bx,by,bz)))throw new IllegalArgumentException("Взрыв ожидает завершения сохранения местности.");
-                if(SiegeWorldStore.owned(db,request.world(),bx,by,bz)!=null)continue;
                 if(plugin.storage().isActiveStructureChunk(request.world(),bx>>4,bz>>4))throw new IllegalArgumentException("Взрыв ожидает завершения строительного журнала.");
                 if(block.getState() instanceof Container)com.avrgaming.civcraft.modern.trade.GoodieChestStore.requirePositionsAvailable(db,List.of(new com.avrgaming.civcraft.modern.trade.GoodieChestStore.Position(request.world(),bx,by,bz)));
                 cells.add(new SiegeWorldStore.Cell(bx,by,bz,block.getBlockData().getAsString(),BlockEntitySnapshot.read(block.getState()),"minecraft:air",null,"tnt"));

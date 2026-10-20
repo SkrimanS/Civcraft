@@ -19,7 +19,7 @@ public final class LegacyExplosionGeometry {
               EXISTS(SELECT 1 FROM camps c WHERE c.world=b.world AND c.x=b.x AND c.y=b.y AND c.z=b.z)
             FROM structure_builds b JOIN structure_chunks sc ON sc.build_id=b.id WHERE sc.world=?
               AND sc.chunk_x BETWEEN ? AND ? AND sc.chunk_z BETWEEN ? AND ?
-              AND b.status IN ('QUEUED','BUILDING','COMPLETE','WAR_DESTROY_PENDING') ORDER BY b.id
+              AND b.status IN ('QUEUED','BUILDING','COMPLETE','WAR_DESTROY_PENDING','WAR_DESTROYED') ORDER BY b.id
             """)) {
             s.setString(1,request.world());s.setInt(2,(request.x()-request.radius())>>4);s.setInt(3,(request.x()+request.radius())>>4);s.setInt(4,(request.z()-request.radius())>>4);s.setInt(5,(request.z()+request.radius())>>4);
             try(var r=s.executeQuery()){while(r.next())out.add(new Building(r.getLong(1),r.getString(2),r.getString(3),r.getString(4),r.getInt(5),r.getInt(6),r.getInt(7),r.getBoolean(8)));}
