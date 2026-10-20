@@ -40,6 +40,7 @@ public final class WallStore {
             s.executeUpdate("CREATE INDEX IF NOT EXISTS wall_job_cell_position ON wall_job_cells(x,y,z)");
             s.executeUpdate("CREATE TRIGGER IF NOT EXISTS pending_wall_blocks_delete BEFORE DELETE ON structure_builds WHEN EXISTS(SELECT 1 FROM wall_jobs WHERE build_id=OLD.id AND state='PREPARED') BEGIN SELECT RAISE(ABORT,'Wall terrain operation is pending'); END");
         }
+        WallRemovalStore.install(db);
     }
     public static long prepare(Connection db,String request,UUID actor,WallPlacement.Plan plan,long now)throws SQLException {
         tx(db);
@@ -86,8 +87,9 @@ public final class WallStore {
             }s.executeBatch();column.executeBatch();
         }
         String job="wall-build:"+request;
-        try(var s=db.prepareStatement("INSERT INTO wall_jobs VALUES(?,?,'BUILD','PREPARED')")){s.setString(1,job);s.setLong(2,build);s.executeUpdate();}
+        try(var s=db.prepareStatement("INSERT INTO wall_jobs(id,build_id,kind,state) VALUES(?,?,'BUILD','PREPARED')")){s.setString(1,job);s.setLong(2,build);s.executeUpdate();}
         try(var s=db.prepareStatement("INSERT INTO wall_job_cells SELECT ?,ordinal,x,y,z,after_data,NULL FROM wall_cells WHERE build_id=?")){s.setString(1,job);s.setLong(2,build);s.executeUpdate();}
+        try(var s=db.prepareStatement("INSERT INTO wall_undo_targets VALUES(?,?) ON CONFLICT(town_id) DO UPDATE SET build_id=excluded.build_id")){s.setLong(1,owner.town());s.setLong(2,build);s.executeUpdate();}
         return build;
     }
     public static boolean reserved(Connection db,String world,int x,int y,int z)throws SQLException {

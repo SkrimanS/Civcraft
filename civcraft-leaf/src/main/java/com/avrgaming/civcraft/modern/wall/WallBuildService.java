@@ -39,7 +39,7 @@ public final class WallBuildService {
             if(working!=null && !plugin.storage().query(db->WallStore.pending(db,working)))reset();
             if(working!=null && Bukkit.getWorld(working.world())==null)reset();
             if(working==null)for(var job:plugin.storage().query(WallStore::pending)) {
-                if(!job.kind().equals("BUILD") || Bukkit.getWorld(job.world())==null)continue;
+                if(!Set.of("BUILD","UNDO").contains(job.kind()) || Bukkit.getWorld(job.world())==null)continue;
                 working=job;images=plugin.storage().query(db->WallStore.images(db,job.id()));index=0;break;
             }
             if(working==null)return;var world=Bukkit.getWorld(working.world());if(world==null)return;
@@ -53,7 +53,11 @@ public final class WallBuildService {
             }
             if(index<images.size())return;
             world.save(true);var done=working;
-            plugin.storage().transaction(db->{WallStore.completeBuild(db,done,System.currentTimeMillis());return null;});
+            plugin.storage().transaction(db->{
+                if(done.kind().equals("BUILD"))WallStore.completeBuild(db,done,System.currentTimeMillis());
+                else WallRemovalStore.completeUndo(db,done,System.currentTimeMillis());
+                return null;
+            });
             reset();
         }catch(SQLException|RuntimeException failure) {
             long now=System.currentTimeMillis();if(now-lastWarning>=30000){lastWarning=now;plugin.getLogger().severe("Wall world operation retained for recovery: "+failure.getMessage());}

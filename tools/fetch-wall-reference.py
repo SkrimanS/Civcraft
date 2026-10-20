@@ -7,7 +7,8 @@ import json
 root = Path('tools/legacy-reference')
 tree = json.loads((root / 'original-tree.json').read_text(encoding='utf-8'))['tree']
 names = {'Wall.java', 'FortifiedWall.java', 'WallBlock.java',
-         'MarkerPlacementManager.java', 'CivData.java'}
+         'MarkerPlacementManager.java', 'CivData.java', 'BuildCommand.java',
+         'Town.java', 'Structure.java', 'Buildable.java', 'CivSettings.java'}
 for entry in tree:
     path = entry['path']
     if '/src/' not in path or Path(path).name not in names:

@@ -64,6 +64,8 @@ public final class CivCraftModernPlugin extends JavaPlugin {
     public com.avrgaming.civcraft.modern.wall.WallBuildService walls(){return walls;}
     private com.avrgaming.civcraft.modern.wall.WallMarkerService wallMarkers;
     public com.avrgaming.civcraft.modern.wall.WallMarkerService wallMarkers(){return wallMarkers;}
+    private com.avrgaming.civcraft.modern.wall.WallManagementService wallManagement;
+    public com.avrgaming.civcraft.modern.wall.WallManagementService wallManagement(){return wallManagement;}
     public boolean isWallPending(java.util.UUID player){return wallMarkers!=null && wallMarkers.hasPending(player);}
     public boolean isWarCampPending(java.util.UUID player){return warCampItems!=null&&warCampItems.hasPending(player);}
     public boolean isFoundationPending(java.util.UUID player){return foundationItems!=null&&foundationItems.hasPending(player);}
@@ -302,6 +304,7 @@ public final class CivCraftModernPlugin extends JavaPlugin {
             var wallCatalog=com.avrgaming.civcraft.modern.wall.WallCatalog.load(getDataFolder().toPath().resolve("civcraft/data/war.yml").toFile(),getDataFolder().toPath().resolve("civcraft/data/structures.yml").toFile());
             walls=new com.avrgaming.civcraft.modern.wall.WallBuildService(this,wallCatalog);
             wallMarkers=new com.avrgaming.civcraft.modern.wall.WallMarkerService(this,wallCatalog);
+            wallManagement=new com.avrgaming.civcraft.modern.wall.WallManagementService(this,wallCatalog);
             endgame=new com.avrgaming.civcraft.modern.endgame.EndGameService(this,storage);
         }catch(java.sql.SQLException|java.io.IOException failure){throw new IllegalStateException("Unable to initialize culture and building clocks",failure);}
         // Accrue idle science before research can complete in this same minute.
