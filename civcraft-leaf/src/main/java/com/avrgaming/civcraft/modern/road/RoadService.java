@@ -19,6 +19,7 @@ import org.bukkit.persistence.PersistentDataType;
 import net.kyori.adventure.text.Component;
 
 public final class RoadService implements Listener {
+    public boolean hasPending(UUID player){return markers.containsKey(player);}
     private final CivCraftModernPlugin plugin;private final StorageBootstrap storage;private final RoadCatalog catalog;private final RoadPlacement placement;
     private final NamespacedKey marker,speed;private final boolean chunkSpeeds;
     private final Map<UUID,List<Location>> markers=new HashMap<>();
@@ -39,7 +40,7 @@ public final class RoadService implements Listener {
         if(args.length<2)return false;String action=args[1].toLowerCase(Locale.ROOT);
         if(action.equals("ti_road") || action.equals("road") || action.equals("structure") && args.length>=3 && args[2].equalsIgnoreCase("ti_road")){
             storage.query(db->RoadStore.authority(db,player.getUniqueId(),true));
-            if(plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()) || plugin.legacyStructures().hasPreview(player))throw new IllegalArgumentException("Сначала завершите размещение другой постройки.");
+            if(plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()) || plugin.isWallPending(player.getUniqueId()) || plugin.legacyStructures().hasPreview(player))throw new IllegalArgumentException("Сначала завершите размещение другой постройки.");
             plugin.goodieTransfers().requireUnlocked(player.getUniqueId());plugin.trades().recover(player);
             if(!player.getInventory().getItemInMainHand().getType().isAir() || !player.getItemOnCursor().getType().isAir())throw new IllegalArgumentException("Освободите основную руку и курсор для двух маркеров дороги.");
             cancel(player);var item=new ItemStack(Material.REDSTONE_TORCH,2);var meta=item.getItemMeta();meta.displayName(Component.text("Маркер дороги"));meta.getPersistentDataContainer().set(marker,PersistentDataType.BYTE,(byte)1);item.setItemMeta(meta);player.getInventory().setItemInMainHand(item);markers.put(player.getUniqueId(),new ArrayList<>());started.put(player.getUniqueId(),System.currentTimeMillis());

@@ -53,7 +53,7 @@ public final class SiegeCannonService implements Listener {
         }catch(SQLException failure){warn(failure);return true;}
     }
     private void ready(Player player)throws SQLException{
-        if(plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите размещение другой постройки.");
+        if(plugin.isFoundationPending(player.getUniqueId()) || plugin.isWarCampPending(player.getUniqueId()) || plugin.isWallPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите размещение другой постройки.");
         if(!player.getItemOnCursor().getType().isAir() || !Set.of(InventoryType.CRAFTING,InventoryType.CREATIVE,InventoryType.PLAYER).contains(player.getOpenInventory().getTopInventory().getType()))throw new IllegalArgumentException("Закройте инвентарь перед использованием пушки.");
         plugin.goodieTransfers().requireUnlocked(player.getUniqueId());plugin.trades().recover(player);
     }

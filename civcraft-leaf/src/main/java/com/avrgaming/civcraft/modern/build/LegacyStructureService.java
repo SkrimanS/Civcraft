@@ -122,6 +122,7 @@ public final class LegacyStructureService {
     }
 
     public void previewStructure(Player player, String structureId, int y, String direction) throws IOException, SQLException {
+        requireNoWallMarkers(player);
         TownRecord town = requireMayorTown(player);
         StructureDefinition definition = definition(structureId);
         validateRequiredTechnologies(town, definition);
@@ -158,6 +159,7 @@ public final class LegacyStructureService {
     }
 
     public Location previewFoundationStructure(Player player, String structureId, Location location, String direction) throws IOException {
+        requireNoWallMarkers(player);
         StructureDefinition definition = definition(structureId);
         String cleanDirection = normalizeRotationDirection(direction);
         ResolvedBuildTemplate resolved = resolveBuildTemplate(definition, cleanDirection);
@@ -203,6 +205,9 @@ public final class LegacyStructureService {
 
     public boolean hasPreview(Player player) {
         return pendingPreviews.containsKey(player.getUniqueId());
+    }
+    private void requireNoWallMarkers(Player player) {
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.isWallPending(player.getUniqueId()))throw new IllegalArgumentException("Сначала завершите разметку стены или отмените её: /b cancel.");
     }
 
     public QueuedLegacyBuild confirmPreview(Player player) throws IOException, SQLException {

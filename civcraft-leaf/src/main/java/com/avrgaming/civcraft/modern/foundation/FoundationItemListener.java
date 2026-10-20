@@ -94,6 +94,9 @@ public final class FoundationItemListener implements Listener {
         if(event.getClickedBlock()!=null && plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ
                 && civ.trades()!=null && civ.trades().isPublicTradePoint(event.getClickedBlock()))return;
         Player player = event.getPlayer();
+        if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.isWallPending(player.getUniqueId())) {
+            event.setCancelled(true);player.sendMessage(net.kyori.adventure.text.Component.text("Сначала завершите разметку стены или отмените её: /b cancel."));return;
+        }
         if(plugin instanceof com.avrgaming.civcraft.modern.CivCraftModernPlugin civ && civ.isWarCampPending(player.getUniqueId())) {
             player.sendMessage(net.kyori.adventure.text.Component.text("Сначала подтвердите военный лагерь словом yes или отмените другим ответом."));
             event.setCancelled(true);

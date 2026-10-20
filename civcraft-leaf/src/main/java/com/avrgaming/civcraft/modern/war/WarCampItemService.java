@@ -31,6 +31,7 @@ public final class WarCampItemService implements Listener {
     @EventHandler(priority=EventPriority.HIGH) public void use(PlayerInteractEvent event) {
         if(event.getHand()!=EquipmentSlot.HAND||!Set.of(Action.RIGHT_CLICK_AIR,Action.RIGHT_CLICK_BLOCK).contains(event.getAction())||!held(event.getPlayer()))return;
         event.setCancelled(true);var player=event.getPlayer();
+        if(plugin.isWallPending(player.getUniqueId())){player.sendMessage(Component.text("Сначала завершите разметку стены или отмените её: /b cancel."));return;}
         if(plugin.isFoundationPending(player.getUniqueId()))return;
         if(checking.containsKey(player.getUniqueId())){player.sendMessage(Component.text("Проверка опоры военного лагеря уже выполняется."));return;}
         if(previews.containsKey(player.getUniqueId())){player.sendMessage(Component.text("Введите yes для основания военного лагеря или любой другой ответ для отмены."));return;}
