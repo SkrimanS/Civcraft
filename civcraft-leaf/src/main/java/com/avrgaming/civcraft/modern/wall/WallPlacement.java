@@ -112,6 +112,7 @@ public final class WallPlacement {
         }
     }
     private void structuralColumn(Connection db,World world,WallRules.Point point,Map<Long,ExplosionTemplateShape> shapes,Set<WallRules.Point> commands)throws SQLException {
+        try{WallStore.requireColumnsFree(db,world.getName(),point.x(),point.z());}catch(IllegalArgumentException conflict){throw new Rejected(conflict.getMessage());}
         // WarCamp registers StructureBlocks in the original, unlike an ordinary camp.
         try(var s=db.prepareStatement("""
             SELECT c.state,b.after_data,EXISTS(SELECT 1 FROM war_camp_points p
