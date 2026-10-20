@@ -5,7 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 /** Wall and fortified-wall settings are independent sections of the original war.yml. */
 public record WallCatalog(Profile ordinary,Profile fortified) {
-    public record Profile(String type,int height,int maximumHeight,double segmentCost,double maximumSegment,int recursionLimit,int hitpoints) {
+    public record Profile(String type,int height,int maximumHeight,double segmentCost,double maximumSegment,int recursionLimit,int hitpoints,String technology) {
         public Profile {
             if(height<1 || !Double.isFinite(segmentCost) || segmentCost<0 || !Double.isFinite(maximumSegment)
                     || maximumSegment<0 || recursionLimit<0 || hitpoints<1)
@@ -31,6 +31,7 @@ public record WallCatalog(Profile ordinary,Profile fortified) {
         for(String key:new String[]{"height","maximum_height","cost_per_segment","max_segment","recursion_limit"})
             if(!war.isSet(section+"."+key))throw new IllegalArgumentException("Не настроен параметр стены "+section+"."+key);
         return new Profile(type,war.getInt(section+".height"),war.getInt(section+".maximum_height"),war.getDouble(section+".cost_per_segment"),
-                war.getDouble(section+".max_segment"),war.getInt(section+".recursion_limit"),Integer.parseInt(definition.get("max_hitpoints").toString()));
+                war.getDouble(section+".max_segment"),war.getInt(section+".recursion_limit"),Integer.parseInt(definition.get("max_hitpoints").toString()),
+                definition.get("require_tech")==null?null:definition.get("require_tech").toString());
     }
 }
