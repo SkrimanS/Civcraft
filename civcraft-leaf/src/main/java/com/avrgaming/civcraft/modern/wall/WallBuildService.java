@@ -39,7 +39,7 @@ public final class WallBuildService {
             if(working!=null && !plugin.storage().query(db->WallStore.pending(db,working)))reset();
             if(working!=null && Bukkit.getWorld(working.world())==null)reset();
             if(working==null)for(var job:plugin.storage().query(WallStore::pending)) {
-                if(!Set.of("BUILD","UNDO").contains(job.kind()) || Bukkit.getWorld(job.world())==null)continue;
+                if(!Set.of("BUILD","UNDO","REPAIR").contains(job.kind()) || Bukkit.getWorld(job.world())==null)continue;
                 working=job;images=plugin.storage().query(db->WallStore.images(db,job.id()));index=0;break;
             }
             if(working==null)return;var world=Bukkit.getWorld(working.world());if(world==null)return;
@@ -55,7 +55,8 @@ public final class WallBuildService {
             world.save(true);var done=working;
             plugin.storage().transaction(db->{
                 if(done.kind().equals("BUILD"))WallStore.completeBuild(db,done,System.currentTimeMillis());
-                else WallRemovalStore.completeUndo(db,done,System.currentTimeMillis());
+                else if(done.kind().equals("UNDO"))WallRemovalStore.completeUndo(db,done,System.currentTimeMillis());
+                else WallRepairStore.complete(db,done,System.currentTimeMillis());
                 return null;
             });
             reset();

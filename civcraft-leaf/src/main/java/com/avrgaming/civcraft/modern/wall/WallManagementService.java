@@ -13,6 +13,10 @@ public final class WallManagementService {
     public boolean command(Player player,String[] args)throws SQLException {
         if(args.length<2)return false;String action=args[1].toLowerCase(Locale.ROOT);
         if(action.equals("wallinfo")){if(args.length!=3)throw new IllegalArgumentException("/b wallinfo <ID>");info(player,id(args[2]));return true;}
+        if(action.equals("repairwall")) {
+            if(args.length<3 || args.length>4 || args.length==4 && !args[3].equalsIgnoreCase("yes"))throw new IllegalArgumentException("/b repairwall <ID> [yes]");
+            plugin.wallRepairs().command(player,id(args[2]),args.length==4);return true;
+        }
         if(action.equals("demolishwall")) {
             if(args.length!=3)throw new IllegalArgumentException("/b demolishwall <ID>");demolish(player,id(args[2]));return true;
         }

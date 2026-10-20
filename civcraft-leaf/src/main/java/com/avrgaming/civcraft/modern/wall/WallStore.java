@@ -41,6 +41,7 @@ public final class WallStore {
             s.executeUpdate("CREATE TRIGGER IF NOT EXISTS pending_wall_blocks_delete BEFORE DELETE ON structure_builds WHEN EXISTS(SELECT 1 FROM wall_jobs WHERE build_id=OLD.id AND state='PREPARED') BEGIN SELECT RAISE(ABORT,'Wall terrain operation is pending'); END");
         }
         WallRemovalStore.install(db);
+        WallRepairStore.install(db);
     }
     public static long prepare(Connection db,String request,UUID actor,WallPlacement.Plan plan,long now)throws SQLException {
         tx(db);
@@ -123,14 +124,17 @@ public final class WallStore {
         }
     }
     public static void requireColumnsFree(Connection db,String world,int x,int z)throws SQLException {
+        requireColumnsFree(db,world,x,z,null);
+    }
+    public static void requireColumnsFree(Connection db,String world,int x,int z,Long ignoredBuild)throws SQLException {
         if(!installed(db))return;
         try(var s=db.prepareStatement("""
             SELECT 1 FROM wall_columns c JOIN walls w ON w.build_id=c.build_id JOIN structure_builds b ON b.id=w.build_id
-            WHERE b.world=? AND c.x=? AND c.z=? AND w.state<>'RETIRED' AND (w.state<>'ACTIVE'
+            WHERE b.world=? AND c.x=? AND c.z=? AND (? IS NULL OR w.build_id<>?) AND w.state<>'RETIRED' AND (w.state<>'ACTIVE'
             OR EXISTS(SELECT 1 FROM wall_jobs j WHERE j.build_id=b.id AND j.state='PREPARED') OR EXISTS(
               SELECT 1 FROM protected_blocks p WHERE p.build_id=b.id AND p.world=b.world AND p.x=c.x AND p.z=c.z)) LIMIT 1
             """)) {
-            s.setString(1,world);s.setInt(2,x);s.setInt(3,z);try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("В колонке уже находится стена или незавершённая работа с ней.");}
+            s.setString(1,world);s.setInt(2,x);s.setInt(3,z);if(ignoredBuild==null){s.setNull(4,Types.INTEGER);s.setNull(5,Types.INTEGER);}else{s.setLong(4,ignoredBuild);s.setLong(5,ignoredBuild);}try(var r=s.executeQuery()){if(r.next())throw new IllegalArgumentException("В колонке уже находится стена или незавершённая работа с ней.");}
         }
     }
     public static List<Job> pending(Connection db)throws SQLException {
@@ -170,6 +174,7 @@ public final class WallStore {
             }}insert.executeBatch();
         }
         try(var s=db.prepareStatement("UPDATE structure_builds SET status='COMPLETE',completed_at=? WHERE id=? AND status='WALL_PREPARED'")){s.setLong(1,now);s.setLong(2,job.build());if(s.executeUpdate()!=1)throw new SQLException("Wall build status changed");}
+        com.avrgaming.civcraft.modern.war.TowerHealthStore.initialize(db,job.build());
         try(var s=db.prepareStatement("UPDATE walls SET state='ACTIVE' WHERE build_id=? AND state='BUILDING'")){s.setLong(1,job.build());if(s.executeUpdate()!=1)throw new SQLException("Wall state changed");}
         try(var s=db.prepareStatement("UPDATE wall_jobs SET state='DONE' WHERE id=? AND state='PREPARED'")){s.setString(1,job.id());if(s.executeUpdate()!=1)throw new SQLException("Wall job state changed");}
     }

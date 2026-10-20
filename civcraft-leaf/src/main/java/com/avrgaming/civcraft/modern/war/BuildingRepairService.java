@@ -28,6 +28,8 @@ public final class BuildingRepairService {
         long build=storage.query(db->{try(var s=db.prepareStatement("SELECT b.id FROM structure_builds b JOIN residents r ON r.town_id=b.town_id WHERE r.uuid=? AND b.world=? AND b.status NOT IN ('CANCELLED','DEMOLISHED') ORDER BY ((b.x-?)*(b.x-?)+(b.y-?)*(b.y-?)+(b.z-?)*(b.z-?)),b.id LIMIT 1")) {
             s.setString(1,player.getUniqueId().toString());s.setString(2,loc.getWorld().getName());s.setDouble(3,loc.getX());s.setDouble(4,loc.getX());s.setDouble(5,loc.getY());s.setDouble(6,loc.getY());s.setDouble(7,loc.getZ());s.setDouble(8,loc.getZ());try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("В вашем городе нет ближайшего здания.");return r.getLong(1);}
         }});
+        String kind=storage.query(db->{try(var s=db.prepareStatement("SELECT structure_id FROM structure_builds WHERE id=?")){s.setLong(1,build);try(var r=s.executeQuery()){return r.next()?r.getString(1):null;}}});
+        if("ti_wall".equals(kind) || "ti_fortifiedwall".equals(kind)){plugin.wallRepairs().command(player,build,confirmed);return;}
         var offer=storage.query(db->{checkWar(db,System.currentTimeMillis());var o=BuildingRepairStore.offer(db,build,player.getUniqueId());BuildingRepairStore.validate(db,o,technology(o.type()),System.currentTimeMillis());return o;});
         if(!confirmed){player.sendMessage(Component.text("Ремонт "+offer.name()+" (#"+build+") стоит "+offer.cost()+" монет из казны города. Подтвердите: /build repairnearest yes"));return;}
         var plan=plan(offer);String tech=technology(offer.type());

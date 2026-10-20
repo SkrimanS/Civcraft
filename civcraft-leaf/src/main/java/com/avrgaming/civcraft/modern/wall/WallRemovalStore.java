@@ -23,7 +23,7 @@ public final class WallRemovalStore {
             SELECT w.*,b.town_id,b.world,b.structure_id,b.status,b.cost,b.x,b.y,b.z,COALESCE(h.hitpoints,b.max_hitpoints) AS current_hp,COALESCE(h.maximum,b.max_hitpoints) AS current_max
             FROM walls w JOIN structure_builds b ON b.id=w.build_id LEFT JOIN building_combat_health h ON h.build_id=b.id WHERE w.build_id=?
             """)) {
-            s.setLong(1,id);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Стена не найдена.");return new Wall(id,r.getLong("town_id"),r.getString("world"),r.getString("structure_id"),r.getString("state"),r.getString("status"),r.getLong("cost"),r.getInt("wall_height"),r.getDouble("segment_cost"),r.getInt("segments"),r.getInt("current_hp"),r.getInt("current_max"),new WallRules.Point(r.getInt("x"),r.getInt("y"),r.getInt("z")));}
+            s.setLong(1,id);try(var r=s.executeQuery()){if(!r.next())throw new IllegalArgumentException("Стена не найдена.");return new Wall(id,r.getLong("town_id"),r.getString("world"),r.getString("structure_id"),r.getString("state"),r.getString("status"),r.getLong("cost"),r.getInt("wall_height"),r.getDouble("segment_cost"),r.getInt("segments"),r.getInt("current_hp"),com.avrgaming.civcraft.modern.war.TowerHealthStore.maximum(db,id,r.getInt("current_max")),new WallRules.Point(r.getInt("x"),r.getInt("y"),r.getInt("z")));}
         }
     }
     public static Long at(Connection db,String world,int x,int z)throws SQLException {

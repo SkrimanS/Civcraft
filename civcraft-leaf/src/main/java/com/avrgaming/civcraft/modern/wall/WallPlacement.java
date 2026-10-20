@@ -103,7 +103,7 @@ public final class WallPlacement {
             }
             if(FarmPlots.registered(db,world.getName(),p.x(),p.z()).isPresent())throw new Rejected("Стена не может проходить через чанк фермы.");
             if(plugin.storage().isActiveStructureChunk(world.getName(),p.x()>>4,p.z()>>4))throw new Rejected("На пути стены ещё выполняется строительный журнал.");
-            structuralColumn(db,world,p,shapes,commands);checked.add(column);
+            structuralColumn(db,world,p,shapes,commands,null);checked.add(column);
         }
         if(commands.contains(p) && world.getBlockAt(p.x(),p.y(),p.z()).getState() instanceof org.bukkit.block.Sign)throw new Rejected("Защищённая табличка здания мешает стене.");
         // Command components are excluded from StructureBlock columns, but protected at their own cell.
@@ -111,8 +111,8 @@ public final class WallPlacement {
             s.setString(1,world.getName());s.setInt(2,p.x());s.setInt(3,p.y());s.setInt(4,p.z());try(var r=s.executeQuery()){if(r.next())throw new Rejected("Защищённый компонент здания мешает стене.");}
         }
     }
-    private void structuralColumn(Connection db,World world,WallRules.Point point,Map<Long,ExplosionTemplateShape> shapes,Set<WallRules.Point> commands)throws SQLException {
-        try{WallStore.requireColumnsFree(db,world.getName(),point.x(),point.z());}catch(IllegalArgumentException conflict){throw new Rejected(conflict.getMessage());}
+    private void structuralColumn(Connection db,World world,WallRules.Point point,Map<Long,ExplosionTemplateShape> shapes,Set<WallRules.Point> commands,Long ignoredBuild)throws SQLException {
+        try{WallStore.requireColumnsFree(db,world.getName(),point.x(),point.z(),ignoredBuild);}catch(IllegalArgumentException conflict){throw new Rejected(conflict.getMessage());}
         // WarCamp registers StructureBlocks in the original, unlike an ordinary camp.
         try(var s=db.prepareStatement("""
             SELECT c.state,b.after_data,EXISTS(SELECT 1 FROM war_camp_points p
@@ -131,7 +131,7 @@ public final class WallPlacement {
             """)) {
             s.setString(1,world.getName());s.setInt(2,point.x()>>4);s.setInt(3,point.z()>>4);
             try(var rows=s.executeQuery()){while(rows.next()) {
-                long id=rows.getLong(1);String type=rows.getString(2);
+                long id=rows.getLong(1);if(ignoredBuild!=null && id==ignoredBuild)continue;String type=rows.getString(2);
                 if(type!=null && destroyable.contains(type) || "ti_road".equals(type) || plugin.settings().campStructureId().equals(type))continue;
                 if("ti_wall".equals(type) || "ti_fortifiedwall".equals(type)) {
                     try(var q=db.prepareStatement("SELECT 1 FROM protected_blocks WHERE build_id=? AND world=? AND x=? AND z=? LIMIT 1")) {
@@ -147,6 +147,10 @@ public final class WallPlacement {
                 for(int y=0;y<shape.height();y++)if(shape.solid(x,y,z))throw new Rejected("В колонке стены находится другая постройка.");
             }}
         }
+    }
+    public void validateRepairColumns(Connection db,World world,long build,List<Cell> cells)throws SQLException {
+        var checked=new HashSet<Column>();var shapes=new HashMap<Long,ExplosionTemplateShape>();var commands=new HashSet<WallRules.Point>();
+        for(var cell:cells){var p=cell.point();if(checked.add(new Column(p.x(),p.z())))structuralColumn(db,world,p,shapes,commands,build);}
     }
     public static WallRules.Point point(Location location){return new WallRules.Point(location.getBlockX(),location.getBlockY(),location.getBlockZ());}
 }

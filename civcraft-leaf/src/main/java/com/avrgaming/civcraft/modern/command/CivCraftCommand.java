@@ -642,6 +642,7 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
         send(player,"&e/b ti_fortifiedwall [стиль]&7 — крепостная стена по двум маркерам");
         send(player,"&e/b undo&7 — отменить последнюю стену или дорогу; /b wallinfo <ID> — сведения о стене");
         send(player,"&e/b demolishwall <ID>&7 — снять стену с учёта и защиты, оставив блоки; монеты не возвращаются");
+        send(player,"&e/b repairwall <ID> [yes]&7 — цена ремонта стены и подтверждение; только вне боевого периода");
         send(player,"&e/b ti_road&7 — дорога между двумя маркерами; /b undo — отменить последнюю дорогу с возвратом стоимости");
         send(player,"&e/b demolishroad <ID>&7 — убрать дорогу без возврата монет");
         send(player,"&e/b repairnearest [yes]&7 - ремонт ближайшего разрушенного здания за 50% стоимости");
@@ -803,8 +804,9 @@ public final class CivCraftCommand implements CommandExecutor, TabCompleter {
             if(args.length==3 && args[1].equalsIgnoreCase("change"))return plugin.governments().ids();
         }
         if (List.of("build", "b").contains(primary) && args.length == 1) {
-            return List.of("list", "cancel", "demolish", "demolishroad", "demolishwall", "wallinfo", "undo", "ti_road", "ti_wall", "ti_fortifiedwall", "repairnearest", "repair", "validatenearest", "validate", "info", "time", "s_townhall", "s_capitol");
+            return List.of("list", "cancel", "demolish", "demolishroad", "demolishwall", "wallinfo", "repairwall", "undo", "ti_road", "ti_wall", "ti_fortifiedwall", "repairnearest", "repair", "validatenearest", "validate", "info", "time", "s_townhall", "s_capitol");
         }
+        if(List.of("build","b").contains(primary) && args.length==3 && args[0].equalsIgnoreCase("repairwall"))return List.of("yes");
         if(List.of("build","b").contains(primary) && (args.length==2 && List.of("ti_wall","ti_fortifiedwall","wall","fortifiedwall","fortified_wall").contains(args[0].toLowerCase(Locale.ROOT))
                 || args.length==3 && args[0].equalsIgnoreCase("structure") && List.of("ti_wall","ti_fortifiedwall").contains(args[1].toLowerCase(Locale.ROOT))))return com.avrgaming.civcraft.modern.wall.WallMarkerService.styles();
         if (List.of("research", "tech").contains(primary) && args.length == 1) {
